@@ -6,8 +6,7 @@
         "strict": true,
         "skipLibCheck": true,
         "isolatedModules": true,
-        "noEmit": true,
-        "types": []
+        "noEmit": true
     },
     "include": ["src"]
 }

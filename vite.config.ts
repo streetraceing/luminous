@@ -15,5 +15,5 @@ export default defineConfig({
             },
         },
     },
-    plugins: [postBuildAssets()],
+    plugins: [postBuildAssets()]
 });

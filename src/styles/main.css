@@ -1,11 +1,7 @@
-button[data-testid='control-button-playpause'][aria-label='Play'] {
-    background: green;
+button[data-testid="control-button-playpause"][aria-label="Play"] > span {
+  background-color: blue;
 }
 
-button[data-testid='control-button-playpause'][aria-label='Pause'] {
-    background: red;
-}
-
-* {
-    outline: 1px solid red;
+button[data-testid="control-button-playpause"][aria-label="Pause"] > span {
+  background-color: red;
 }
