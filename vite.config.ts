@@ -1,6 +1,5 @@
 import { defineConfig } from 'vite';
-import { resolve } from 'path';
-import { postBuildAssets } from './vite/plugins/postBuildAssets';
+import { spicetifySync } from './plugins/spicetifySync';
 
 export default defineConfig({
     build: {
@@ -8,12 +7,17 @@ export default defineConfig({
         emptyOutDir: true,
         cssCodeSplit: false,
         rollupOptions: {
-            input: resolve(__dirname, 'src/index.ts'),
+            input: 'src/index.ts',
             output: {
                 entryFileNames: 'theme.js',
                 assetFileNames: 'user.css',
             },
         },
     },
-    plugins: [postBuildAssets()]
+    plugins: [
+        spicetifySync({
+            themeName: 'Luminous',
+            colorIni: 'src/color.ini',
+        }),
+    ],
 });

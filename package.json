@@ -7,8 +7,7 @@
         "apply": "npm run build && spicetify config current_theme Luminous && spicetify apply",
         "discard": "spicetify config current_theme marketplace",
         "build": "vite build",
-        "watch": "vite build --watch",
-        "dev": "concurrently -k \"npm run watch\" \"spicetify watch -s\""
+        "watch": "concurrently -k \"vite build --watch\" \"spicetify watch -s\""
     },
     "devDependencies": {
         "@types/node": "^25.2.2",
