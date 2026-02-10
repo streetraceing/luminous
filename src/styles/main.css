@@ -5,3 +5,7 @@ button[data-testid="control-button-playpause"][aria-label="Play"] > span {
 button[data-testid="control-button-playpause"][aria-label="Pause"] > span {
   background-color: red;
 }
+
+button[data-testid="control-button-playpause"] svg {
+  fill: white;
+}
