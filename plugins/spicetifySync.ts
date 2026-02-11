@@ -4,14 +4,26 @@ import fs from 'fs';
 import path from 'path';
 
 interface SpicetifySyncOptions {
+    /**
+     * The theme name at `spicetify/Themes/<themeName>`
+     */
     themeName: string;
+    /**
+     * Path to spicetify root, e.g.
+     * `C:/Users/<username>/AppData/Roaming/spicetify`
+     */
+    spicetifyRoot?: string;
+    /**
+     * Location of the source color.ini file, e.g.
+     * `src/color.ini`
+     */
     colorIni?: string;
 }
 
 export function spicetifySync(options: SpicetifySyncOptions): Plugin {
     const { themeName, colorIni } = options;
 
-    let spicetifyRoot = '';
+    let spicetifyRoot = options.spicetifyRoot || '';
 
     function getSpicetifyRoot(): string {
         if (!spicetifyRoot) {
