@@ -60,3 +60,7 @@ export function ensureContrast(hex: string): string {
 
     return hslToHex(h, s, l);
 }
+
+export function isMonochrome(hsl: HSL): boolean {
+    return hsl.s < 0.22;
+}

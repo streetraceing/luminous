@@ -1,10 +1,11 @@
 import {
     ensureContrast,
+    isMonochrome,
     normalizeAccent,
     stabilizeHue,
 } from './dynamic/adaptive';
 import { extractPalette } from './dynamic/canvas2d';
-import { hslToHex } from './dynamic/color';
+import { HSL, hslToHex } from './dynamic/color';
 import { applyRgbVars } from './dynamic/spotify';
 import { spotifyImageToUrl, waitForTrackInfo } from './utils';
 
@@ -42,9 +43,16 @@ function applyDynamic(
     palette: NonNullable<Awaited<ReturnType<typeof extractPalette>>>,
 ) {
     const root = document.documentElement;
+    const { hsl } = palette;
 
-    let normalized = normalizeAccent(palette.hsl);
+    // 🖤 если обложка почти ч/б
+    if (isMonochrome(hsl)) {
+        applyMonochromeTheme(root, hsl);
+        return;
+    }
 
+    // обычная цветная логика
+    let normalized = normalizeAccent(hsl);
     normalized.h = stabilizeHue(normalized.h);
 
     let accent = hslToHex(normalized.h, normalized.s, normalized.l);
@@ -64,6 +72,29 @@ function applyDynamic(
 
     root.style.setProperty('--spice-text', '#ffffff');
     root.style.setProperty('--spice-subtext', 'rgba(255,255,255,0.7)');
+
+    applyRgbVars(root, 'main', main);
+    applyRgbVars(root, 'button', accent);
+}
+
+function applyMonochromeTheme(root: HTMLElement, hsl: HSL) {
+    const isLight = hsl.l > 0.6;
+
+    const main = '#0f0f0f';
+    const elevated = '#181818';
+    const sidebar = '#090909';
+
+    const accent = isLight ? '#ffffff' : '#cccccc';
+
+    root.style.setProperty('--spice-main', main);
+    root.style.setProperty('--spice-main-elevated', elevated);
+    root.style.setProperty('--spice-sidebar', sidebar);
+
+    root.style.setProperty('--spice-button', accent);
+    root.style.setProperty('--spice-button-active', accent);
+
+    root.style.setProperty('--spice-text', '#ffffff');
+    root.style.setProperty('--spice-subtext', 'rgba(255,255,255,0.6)');
 
     applyRgbVars(root, 'main', main);
     applyRgbVars(root, 'button', accent);
