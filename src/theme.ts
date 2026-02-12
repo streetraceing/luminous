@@ -1,4 +1,6 @@
 import { extractPalette } from './dynamic/canvas2d';
+import { hslToHex } from './dynamic/color';
+import { applyRgbVars } from './dynamic/spotify';
 import { spotifyImageToUrl, waitForTrackInfo } from './utils';
 
 const paletteCache = new Map<
@@ -14,7 +16,7 @@ async function updateAccent() {
     if (!trackUri) return;
 
     if (paletteCache.has(trackUri)) {
-        applyPalette(paletteCache.get(trackUri)!);
+        applyDynamic(paletteCache.get(trackUri)!);
         return;
     }
 
@@ -28,20 +30,38 @@ async function updateAccent() {
     if (!palette) return;
 
     paletteCache.set(trackUri, palette);
-    applyPalette(palette);
+    applyDynamic(palette);
 }
 
-function applyPalette(
+function applyDynamic(
     palette: NonNullable<Awaited<ReturnType<typeof extractPalette>>>,
 ) {
     const root = document.documentElement;
+    const { hsl } = palette;
 
-    root.style.setProperty('--luminous-dominant', palette.dominant);
-    root.style.setProperty('--luminous-accent', palette.accent);
-    root.style.setProperty('--luminous-muted', palette.muted);
-    root.style.setProperty('--luminous-dark', palette.dark);
-    root.style.setProperty('--luminous-light', palette.light);
-    root.style.setProperty('--luminous-contrast', palette.contrastText);
+    const main = hslToHex(hsl.h, 0.15, 0.08);
+    const mainElevated = hslToHex(hsl.h, 0.18, 0.12);
+    const sidebar = hslToHex(hsl.h, 0.12, 0.05);
+    const card = hslToHex(hsl.h, 0.2, 0.15);
+    const highlight = hslToHex(hsl.h, 0.25, 0.18);
+
+    const button = palette.accent;
+    const buttonActive = hslToHex(hsl.h, Math.min(1, hsl.s * 1.2), 0.45);
+
+    root.style.setProperty('--spice-main', main);
+    root.style.setProperty('--spice-main-elevated', mainElevated);
+    root.style.setProperty('--spice-sidebar', sidebar);
+    root.style.setProperty('--spice-card', card);
+    root.style.setProperty('--spice-highlight', highlight);
+
+    root.style.setProperty('--spice-button', button);
+    root.style.setProperty('--spice-button-active', buttonActive);
+
+    root.style.setProperty('--spice-text', palette.contrastText);
+    root.style.setProperty('--spice-subtext', 'rgba(255,255,255,0.7)');
+
+    applyRgbVars(root, 'main', main);
+    applyRgbVars(root, 'button', button);
 }
 
 async function init() {

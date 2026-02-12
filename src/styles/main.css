@@ -1,4 +1,8 @@
-button[data-testid='control-button-playpause'] > span {
+/*button[data-testid='control-button-playpause'] > span {
     background: var(--luminous-accent);
     transition: background 0.4s ease;
-}
+}*/
+
+/*root {
+    --spice-sidebar: #ffffff;
+}*/

@@ -1,6 +1,29 @@
 export type RGB = { r: number; g: number; b: number };
 export type HSL = { h: number; s: number; l: number };
 
+export function hexToRgb(hex: string): RGB {
+    hex = hex.replace('#', '').trim();
+
+    if (hex.length === 3) {
+        hex = hex
+            .split('')
+            .map((c) => c + c)
+            .join('');
+    }
+
+    if (hex.length !== 6) {
+        throw new Error(`Invalid hex color: ${hex}`);
+    }
+
+    const num = parseInt(hex, 16);
+
+    return {
+        r: (num >> 16) & 255,
+        g: (num >> 8) & 255,
+        b: num & 255,
+    };
+}
+
 export function rgbToHex({ r, g, b }: RGB): string {
     return '#' + [r, g, b].map((x) => x.toString(16).padStart(2, '0')).join('');
 }
@@ -67,6 +90,11 @@ export function hslToRgb(h: number, s: number, l: number): RGB {
         g: Math.round(g * 255),
         b: Math.round(b * 255),
     };
+}
+
+export function hslToHex(h: number, s: number, l: number) {
+    const rgb = hslToRgb(h, s, l);
+    return rgbToHex(rgb);
 }
 
 export function adjustSaturation(hsl: HSL, factor: number): string {
