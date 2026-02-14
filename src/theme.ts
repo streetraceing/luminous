@@ -1,40 +1,16 @@
-import { renderBackground, setTransparentMode } from './dynamic/background';
-import {
-    getActiveCanvasVideo,
-    getGeneration,
-    getTrackImageUrl,
-    nextGeneration,
-    waitForCanvasVideo,
-    waitForSongInfo,
-} from './dynamic/utils';
+import { renderImage } from './dynamic/background';
+import { waitForCanvasMetadata, waitForSongInfo } from './dynamic/utils';
 
 async function interractWithActiveSong() {
-    const gen = nextGeneration();
+    const song = Spicetify.Player.data.item;
 
-    const item = Spicetify.Player.data?.item;
-    if (!item) return;
+    const image =
+        song.images?.[0]?.url ??
+        song.album?.images?.[0]?.url;
 
-    const imageUrl = getTrackImageUrl(item);
+    renderImage(image ?? null);
 
-    if (imageUrl) {
-        renderBackground({ type: 'image', src: imageUrl });
-    } else {
-        renderBackground({ type: 'none' });
-    }
-
-    const existing = getActiveCanvasVideo();
-    if (existing) {
-        renderBackground({ type: 'video', video: existing });
-        return;
-    }
-
-    const video = await waitForCanvasVideo(gen);
-
-    if (gen !== getGeneration()) return;
-
-    if (video) {
-        renderBackground({ type: 'video', video });
-    }
+    waitForCanvasMetadata(song.uri);
 }
 
 async function init() {

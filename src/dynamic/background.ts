@@ -3,8 +3,8 @@ let blackLayer: HTMLDivElement | null = null;
 let imageLayer: HTMLImageElement | null = null;
 let videoLayer: HTMLVideoElement | null = null;
 
-let currentType: 'none' | 'image' | 'video' = 'none';
-let currentImageSrc: string | null = null;
+let currentType: 'none' | 'image' | 'canvas' = 'none';
+let currentImage: string | null = null;
 let currentStream: MediaStream | null = null;
 
 function ensureBackground() {
@@ -23,32 +23,29 @@ function ensureBackground() {
 
     document.body.prepend(root);
 
-    // ---- BLACK ----
     blackLayer = document.createElement('div');
     Object.assign(blackLayer.style, {
         position: 'absolute',
         inset: '0',
         background: '#000',
-        transition: 'opacity 0.4s ease',
+        transition: 'opacity 0.35s ease',
     });
 
     root.appendChild(blackLayer);
 
-    // ---- IMAGE ----
     imageLayer = document.createElement('img');
     Object.assign(imageLayer.style, baseStyle(60));
     imageLayer.style.opacity = '0';
-    imageLayer.style.transition = 'opacity 0.4s ease';
+    imageLayer.style.transition = 'opacity 0.35s ease';
 
     root.appendChild(imageLayer);
 
-    // ---- VIDEO ----
     videoLayer = document.createElement('video');
     Object.assign(videoLayer.style, baseStyle(40));
     videoLayer.muted = true;
     videoLayer.playsInline = true;
     videoLayer.style.opacity = '0';
-    videoLayer.style.transition = 'opacity 0.4s ease';
+    videoLayer.style.transition = 'opacity 0.35s ease';
 
     root.appendChild(videoLayer);
 }
@@ -66,45 +63,44 @@ function baseStyle(blur: number) {
     };
 }
 
-export type BackgroundType =
-    | { type: 'video'; video: HTMLVideoElement }
-    | { type: 'image'; src: string }
-    | { type: 'none' };
-
-export function renderBackground(config: BackgroundType) {
+export function renderImage(src: string | null) {
     ensureBackground();
-    if (!blackLayer || !imageLayer || !videoLayer) return;
+    if (!imageLayer || !blackLayer || !videoLayer) return;
 
-    if (config.type === 'none') {
+    if (!src) {
         switchTo('none');
         return;
     }
 
-    if (config.type === 'image') {
-        if (currentImageSrc !== config.src) {
-            imageLayer.src = config.src;
-            currentImageSrc = config.src;
-        }
-
-        switchTo('image');
-        return;
+    if (currentImage !== src) {
+        imageLayer.src = src;
+        currentImage = src;
     }
 
-    if (config.type === 'video') {
-        const stream = (config.video as any).captureStream?.();
-        if (!stream) return;
-
-        if (currentStream !== stream) {
-            videoLayer.srcObject = stream;
-            videoLayer.play().catch(() => {});
-            currentStream = stream;
-        }
-
-        switchTo('video');
-    }
+    switchTo('image');
 }
 
-function switchTo(type: 'none' | 'image' | 'video') {
+export function renderCanvas(sourceVideo: HTMLVideoElement) {
+    ensureBackground();
+    if (!videoLayer) return;
+
+    const stream = (sourceVideo as any).captureStream?.();
+    if (!stream) return;
+
+    if (videoLayer.srcObject === stream) return;
+
+    const oldStream = videoLayer.srcObject as MediaStream | null;
+    if (oldStream) {
+        oldStream.getTracks().forEach(track => track.stop());
+    }
+
+    videoLayer.srcObject = null;
+
+    videoLayer.srcObject = stream;
+    videoLayer.play().catch(() => {});
+}
+
+function switchTo(type: 'none' | 'image' | 'canvas') {
     if (!blackLayer || !imageLayer || !videoLayer) return;
     if (currentType === type) return;
 
@@ -112,12 +108,12 @@ function switchTo(type: 'none' | 'image' | 'video') {
 
     blackLayer.style.opacity = type === 'none' ? '1' : '0';
     imageLayer.style.opacity = type === 'image' ? '1' : '0';
-    videoLayer.style.opacity = type === 'video' ? '1' : '0';
+    videoLayer.style.opacity = type === 'canvas' ? '1' : '0';
 
     setTransparentMode(type !== 'none');
 }
 
-export function setTransparentMode(enabled: boolean) {
+function setTransparentMode(enabled: boolean) {
     const selectors = [
         '.Root__now-playing-bar',
         '#global-nav-bar',
@@ -127,6 +123,7 @@ export function setTransparentMode(enabled: boolean) {
     selectors.forEach((sel) => {
         const el = document.querySelector(sel) as HTMLElement | null;
         if (!el) return;
+
         el.style.background = enabled ? 'transparent' : '';
     });
 }
