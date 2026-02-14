@@ -35,29 +35,24 @@ export function waitForCanvasMetadata(trackUri: string) {
 
 export function waitForCanvasVideo(trackUri: string) {
     function check() {
-        const current = Spicetify.Player.data?.item;
-
-        if (!current || current.uri !== trackUri) return;
-
-        const container = document.querySelector('.canvasVideoContainerNPV');
-
-        if (!container) {
-            requestAnimationFrame(check);
-            return;
-        }
-
-        const video = container.querySelector(
-            'video',
+        const video = document.querySelector(
+            '.canvasVideoContainerNPV video'
         ) as HTMLVideoElement | null;
 
         if (
             video &&
-            video.videoWidth > 0 &&
-            video.readyState >= 2 &&
-            !video.paused &&
-            video.currentTime > 0
+            video.currentSrc &&
+            video.readyState >= 3
         ) {
-            renderCanvas(video);
+            const current = Spicetify.Player.data?.item;
+
+            if (current && current.uri === trackUri) {
+                console.log(video)
+                setTimeout(() => {
+                    renderCanvas(video);
+                }, 500);
+            }
+
             return;
         }
 

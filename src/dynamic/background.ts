@@ -87,17 +87,13 @@ export function renderCanvas(sourceVideo: HTMLVideoElement) {
     const stream = (sourceVideo as any).captureStream?.();
     if (!stream) return;
 
-    if (videoLayer.srcObject === stream) return;
-
-    const oldStream = videoLayer.srcObject as MediaStream | null;
-    if (oldStream) {
-        oldStream.getTracks().forEach(track => track.stop());
+    if (currentStream !== stream) {
+        videoLayer.srcObject = stream;
+        videoLayer.play().catch(() => {});
+        currentStream = stream;
     }
 
-    videoLayer.srcObject = null;
-
-    videoLayer.srcObject = stream;
-    videoLayer.play().catch(() => {});
+    switchTo('canvas');
 }
 
 function switchTo(type: 'none' | 'image' | 'canvas') {

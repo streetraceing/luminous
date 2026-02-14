@@ -1,3 +1,4 @@
-.Root__ads-container-desktop--is-hidden {
+.Root__ads-container-desktop--is-hidden,
+div[data-testid='test-ref-div'] {
     display: none;
 }
