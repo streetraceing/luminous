@@ -5,7 +5,6 @@ let videoLayer: HTMLVideoElement | null = null;
 
 let currentType: 'none' | 'image' | 'canvas' = 'none';
 let currentImage: string | null = null;
-let currentStream: MediaStream | null = null;
 
 function ensureBackground() {
     if (root) return;
@@ -40,14 +39,36 @@ function ensureBackground() {
 
     root.appendChild(imageLayer);
 
+    createVideoLayer(root);
+}
+
+function createVideoLayer(root: HTMLElement | null) {
+    root = root || document.getElementById('luminous-bg');
+    if (!root) return;
+
+    resetVideoLayer(root);
+
     videoLayer = document.createElement('video');
     Object.assign(videoLayer.style, baseStyle(40));
+    videoLayer.id = 'luminous-videolayer';
     videoLayer.muted = true;
     videoLayer.playsInline = true;
     videoLayer.style.opacity = '0';
     videoLayer.style.transition = 'opacity 0.35s ease';
 
     root.appendChild(videoLayer);
+}
+
+function resetVideoLayer(root: HTMLElement | null) {
+    root = root || document.getElementById('luminous-bg');
+    if (!root) return;
+    const videoElement = document.getElementById('luminous-videolayer');
+    try {
+        videoElement!.innerHTML = '';
+        videoElement!.remove();
+        root?.removeChild(videoLayer!.getRootNode());
+    } catch {}
+    videoLayer = null;
 }
 
 function baseStyle(blur: number) {
@@ -61,6 +82,17 @@ function baseStyle(blur: number) {
         transform: 'scale(1.2)',
         pointerEvents: 'none',
     };
+}
+
+let canvasGeneration = 0;
+
+export function nextCanvasGeneration() {
+    canvasGeneration++;
+    return canvasGeneration;
+}
+
+export function getCanvasGeneration() {
+    return canvasGeneration;
 }
 
 export function renderImage(src: string | null) {
@@ -80,20 +112,34 @@ export function renderImage(src: string | null) {
     switchTo('image');
 }
 
-export function renderCanvas(sourceVideo: HTMLVideoElement) {
+export function renderCanvas(sourceVideo: HTMLVideoElement, gen: number) {
+    if (gen !== getCanvasGeneration()) return;
+
     ensureBackground();
+    createVideoLayer(null);
+
     if (!videoLayer) return;
 
     const stream = (sourceVideo as any).captureStream?.();
     if (!stream) return;
 
-    if (currentStream !== stream) {
-        videoLayer.srcObject = stream;
-        videoLayer.play().catch(() => {});
-        currentStream = stream;
+    function waitForActiveTrack() {
+        if (gen !== getCanvasGeneration()) return;
+        if (!videoLayer) return;
+
+        const tracks = stream.getVideoTracks();
+
+        if (tracks.length > 0 && tracks[0].readyState === 'live') {
+            videoLayer.srcObject = stream;
+            videoLayer.play().catch(() => {});
+            switchTo('canvas');
+            return;
+        }
+
+        requestAnimationFrame(waitForActiveTrack);
     }
 
-    switchTo('canvas');
+    waitForActiveTrack();
 }
 
 function switchTo(type: 'none' | 'image' | 'canvas') {
