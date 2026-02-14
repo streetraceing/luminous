@@ -1,22 +1,69 @@
-export function getOrCreateLayer(): HTMLDivElement {
-    let layer = document.getElementById('luminous-video-bg') as HTMLDivElement;
+let root: HTMLDivElement | null = null;
+let blackLayer: HTMLDivElement | null = null;
+let imageLayer: HTMLImageElement | null = null;
+let videoLayer: HTMLVideoElement | null = null;
 
-    if (!layer) {
-        layer = document.createElement('div');
-        layer.id = 'luminous-video-bg';
+let currentType: 'none' | 'image' | 'video' = 'none';
+let currentImageSrc: string | null = null;
+let currentStream: MediaStream | null = null;
 
-        Object.assign(layer.style, {
-            position: 'fixed',
-            inset: '0',
-            zIndex: '0',
-            overflow: 'hidden',
-            pointerEvents: 'none',
-        });
+function ensureBackground() {
+    if (root) return;
 
-        document.body.prepend(layer);
-    }
+    root = document.createElement('div');
+    root.id = 'luminous-bg';
 
-    return layer;
+    Object.assign(root.style, {
+        position: 'fixed',
+        inset: '0',
+        zIndex: '0',
+        overflow: 'hidden',
+        pointerEvents: 'none',
+    });
+
+    document.body.prepend(root);
+
+    // ---- BLACK ----
+    blackLayer = document.createElement('div');
+    Object.assign(blackLayer.style, {
+        position: 'absolute',
+        inset: '0',
+        background: '#000',
+        transition: 'opacity 0.4s ease',
+    });
+
+    root.appendChild(blackLayer);
+
+    // ---- IMAGE ----
+    imageLayer = document.createElement('img');
+    Object.assign(imageLayer.style, baseStyle(60));
+    imageLayer.style.opacity = '0';
+    imageLayer.style.transition = 'opacity 0.4s ease';
+
+    root.appendChild(imageLayer);
+
+    // ---- VIDEO ----
+    videoLayer = document.createElement('video');
+    Object.assign(videoLayer.style, baseStyle(40));
+    videoLayer.muted = true;
+    videoLayer.playsInline = true;
+    videoLayer.style.opacity = '0';
+    videoLayer.style.transition = 'opacity 0.4s ease';
+
+    root.appendChild(videoLayer);
+}
+
+function baseStyle(blur: number) {
+    return {
+        position: 'absolute',
+        inset: '0',
+        width: '120%',
+        height: '120%',
+        objectFit: 'cover',
+        filter: `blur(${blur}px) brightness(0.6)`,
+        transform: 'scale(1.2)',
+        pointerEvents: 'none',
+    };
 }
 
 export type BackgroundType =
@@ -25,67 +72,49 @@ export type BackgroundType =
     | { type: 'none' };
 
 export function renderBackground(config: BackgroundType) {
-    clearLayer();
+    ensureBackground();
+    if (!blackLayer || !imageLayer || !videoLayer) return;
 
     if (config.type === 'none') {
-        setTransparentMode(false);
+        switchTo('none');
         return;
     }
 
-    const layer = getOrCreateLayer();
-    setTransparentMode(true);
-
     if (config.type === 'image') {
-        const img = document.createElement('img');
-        img.src = config.src;
+        if (currentImageSrc !== config.src) {
+            imageLayer.src = config.src;
+            currentImageSrc = config.src;
+        }
 
-        Object.assign(img.style, {
-            position: 'absolute',
-            inset: '0',
-            width: '120%',
-            height: '120%',
-            objectFit: 'cover',
-            filter: 'blur(60px) brightness(0.6)',
-            transform: 'scale(1.2)',
-            pointerEvents: 'none',
-        });
-
-        layer.appendChild(img);
+        switchTo('image');
         return;
     }
 
     if (config.type === 'video') {
         const stream = (config.video as any).captureStream?.();
-        if (!stream) {
-            setTransparentMode(false);
-            clearLayer();
-            return;
+        if (!stream) return;
+
+        if (currentStream !== stream) {
+            videoLayer.srcObject = stream;
+            videoLayer.play().catch(() => {});
+            currentStream = stream;
         }
 
-        const bgVideo = document.createElement('video');
-        bgVideo.srcObject = stream;
-
-        Object.assign(bgVideo.style, {
-            position: 'absolute',
-            inset: '0',
-            width: '120%',
-            height: '120%',
-            objectFit: 'cover',
-            filter: 'blur(40px) brightness(0.6)',
-            transform: 'scale(1.2)',
-            pointerEvents: 'none',
-        });
-
-        bgVideo.muted = true;
-        bgVideo.play().catch(() => {});
-
-        layer.appendChild(bgVideo);
+        switchTo('video');
     }
 }
 
-export function clearLayer() {
-    const layer = document.getElementById('luminous-video-bg');
-    if (layer) layer.innerHTML = '';
+function switchTo(type: 'none' | 'image' | 'video') {
+    if (!blackLayer || !imageLayer || !videoLayer) return;
+    if (currentType === type) return;
+
+    currentType = type;
+
+    blackLayer.style.opacity = type === 'none' ? '1' : '0';
+    imageLayer.style.opacity = type === 'image' ? '1' : '0';
+    videoLayer.style.opacity = type === 'video' ? '1' : '0';
+
+    setTransparentMode(type !== 'none');
 }
 
 export function setTransparentMode(enabled: boolean) {
@@ -98,7 +127,6 @@ export function setTransparentMode(enabled: boolean) {
     selectors.forEach((sel) => {
         const el = document.querySelector(sel) as HTMLElement | null;
         if (!el) return;
-
         el.style.background = enabled ? 'transparent' : '';
     });
 }

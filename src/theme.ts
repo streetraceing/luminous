@@ -1,10 +1,11 @@
 import { renderBackground, setTransparentMode } from './dynamic/background';
 import {
+    getActiveCanvasVideo,
     getGeneration,
     getTrackImageUrl,
     nextGeneration,
     waitForCanvasVideo,
-    waitForSongInfo
+    waitForSongInfo,
 } from './dynamic/utils';
 
 async function interractWithActiveSong() {
@@ -17,10 +18,14 @@ async function interractWithActiveSong() {
 
     if (imageUrl) {
         renderBackground({ type: 'image', src: imageUrl });
-        setTransparentMode(true);
     } else {
         renderBackground({ type: 'none' });
-        setTransparentMode(false);
+    }
+
+    const existing = getActiveCanvasVideo();
+    if (existing) {
+        renderBackground({ type: 'video', video: existing });
+        return;
     }
 
     const video = await waitForCanvasVideo(gen);
@@ -29,15 +34,17 @@ async function interractWithActiveSong() {
 
     if (video) {
         renderBackground({ type: 'video', video });
-        setTransparentMode(true);
     }
 }
 
 async function init() {
     await waitForSongInfo();
-    await interractWithActiveSong();
 
-    Spicetify.Player.addEventListener('songchange', interractWithActiveSong);
+    interractWithActiveSong();
+
+    Spicetify.Player.addEventListener('songchange', () => {
+        interractWithActiveSong();
+    });
 }
 
 init();
