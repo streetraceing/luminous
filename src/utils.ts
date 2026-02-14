@@ -1,4 +1,4 @@
-export function waitForTrackInfo(): Promise<void> {
+export function waitForSongInfo(): Promise<void> {
     return new Promise((resolve) => {
         const check = () => {
             if (
@@ -11,6 +11,21 @@ export function waitForTrackInfo(): Promise<void> {
                 setTimeout(check, 50);
             }
         };
+        check();
+    });
+}
+
+export function waitForCanvasVideo(): Promise<HTMLVideoElement> {
+    return new Promise((resolve) => {
+        const check = () => {
+            const video = document.querySelector(
+                '.canvasVideoContainerNPV video',
+            ) as HTMLVideoElement | null;
+
+            if (video) resolve(video);
+            else requestAnimationFrame(check);
+        };
+
         check();
     });
 }
