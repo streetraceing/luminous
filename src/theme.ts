@@ -45,35 +45,43 @@ function applyDynamic(
     const root = document.documentElement;
     const { hsl } = palette;
 
-    // 🖤 если обложка почти ч/б
     if (isMonochrome(hsl)) {
         applyMonochromeTheme(root, hsl);
         return;
     }
 
-    // обычная цветная логика
     let normalized = normalizeAccent(hsl);
     normalized.h = stabilizeHue(normalized.h);
 
-    let accent = hslToHex(normalized.h, normalized.s, normalized.l);
+    const accent = ensureContrast(
+        hslToHex(normalized.h, Math.min(0.9, normalized.s * 1.1), 0.52),
+    );
 
-    accent = ensureContrast(accent);
-
-    const main = hslToHex(normalized.h, 0.15, 0.08);
-    const elevated = hslToHex(normalized.h, 0.18, 0.12);
-    const sidebar = hslToHex(normalized.h, 0.12, 0.05);
+    const main = hslToHex(normalized.h, 0.25, 0.07);
+    const elevated = hslToHex(normalized.h, 0.28, 0.11);
+    const sidebar = hslToHex(normalized.h, 0.22, 0.05);
+    const card = hslToHex(normalized.h, 0.3, 0.14);
+    const highlight = hslToHex(normalized.h, 0.35, 0.18);
 
     root.style.setProperty('--spice-main', main);
     root.style.setProperty('--spice-main-elevated', elevated);
     root.style.setProperty('--spice-sidebar', sidebar);
+    root.style.setProperty('--spice-card', card);
+    root.style.setProperty('--spice-highlight', highlight);
 
     root.style.setProperty('--spice-button', accent);
     root.style.setProperty('--spice-button-active', accent);
+    root.style.setProperty('--spice-tab-active', accent);
 
     root.style.setProperty('--spice-text', '#ffffff');
     root.style.setProperty('--spice-subtext', 'rgba(255,255,255,0.7)');
 
+    root.style.setProperty('--background-tinted-base', accent + '22');
+    root.style.setProperty('--background-tinted-highlight', accent + '33');
+
     applyRgbVars(root, 'main', main);
+    applyRgbVars(root, 'sidebar', sidebar);
+    applyRgbVars(root, 'card', card);
     applyRgbVars(root, 'button', accent);
 }
 
