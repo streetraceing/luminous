@@ -1,42 +1,43 @@
+import { renderBackground, setTransparentMode } from './dynamic/background';
 import {
-    attachBlurredImage,
-    attachBlurredVideo,
-    getCurrentCoverImage,
-    setTransparentMode,
-} from './dynamic/background';
-import { waitForCanvasVideo, waitForSongInfo } from './utils';
+    getGeneration,
+    getTrackImageUrl,
+    nextGeneration,
+    waitForCanvasVideo,
+    waitForSongInfo
+} from './dynamic/utils';
 
 async function interractWithActiveSong() {
-    const videoPromise = waitForCanvasVideo();
-    const imageSrc = getCurrentCoverImage();
-    const video = await videoPromise;
+    const gen = nextGeneration();
+
+    const item = Spicetify.Player.data?.item;
+    if (!item) return;
+
+    const imageUrl = getTrackImageUrl(item);
+
+    if (imageUrl) {
+        renderBackground({ type: 'image', src: imageUrl });
+        setTransparentMode(true);
+    } else {
+        renderBackground({ type: 'none' });
+        setTransparentMode(false);
+    }
+
+    const video = await waitForCanvasVideo(gen);
+
+    if (gen !== getGeneration()) return;
 
     if (video) {
-        attachBlurredVideo(video);
+        renderBackground({ type: 'video', video });
         setTransparentMode(true);
-        return;
     }
-
-    if (imageSrc) {
-        attachBlurredImage(imageSrc);
-        setTransparentMode(true);
-        return;
-    }
-
-    const layer = document.getElementById('luminous-video-bg');
-    layer?.remove();
-
-    setTransparentMode(false);
 }
 
 async function init() {
     await waitForSongInfo();
     await interractWithActiveSong();
 
-    Spicetify.Player.addEventListener('songchange', async () => {
-        document.getElementById('luminous-video-bg')?.remove();
-        await interractWithActiveSong();
-    });
+    Spicetify.Player.addEventListener('songchange', interractWithActiveSong);
 }
 
 init();
