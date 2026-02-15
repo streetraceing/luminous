@@ -1,3 +1,6 @@
+/// <reference types="react" />
+/// <reference types="react-dom" />
+
 export {};
 
 declare global {
@@ -1434,11 +1437,13 @@ declare global {
         }
 
         /** React instance to create components */
-        const React: any;
+        const React: typeof import('react');
+
         /** React DOM instance to render and mount components */
-        const ReactDOM: any;
+        const ReactDOM: typeof import('react-dom');
+
         /** React DOM Server instance to render components to string */
-        const ReactDOMServer: any;
+        const ReactDOMServer: typeof import('react-dom/server');
 
         /** Stock React components exposed from Spotify library */
         namespace ReactComponent {
