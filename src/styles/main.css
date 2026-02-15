@@ -1,3 +1,72 @@
+/* Root theme variables */
+html:root {
+    --luminous-background: color-mix(
+        in srgb,
+        var(--spice-sidebar) 50%,
+        transparent
+    );
+}
+
+/* Spotify colors management */
+html:root {
+    --spice-main: transparent !important;
+    --spice-main-elevated: var(--luminous-background);
+    --spice-player: var(--luminous-background);
+}
+
+/* Betterize spicetify and spotify ui */
+.marketplace-header {
+    background-color: color-mix(
+        in srgb,
+        var(--spice-sidebar) 25%,
+        transparent
+    ) !important;
+    padding: 8px;
+    padding-inline: 16px;
+    border-radius: 8px;
+    top: 32px;
+    backdrop-filter: blur(20px);
+}
+
+.marketplace-installButton {
+    background: var(--luminous-background);
+}
+
+.main-topBar-buddyFeed[data-restore-focus-key='buddy_feed'] {
+    display: none;
+}
+
+.main-yourLibraryX-headerContent > div > button {
+    background-color: var(--background-tinted-base, rgba(0, 0, 0, 0.08));
+}
+
+.main-yourLibraryX-headerContent > div > button:hover {
+    background-color: var(--background-tinted-highlight, rgba(0, 0, 0, 0.12));
+    transition-duration: var(--shortest-1);
+}
+
+.main-home-filterChipsSection::after {
+    backdrop-filter: blur(20px);
+}
+
+.main-home-content
+    > section
+    > .main-gridContainer-gridContainer.main-shelf-shelfGrid
+    > div
+    > div
+    > div
+    > div {
+    --background-color: transparent !important;
+}
+
+#context-menu {
+    --background-elevated-base: var(--spice-card);
+}
+
+dialog {
+    --spice-main: var(--spice-card);
+}
+
 /* Useless menus hide */
 .Root__ads-container-desktop--is-hidden,
 div[data-testid='test-ref-div'] {
@@ -14,19 +83,27 @@ div[data-testid='test-ref-div'] {
 .main-topBar-overlay,
 #Desktop_PanelContainer_Id,
 #Desktop_PanelContainer_Id::before,
-.Root__right-sidebar > div {
+.Root__right-sidebar > div,
+div[aria-labelledby^='listrow-title-spotify:album:'],
+.main-actionBarBackground-background,
+.main-topBar-background,
+.lyrics-lyrics-background {
     background: transparent !important;
 }
 
 .main-trackList-trackListHeader {
-    background: transparent;
+    background: transparent !important;
+    position: static;
+    box-shadow: unset !important;
 }
 
 .before-scroll-node,
 .playlist-playlist-actionBarBackground-background,
-.main-nowPlayingView-coverArtContainer>div::before,
-.main-nowPlayingView-coverArtContainer>div::after,
-.main-nowPlayingView-contextItemInfo:before {
+.main-nowPlayingView-coverArtContainer > div::before,
+.main-nowPlayingView-coverArtContainer > div::after,
+.main-nowPlayingView-contextItemInfo:before,
+.main-topBar-topbarContent,
+.main-topBar-container {
     display: none !important;
 }
 
@@ -34,21 +111,15 @@ div[data-testid='test-ref-div'] {
 #Desktop_LeftSidebar_Id,
 #main-view,
 .main-nowPlayingBar-nowPlayingBar {
-    background: color-mix(in srgb, var(--spice-sidebar) 40%, transparent);
+    background: var(--luminous-background);
     backdrop-filter: blur(20px);
 }
 
-/* Views fixes */
-.main-actionBarBackground-background,
-.main-topBar-background {
-    background-color: var(--background-highlight) !important;
-}
-
+/* Now playing view setup */
 .main-nowPlayingBar-nowPlayingBar {
     border-radius: 8px;
 }
 
-/* Now playing view setup */
 #Desktop_PanelContainer_Id {
     --section-background-base: color-mix(
         in srgb,
@@ -63,15 +134,29 @@ div[data-testid='test-ref-div'] {
     )
     > button
     > div
-    > div {
+    > div,
+.main-nowPlayingView-section:not(
+        .main-nowPlayingView-credits,
+        .main-nowPlayingView-queue
+    )
+    > button {
     background: transparent;
 }
 
-.NPV_Panel_OpenDiv {
-    padding-top: 0;
-    padding-bottom: 0;
+div[data-testid='NPV_Panel_OpenDiv'],
+div:has(> div[data-testid='NPV_Panel_OpenDiv']),
+div[data-testid='track-visual-enhancement'],
+#Desktop_PanelContainer_Id
+    > div
+    > div:not([data-overlayscrollbars-initialize]) {
+    padding: 0;
 }
 
 .main-nowPlayingView-coverArtContainer:has(.canvasVideoContainerNPV) {
-    aspect-ratio: 9 / 16 !important;
+    aspect-ratio: 9 / 14.5 !important;
+}
+
+div[data-testid='minimized-track-visual-enhancement'],
+.main-watchFeed-shareButton {
+    display: none;
 }

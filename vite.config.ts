@@ -17,7 +17,7 @@ export default defineConfig({
     plugins: [
         spicetifySync({
             themeName: 'Luminous',
-            colorIni: 'src/color.ini',
+            colorIni: 'src/color.ini'
         }),
     ],
 });

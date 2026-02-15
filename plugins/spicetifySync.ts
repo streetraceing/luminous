@@ -10,7 +10,7 @@ interface SpicetifySyncOptions {
     themeName: string;
     /**
      * Path to spicetify root, e.g.
-     * `C:/Users/<username>/AppData/Roaming/spicetify`
+     * `C:/Users/<your_username>/AppData/Roaming/spicetify`
      */
     spicetifyRoot?: string;
     /**
