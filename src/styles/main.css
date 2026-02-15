@@ -1,4 +1,77 @@
+/* Useless menus hide */
 .Root__ads-container-desktop--is-hidden,
 div[data-testid='test-ref-div'] {
     display: none;
+}
+
+/* Root screen views cleanify */
+.main-yourLibraryX-library,
+.main-yourLibraryX-libraryContainer,
+.playlist-playlist-playlistContent,
+.YourLibraryX,
+.Root__right-sidebar,
+.main-home-homeHeader,
+.main-topBar-overlay,
+#Desktop_PanelContainer_Id,
+#Desktop_PanelContainer_Id::before,
+.Root__right-sidebar > div {
+    background: transparent !important;
+}
+
+.main-trackList-trackListHeader {
+    background: transparent;
+}
+
+.before-scroll-node,
+.playlist-playlist-actionBarBackground-background,
+.main-nowPlayingView-coverArtContainer>div::before,
+.main-nowPlayingView-coverArtContainer>div::after,
+.main-nowPlayingView-contextItemInfo:before {
+    display: none !important;
+}
+
+/* Root views glass effect */
+#Desktop_LeftSidebar_Id,
+#main-view,
+.main-nowPlayingBar-nowPlayingBar {
+    background: color-mix(in srgb, var(--spice-sidebar) 40%, transparent);
+    backdrop-filter: blur(20px);
+}
+
+/* Views fixes */
+.main-actionBarBackground-background,
+.main-topBar-background {
+    background-color: var(--background-highlight) !important;
+}
+
+.main-nowPlayingBar-nowPlayingBar {
+    border-radius: 8px;
+}
+
+/* Now playing view setup */
+#Desktop_PanelContainer_Id {
+    --section-background-base: color-mix(
+        in srgb,
+        var(--spice-sidebar) 25%,
+        transparent
+    ) !important;
+}
+
+.main-nowPlayingView-section:not(
+        .main-nowPlayingView-credits,
+        .main-nowPlayingView-queue
+    )
+    > button
+    > div
+    > div {
+    background: transparent;
+}
+
+.NPV_Panel_OpenDiv {
+    padding-top: 0;
+    padding-bottom: 0;
+}
+
+.main-nowPlayingView-coverArtContainer:has(.canvasVideoContainerNPV) {
+    aspect-ratio: 9 / 16 !important;
 }

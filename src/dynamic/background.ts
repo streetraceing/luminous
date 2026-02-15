@@ -78,7 +78,7 @@ function baseStyle(blur: number) {
         width: '120%',
         height: '120%',
         objectFit: 'cover',
-        filter: `blur(${blur}px) brightness(0.6)`,
+        filter: `blur(${blur}px) brightness(0.9)`,
         transform: 'scale(1.2)',
         pointerEvents: 'none',
     };

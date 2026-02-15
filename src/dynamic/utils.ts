@@ -58,13 +58,14 @@ export function waitForCanvasVideo(trackUri: string) {
             return;
         }
 
-        const onPlaying = () => {
-            video.removeEventListener('playing', onPlaying);
-            if (gen !== getCanvasGeneration()) return;
-            renderCanvas(video, gen);
-        };
-
-        video.addEventListener('playing', onPlaying);
+        video.addEventListener(
+            'playing',
+            () => {
+                if (gen !== getCanvasGeneration()) return;
+                renderCanvas(video, gen);
+            },
+            { once: true },
+        );
     }
 
     check();
