@@ -2,18 +2,13 @@
 
 Spicetify better glass-ui dynamic theme that uses song picture or canvas for background.
 
-## Version
-
-1.0-aplha
-
 ## Build and run
 
 ### Requirements
 
 - NodeJS v25.5.0
 - NPM 11.10.0
-- Spicetify 2.42.10
-- Spicetify CLI
+- Spicetify 2.42.10 and the configured Spicetify CLI
 
 ### To use the theme, launch in the terminal
 

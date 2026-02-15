@@ -32,10 +32,6 @@ html:root {
     background: var(--luminous-background);
 }
 
-.main-topBar-buddyFeed[data-restore-focus-key='buddy_feed'] {
-    display: none;
-}
-
 .main-yourLibraryX-headerContent > div > button {
     background-color: var(--background-tinted-base, rgba(0, 0, 0, 0.08));
 }
@@ -67,6 +63,10 @@ dialog {
     --spice-main: var(--spice-card);
 }
 
+div[data-encore-id='tabList']:has(#queue-tab) > button {
+    border-radius: 8px;
+}
+
 /* Useless menus hide */
 .Root__ads-container-desktop--is-hidden,
 div[data-testid='test-ref-div'] {
@@ -83,7 +83,6 @@ div[data-testid='test-ref-div'] {
 .main-topBar-overlay,
 #Desktop_PanelContainer_Id,
 #Desktop_PanelContainer_Id::before,
-.Root__right-sidebar > div,
 div[aria-labelledby^='listrow-title-spotify:album:'],
 .main-actionBarBackground-background,
 .main-topBar-background,
@@ -110,13 +109,49 @@ div[aria-labelledby^='listrow-title-spotify:album:'],
 /* Root views glass effect */
 #Desktop_LeftSidebar_Id,
 #main-view,
-.main-nowPlayingBar-nowPlayingBar {
-    background: var(--luminous-background);
+.main-nowPlayingBar-nowPlayingBar,
+#Desktop_PanelContainer_Id:not(:has(.main-nowPlayingView-nowPlayingWidget)) {
+    background: var(--luminous-background) !important;
     backdrop-filter: blur(20px);
 }
 
 /* Now playing view setup */
 .main-nowPlayingBar-nowPlayingBar {
+    border-radius: 8px;
+}
+
+#Desktop_PanelContainer_Id:not(:has(.canvasVideoContainerNPV))
+    > div
+    > div:not(:has(.main-nowPlayingView-nowPlayingWidget)) {
+    margin-bottom: 8px;
+}
+
+#Desktop_PanelContainer_Id
+    > div
+    > div:not(:has(.main-nowPlayingView-nowPlayingWidget)) {
+    box-shadow: unset !important;
+    border-radius: 8px;
+    background: var(--luminous-background);
+    --background-base: var(--luminous-background);
+}
+#Desktop_PanelContainer_Id
+    > div
+    > div[class*=' ']:not(:has(.main-nowPlayingView-nowPlayingWidget))
+    > div {
+    backdrop-filter: blur(20px);
+}
+
+#Desktop_PanelContainer_Id
+    > div
+    > div:not(:has(.main-nowPlayingView-nowPlayingWidget))
+    > div {
+    box-shadow: unset !important;
+    border-radius: 8px;
+}
+
+#Desktop_PanelContainer_Id
+    > div
+    > div:has(.main-nowPlayingView-nowPlayingWidget) {
     border-radius: 8px;
 }
 
@@ -145,10 +180,7 @@ div[aria-labelledby^='listrow-title-spotify:album:'],
 
 div[data-testid='NPV_Panel_OpenDiv'],
 div:has(> div[data-testid='NPV_Panel_OpenDiv']),
-div[data-testid='track-visual-enhancement'],
-#Desktop_PanelContainer_Id
-    > div
-    > div:not([data-overlayscrollbars-initialize]) {
+div[data-testid='track-visual-enhancement'] {
     padding: 0;
 }
 

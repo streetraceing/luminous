@@ -103,7 +103,7 @@ export function observeNowPlaying(options: {
 
     function check() {
         const el = document.querySelector(
-            'aside[aria-label="Now playing view"]',
+            '#Desktop_PanelContainer_Id:has(.main-nowPlayingView-nowPlayingWidget)',
         ) as HTMLElement | null;
 
         if (!current && el) {
