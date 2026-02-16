@@ -16,11 +16,6 @@ html:root {
 
 /* Betterize spicetify and spotify ui */
 .marketplace-header {
-    background-color: color-mix(
-        in srgb,
-        var(--spice-sidebar) 25%,
-        transparent
-    ) !important;
     padding: 8px;
     padding-inline: 16px;
     border-radius: 8px;
@@ -116,6 +111,10 @@ div[aria-labelledby^='listrow-title-spotify:album:'],
 }
 
 /* Now playing view setup */
+div[data-testid='NPV_Panel_OpenDiv'] {
+    --section-background-base: var(--luminous-background);
+}
+
 .main-nowPlayingBar-nowPlayingBar {
     border-radius: 8px;
 }
@@ -153,14 +152,6 @@ div[aria-labelledby^='listrow-title-spotify:album:'],
     > div
     > div:has(.main-nowPlayingView-nowPlayingWidget) {
     border-radius: 8px;
-}
-
-#Desktop_PanelContainer_Id {
-    --section-background-base: color-mix(
-        in srgb,
-        var(--spice-sidebar) 25%,
-        transparent
-    ) !important;
 }
 
 .main-nowPlayingView-section:not(

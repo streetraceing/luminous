@@ -1,9 +1,9 @@
-import { renderImage } from './dynamic/background';
+import { renderImage } from './render/background';
 import {
     observeNowPlaying,
     waitForCanvasMetadata,
     waitForSongInfo,
-} from './dynamic/utils';
+} from './render/utils';
 
 let updateScheduled = false;
 

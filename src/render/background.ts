@@ -6,6 +6,19 @@ let videoLayer: HTMLVideoElement | null = null;
 let currentType: 'none' | 'image' | 'canvas' = 'none';
 let currentImage: string | null = null;
 
+function baseStyle(blur: number) {
+    return {
+        position: 'absolute',
+        inset: '0',
+        width: '120%',
+        height: '120%',
+        objectFit: 'cover',
+        filter: `blur(${blur}px) brightness(0.9)`,
+        transform: 'scale(1.2)',
+        pointerEvents: 'none',
+    };
+}
+
 function ensureBackground() {
     if (root) return;
 
@@ -33,7 +46,7 @@ function ensureBackground() {
     root.appendChild(blackLayer);
 
     imageLayer = document.createElement('img');
-    Object.assign(imageLayer.style, baseStyle(60));
+    Object.assign(imageLayer.style, baseStyle(40));
     imageLayer.style.opacity = '0';
     imageLayer.style.transition = 'opacity 0.35s ease';
 
@@ -69,19 +82,6 @@ function resetVideoLayer(root: HTMLElement | null) {
         root?.removeChild(videoLayer!.getRootNode());
     } catch {}
     videoLayer = null;
-}
-
-function baseStyle(blur: number) {
-    return {
-        position: 'absolute',
-        inset: '0',
-        width: '120%',
-        height: '120%',
-        objectFit: 'cover',
-        filter: `blur(${blur}px) brightness(0.9)`,
-        transform: 'scale(1.2)',
-        pointerEvents: 'none',
-    };
 }
 
 let canvasGeneration = 0;
@@ -142,7 +142,7 @@ export function renderCanvas(sourceVideo: HTMLVideoElement, gen: number) {
     waitForActiveTrack();
 }
 
-function switchTo(type: 'none' | 'image' | 'canvas') {
+export function switchTo(type: 'none' | 'image' | 'canvas') {
     if (!blackLayer || !imageLayer || !videoLayer) return;
     if (currentType === type) return;
 
