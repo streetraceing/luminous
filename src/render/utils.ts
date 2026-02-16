@@ -1,9 +1,3 @@
-import {
-    getCanvasGeneration,
-    nextCanvasGeneration,
-    renderCanvas,
-} from './background';
-
 export function waitForSongInfo(): Promise<void> {
     return new Promise((resolve) => {
         function check() {
@@ -19,56 +13,67 @@ export function waitForSongInfo(): Promise<void> {
     });
 }
 
-export function waitForCanvasMetadata(trackUri: string) {
-    function check() {
-        const current = Spicetify.Player.data.item;
-        if (!current || current.uri !== trackUri) return;
+let canvasGeneration = 0;
 
-        const canvasUri = current.metadata?.['canvas.canvasUri'];
-
-        if (!canvasUri) {
-            requestAnimationFrame(check);
-            return;
-        }
-
-        waitForCanvasVideo(trackUri);
-    }
-
-    check();
+export function nextCanvasGeneration() {
+    canvasGeneration++;
+    return canvasGeneration;
 }
 
-export function waitForCanvasVideo(trackUri: string) {
-    const gen = nextCanvasGeneration();
+export function getCanvasGeneration() {
+    return canvasGeneration;
+}
 
-    function check() {
-        if (gen !== getCanvasGeneration()) return;
+export function waitForCanvas(
+    trackUri: string,
+): Promise<{ video: HTMLVideoElement; gen: number }> {
+    return new Promise((resolve) => {
+        const gen = nextCanvasGeneration();
 
-        const video = document.querySelector(
-            '.canvasVideoContainerNPV video',
-        ) as HTMLVideoElement | null;
+        function checkMetadata() {
+            const current = Spicetify.Player.data?.item;
+            if (!current || current.uri !== trackUri) return;
 
-        if (!video) {
-            requestAnimationFrame(check);
-            return;
+            const canvasUri = current.metadata?.['canvas.canvasUri'];
+
+            if (!canvasUri) {
+                requestAnimationFrame(checkMetadata);
+                return;
+            }
+
+            checkVideo();
         }
 
-        const current = Spicetify.Player.data?.item;
-        if (!current || current.uri !== trackUri) {
-            requestAnimationFrame(check);
-            return;
+        function checkVideo() {
+            if (gen !== getCanvasGeneration()) return;
+
+            const video = document.querySelector(
+                '.canvasVideoContainerNPV video',
+            ) as HTMLVideoElement | null;
+
+            if (!video) {
+                requestAnimationFrame(checkVideo);
+                return;
+            }
+
+            const current = Spicetify.Player.data?.item;
+            if (!current || current.uri !== trackUri) {
+                requestAnimationFrame(checkVideo);
+                return;
+            }
+
+            video.addEventListener(
+                'playing',
+                () => {
+                    if (gen !== getCanvasGeneration()) return;
+                    resolve({ video, gen });
+                },
+                { once: true },
+            );
         }
 
-        video.addEventListener(
-            'playing',
-            () => {
-                if (gen !== getCanvasGeneration()) return;
-                renderCanvas(video, gen);
-            },
-            { once: true },
-        );
-    }
-
-    check();
+        checkMetadata();
+    });
 }
 
 export function observeNowPlaying(options: {

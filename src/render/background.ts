@@ -81,15 +81,19 @@ function ensureBackground() {
     createVideoLayer(root);
 }
 
-let canvasGeneration = 0;
+function setTransparentMode(enabled: boolean) {
+    const selectors = [
+        '.Root__now-playing-bar',
+        '#global-nav-bar',
+        '.Root__top-container',
+    ];
 
-export function nextCanvasGeneration() {
-    canvasGeneration++;
-    return canvasGeneration;
-}
+    selectors.forEach((sel) => {
+        const el = document.querySelector(sel) as HTMLElement | null;
+        if (!el) return;
 
-export function getCanvasGeneration() {
-    return canvasGeneration;
+        el.style.background = enabled ? 'transparent' : '';
+    });
 }
 
 export function renderImage(src: string | null) {
@@ -152,19 +156,4 @@ export function switchTo(type: 'none' | 'image' | 'canvas') {
     }
 
     setTransparentMode(type !== 'none');
-}
-
-function setTransparentMode(enabled: boolean) {
-    const selectors = [
-        '.Root__now-playing-bar',
-        '#global-nav-bar',
-        '.Root__top-container',
-    ];
-
-    selectors.forEach((sel) => {
-        const el = document.querySelector(sel) as HTMLElement | null;
-        if (!el) return;
-
-        el.style.background = enabled ? 'transparent' : '';
-    });
 }

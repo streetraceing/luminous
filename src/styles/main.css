@@ -5,6 +5,11 @@ html:root {
         var(--spice-sidebar) 25%,
         transparent
     );
+    --luminous-tinted-base: var(--background-tinted-base, rgba(0, 0, 0, 0.08));
+    --luminous-tinted-highlight: var(
+        --background-tinted-highlight,
+        rgba(0, 0, 0, 0.12)
+    );
 }
 
 /* Spotify colors management */
@@ -23,16 +28,23 @@ html:root {
     backdrop-filter: blur(20px);
 }
 
+.GenericModal > .main-embedWidgetGenerator-container {
+    --spice-player: var(--spice-card);
+    --spice-main: #121212;
+}
+
 .marketplace-installButton {
     background: var(--luminous-background);
+    backdrop-filter: blur(20px);
+    color: var(--spice-text);
 }
 
 .main-yourLibraryX-headerContent > div > button {
-    background-color: var(--background-tinted-base, rgba(0, 0, 0, 0.08));
+    background-color: var(--luminous-tinted-base);
 }
 
 .main-yourLibraryX-headerContent > div > button:hover {
-    background-color: var(--background-tinted-highlight, rgba(0, 0, 0, 0.12));
+    background-color: var(--luminous-tinted-highlight);
     transition-duration: var(--shortest-1);
 }
 
@@ -62,6 +74,23 @@ div[data-encore-id='tabList']:has(#queue-tab) > button {
     border-radius: 8px;
 }
 
+.marketplace-header .searchbar-bar {
+    border: 0;
+}
+
+.main-entityHeader-container::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+        to bottom,
+        rgba(0,0,0,0) 0%,
+        rgba(0,0,0,0.3) 50%,
+        rgba(0,0,0,0.8) 100%
+    );
+    pointer-events: none;
+}
+
 /* Useless menus hide */
 .Root__ads-container-desktop--is-hidden,
 div[data-testid='test-ref-div'] {
@@ -81,7 +110,12 @@ div[data-testid='test-ref-div'] {
 div[aria-labelledby^='listrow-title-spotify:album:'],
 .main-actionBarBackground-background,
 .main-topBar-background,
-.lyrics-lyrics-background {
+.lyrics-lyrics-background,
+.custom-navlinks-scrollable_container
+    > .search-searchCategory-contentArea
+    > .search-searchCategory-categoryGrid.search-searchCategory-categoryGrid
+    button,
+.main-globalNav-searchSection > .main-globalNav-searchContainer > button {
     background: transparent !important;
 }
 
@@ -91,13 +125,13 @@ div[aria-labelledby^='listrow-title-spotify:album:'],
     box-shadow: unset !important;
 }
 
-.before-scroll-node,
 .playlist-playlist-actionBarBackground-background,
 .main-nowPlayingView-coverArtContainer > div::before,
 .main-nowPlayingView-coverArtContainer > div::after,
 .main-nowPlayingView-contextItemInfo:before,
 .main-topBar-topbarContent,
-.main-topBar-container {
+.main-topBar-container,
+.before-scroll-node {
     display: none !important;
 }
 
@@ -105,7 +139,9 @@ div[aria-labelledby^='listrow-title-spotify:album:'],
 #Desktop_LeftSidebar_Id,
 #main-view,
 .main-nowPlayingBar-nowPlayingBar,
-#Desktop_PanelContainer_Id:not(:has(.main-nowPlayingView-nowPlayingWidget)) {
+.marketplace-header .Dropdown-control,
+.marketplace-header .searchbar-bar,
+.marketplace-header-icon-button {
     background: var(--luminous-background) !important;
     backdrop-filter: blur(20px);
 }
