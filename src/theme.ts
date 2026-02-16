@@ -1,14 +1,7 @@
-import { Logger } from './logger';
-import {
-    getCanvasGeneration,
-    nextCanvasGeneration,
-    renderCanvas,
-    renderImage,
-    switchTo,
-} from './render/background';
+import { renderImage } from './render/background';
 import {
     observeNowPlaying,
-    waitForCanvasVideo,
+    waitForCanvasMetadata,
     waitForSongInfo,
 } from './render/utils';
 
@@ -25,45 +18,13 @@ function scheduleRefresh() {
 }
 
 async function refreshBackgroundState() {
-    const song = Spicetify.Player.data?.item;
-    if (!song) return;
-
-    const gen = nextCanvasGeneration();
+    const song = Spicetify.Player.data.item;
 
     const image = song.images?.[0]?.url ?? song.album?.images?.[0]?.url;
+    renderImage(image ?? null);
 
-    let imageRendered = false;
-
-    if (image) {
-        renderImage(image);
-        imageRendered = true;
-
-        Logger.info(
-            `Spotify background is set to "${song.name} - ${song.artists?.join(', ')}" using its picture`,
-        );
-    }
-
-    const video = await waitForCanvasVideo(song.uri);
-
-    if (gen !== getCanvasGeneration()) return;
-
-    if (video) {
-        renderCanvas(video, gen);
-
-        Logger.info(
-            `Background upgraded to canvas for "${song.name} - ${song.artists?.join(', ')}"`,
-        );
-
-        return;
-    }
-
-    if (!imageRendered) {
-        switchTo('none');
-
-        Logger.warn(
-            `Couldn't find background for "${song.name} - ${song.artists?.join(', ')}"`,
-        );
-    }
+    waitForCanvasMetadata(song.uri);
+    console.log('[Luminous] Background state refreshed for current song');
 }
 
 async function init() {

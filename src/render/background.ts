@@ -1,10 +1,11 @@
 let root: HTMLDivElement | null = null;
 let blackLayer: HTMLDivElement | null = null;
-let imageLayer: HTMLImageElement | null = null;
-let videoLayer: HTMLVideoElement | null = null;
 
+let imageLayers: [HTMLImageElement, HTMLImageElement] | null = null;
+let activeImage = 0;
+
+let videoLayer: HTMLVideoElement | null = null;
 let currentType: 'none' | 'image' | 'canvas' = 'none';
-let currentImage: string | null = null;
 
 function baseStyle(blur: number) {
     return {
@@ -16,7 +17,31 @@ function baseStyle(blur: number) {
         filter: `blur(${blur}px) brightness(0.9)`,
         transform: 'scale(1.2)',
         pointerEvents: 'none',
+        transition: 'opacity 0.25s ease',
     };
+}
+
+function createImageLayer(): HTMLImageElement {
+    const img = document.createElement('img');
+    Object.assign(img.style, baseStyle(40));
+    img.style.opacity = '0';
+    img.style.transition = 'opacity 0.25s ease';
+    return img;
+}
+
+function createVideoLayer(root: HTMLElement | null) {
+    root = root || document.getElementById('luminous-bg');
+    if (!root) return;
+
+    videoLayer = document.createElement('video');
+    Object.assign(videoLayer.style, baseStyle(40));
+    videoLayer.id = 'luminous-videolayer';
+    videoLayer.muted = true;
+    videoLayer.playsInline = true;
+    videoLayer.style.opacity = '0';
+    videoLayer.style.transition = 'opacity 0.25s ease';
+
+    root.appendChild(videoLayer);
 }
 
 function ensureBackground() {
@@ -40,48 +65,20 @@ function ensureBackground() {
         position: 'absolute',
         inset: '0',
         background: '#000',
-        transition: 'opacity 0.35s ease',
+        transition: 'opacity 0.25s ease',
     });
 
     root.appendChild(blackLayer);
 
-    imageLayer = document.createElement('img');
-    Object.assign(imageLayer.style, baseStyle(40));
-    imageLayer.style.opacity = '0';
-    imageLayer.style.transition = 'opacity 0.35s ease';
+    const imgA = createImageLayer();
+    const imgB = createImageLayer();
 
-    root.appendChild(imageLayer);
+    root.appendChild(imgA);
+    root.appendChild(imgB);
+
+    imageLayers = [imgA, imgB];
 
     createVideoLayer(root);
-}
-
-function createVideoLayer(root: HTMLElement | null) {
-    root = root || document.getElementById('luminous-bg');
-    if (!root) return;
-
-    resetVideoLayer(root);
-
-    videoLayer = document.createElement('video');
-    Object.assign(videoLayer.style, baseStyle(40));
-    videoLayer.id = 'luminous-videolayer';
-    videoLayer.muted = true;
-    videoLayer.playsInline = true;
-    videoLayer.style.opacity = '0';
-    videoLayer.style.transition = 'opacity 0.35s ease';
-
-    root.appendChild(videoLayer);
-}
-
-function resetVideoLayer(root: HTMLElement | null) {
-    root = root || document.getElementById('luminous-bg');
-    if (!root) return;
-    const videoElement = document.getElementById('luminous-videolayer');
-    try {
-        videoElement!.innerHTML = '';
-        videoElement!.remove();
-        root?.removeChild(videoLayer!.getRootNode());
-    } catch {}
-    videoLayer = null;
 }
 
 let canvasGeneration = 0;
@@ -97,60 +94,62 @@ export function getCanvasGeneration() {
 
 export function renderImage(src: string | null) {
     ensureBackground();
-    if (!imageLayer || !blackLayer || !videoLayer) return;
+    if (!imageLayers || !blackLayer) return;
 
     if (!src) {
         switchTo('none');
         return;
     }
 
-    if (currentImage !== src) {
-        imageLayer.src = src;
-        currentImage = src;
+    const nextIndex = activeImage === 0 ? 1 : 0;
+    const currentLayer = imageLayers[activeImage];
+    const nextLayer = imageLayers[nextIndex];
+
+    if (currentLayer.src === src) {
+        switchTo('image');
+        return;
     }
+
+    const img = new Image();
+    img.src = src;
+
+    img.onload = () => {
+        nextLayer.src = src;
+        nextLayer.style.opacity = '1';
+        currentLayer.style.opacity = '0';
+
+        activeImage = nextIndex;
+    };
 
     switchTo('image');
 }
 
 export function renderCanvas(sourceVideo: HTMLVideoElement, gen: number) {
-    if (gen !== getCanvasGeneration()) return;
-
     ensureBackground();
-    createVideoLayer(null);
-
     if (!videoLayer) return;
 
     const stream = (sourceVideo as any).captureStream?.();
     if (!stream) return;
 
-    function waitForActiveTrack() {
-        if (gen !== getCanvasGeneration()) return;
-        if (!videoLayer) return;
+    videoLayer.srcObject = stream;
+    videoLayer.play().catch(() => {});
 
-        const tracks = stream.getVideoTracks();
-
-        if (tracks.length > 0 && tracks[0].readyState === 'live') {
-            videoLayer.srcObject = stream;
-            videoLayer.play().catch(() => {});
-            switchTo('canvas');
-            return;
-        }
-
-        requestAnimationFrame(waitForActiveTrack);
-    }
-
-    waitForActiveTrack();
+    switchTo('canvas');
 }
 
 export function switchTo(type: 'none' | 'image' | 'canvas') {
-    if (!blackLayer || !imageLayer || !videoLayer) return;
+    if (!blackLayer || !imageLayers || !videoLayer) return;
     if (currentType === type) return;
 
     currentType = type;
 
     blackLayer.style.opacity = type === 'none' ? '1' : '0';
-    imageLayer.style.opacity = type === 'image' ? '1' : '0';
     videoLayer.style.opacity = type === 'canvas' ? '1' : '0';
+
+    if (type !== 'image') {
+        imageLayers[0].style.opacity = '0';
+        imageLayers[1].style.opacity = '0';
+    }
 
     setTransparentMode(type !== 'none');
 }
