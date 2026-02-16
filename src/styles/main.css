@@ -2,13 +2,8 @@
 html:root {
     --luminous-background: color-mix(
         in srgb,
-        var(--spice-sidebar) 25%,
+        var(--spice-sidebar) 37.5%,
         transparent
-    );
-    --luminous-tinted-base: var(--background-tinted-base, rgba(0, 0, 0, 0.08));
-    --luminous-tinted-highlight: var(
-        --background-tinted-highlight,
-        rgba(0, 0, 0, 0.12)
     );
 }
 
@@ -37,15 +32,6 @@ html:root {
     background: var(--luminous-background);
     backdrop-filter: blur(20px);
     color: var(--spice-text);
-}
-
-.main-yourLibraryX-headerContent > div > button {
-    background-color: var(--luminous-tinted-base);
-}
-
-.main-yourLibraryX-headerContent > div > button:hover {
-    background-color: var(--luminous-tinted-highlight);
-    transition-duration: var(--shortest-1);
 }
 
 .main-home-filterChipsSection::after {
