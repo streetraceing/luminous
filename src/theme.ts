@@ -1,4 +1,4 @@
-import { Logger } from './logger';
+import { Logger, logInitComplete, printBanner } from './tools';
 import { renderCanvas, renderImage } from './render/background';
 import { observePlaylistBackgroundSync } from './render/page';
 import {
@@ -65,19 +65,14 @@ async function refreshBackgroundState() {
 }
 
 async function init() {
-    console.log(
-        '%c Luminous %c dynamic Spotify background engine ',
-        'background:#1DB954;color:#000;padding:4px 10px;border-radius:6px 0 0 6px;font-weight:bold;',
-        'background:#121212;color:#1DB954;padding:4px 10px;border-radius:0 6px 6px 0;',
-    );
-
+    const version = '1.2.0';
     const start = performance.now();
+
+    printBanner(version);
 
     Logger.info('Waiting for Spotify Player...', 'Main');
 
     await waitForSongInfo();
-
-    Logger.info('Player detected', 'Main');
 
     scheduleRefresh();
 
@@ -96,8 +91,7 @@ async function init() {
     observePlaylistBackgroundSync();
 
     const duration = (performance.now() - start).toFixed(0);
-
-    Logger.info(`Luminous initialized in ${duration}ms ✨`, 'Main');
+    logInitComplete(duration);
 }
 
 init();

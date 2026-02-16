@@ -21,7 +21,7 @@ interface SpicetifySyncOptions {
 }
 
 export function spicetifySync(options: SpicetifySyncOptions): Plugin {
-    const { themeName, colorIni } = options;
+    const { themeName, colorIni = 'src/color.ini' } = options;
 
     let spicetifyRoot = options.spicetifyRoot || '';
 
@@ -43,7 +43,8 @@ export function spicetifySync(options: SpicetifySyncOptions): Plugin {
         fs.mkdirSync(path.dirname(to), { recursive: true });
         fs.copyFileSync(from, to);
 
-        console.log('[spicetify-sync] color.ini → dist');
+        /* Quiet now
+        console.log('[spicetify-sync] color.ini → dist');*/
     }
 
     function syncDistToTheme() {
