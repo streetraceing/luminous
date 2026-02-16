@@ -2,7 +2,7 @@
 html:root {
     --luminous-background: color-mix(
         in srgb,
-        var(--spice-sidebar) 50%,
+        var(--spice-sidebar) 25%,
         transparent
     );
 }
