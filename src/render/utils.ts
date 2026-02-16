@@ -1,14 +1,28 @@
-import {
-    getCanvasGeneration,
-    nextCanvasGeneration,
-    renderCanvas,
-} from './background';
-
-export function waitForSongInfo(): Promise<void> {
+function waitUntil(
+    condition: () => boolean,
+    isValid: () => boolean,
+    timeoutMs = 0,
+): Promise<boolean> {
     return new Promise((resolve) => {
+        let stopped = false;
+
+        if (timeoutMs > 0) {
+            setTimeout(() => {
+                stopped = true;
+                resolve(false);
+            }, timeoutMs);
+        }
+
         function check() {
-            if (Spicetify?.Player?.data?.item) {
-                resolve();
+            if (stopped) return;
+
+            if (!isValid()) {
+                resolve(false);
+                return;
+            }
+
+            if (condition()) {
+                resolve(true);
                 return;
             }
 
@@ -19,56 +33,65 @@ export function waitForSongInfo(): Promise<void> {
     });
 }
 
-export function waitForCanvasMetadata(trackUri: string) {
-    function check() {
-        const current = Spicetify.Player.data.item;
-        if (!current || current.uri !== trackUri) return;
-
-        const canvasUri = current.metadata?.['canvas.canvasUri'];
-
-        if (!canvasUri) {
-            requestAnimationFrame(check);
-            return;
-        }
-
-        waitForCanvasVideo(trackUri);
-    }
-
-    check();
+export async function waitForSongInfo(): Promise<void> {
+    await waitUntil(
+        () => !!Spicetify?.Player?.data?.item,
+        () => true,
+    );
 }
 
-export function waitForCanvasVideo(trackUri: string) {
-    const gen = nextCanvasGeneration();
-
-    function check() {
-        if (gen !== getCanvasGeneration()) return;
-
-        const video = document.querySelector(
-            '.canvasVideoContainerNPV video',
-        ) as HTMLVideoElement | null;
-
-        if (!video) {
-            requestAnimationFrame(check);
-            return;
-        }
-
+export async function waitForCanvasVideo(
+    trackUri: string,
+): Promise<HTMLVideoElement | null> {
+    function isValidTrack() {
         const current = Spicetify.Player.data?.item;
-        if (!current || current.uri !== trackUri) {
-            requestAnimationFrame(check);
-            return;
-        }
-
-        video.addEventListener(
-            'playing',
-            () => {
-                if (gen !== getCanvasGeneration()) return;
-                renderCanvas(video, gen);
-            },
-            { once: true },
-        );
+        return !!current && current.uri === trackUri;
     }
 
-    check();
+    const hasMetadata = await waitUntil(
+        () => {
+            const current = Spicetify.Player.data?.item;
+            return !!current?.metadata?.['canvas.canvasUri'];
+        },
+        isValidTrack,
+        15000,
+    );
+
+    if (!hasMetadata) return null;
+
+    const hasVideo = await waitUntil(
+        () => !!document.querySelector('.canvasVideoContainerNPV video'),
+        isValidTrack,
+        15000,
+    );
+
+    if (!hasVideo) return null;
+
+    const video = document.querySelector(
+        '.canvasVideoContainerNPV video',
+    ) as HTMLVideoElement | null;
+
+    if (!video) return null;
+
+    const isPlaying = await new Promise<boolean>((resolve) => {
+        if (!isValidTrack()) {
+            resolve(false);
+            return;
+        }
+
+        if (!video.paused) {
+            resolve(true);
+            return;
+        }
+
+        video.addEventListener('playing', () => resolve(true), { once: true });
+
+        setTimeout(() => resolve(false), 15000);
+    });
+
+    if (!isPlaying || !isValidTrack()) return null;
+
+    return video;
 }
 
 export function observeNowPlaying(options: {
