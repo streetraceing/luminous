@@ -80,11 +80,16 @@ export function observeNowPlaying(options: {
     onMount?: (el: HTMLElement) => void;
     onMutation?: (el: HTMLElement, mutations: MutationRecord[]) => void;
     onUnmount?: () => void;
+    onPlay?: () => void;
+    onPause?: () => void;
 }) {
     let current: HTMLElement | null = null;
     let observer: MutationObserver | null = null;
+    let rafId: number | null = null;
 
     function attach(el: HTMLElement) {
+        if (current === el) return;
+
         current = el;
         options.onMount?.(el);
 
@@ -102,31 +107,59 @@ export function observeNowPlaying(options: {
     function detach() {
         observer?.disconnect();
         observer = null;
+
+        if (current) {
+            options.onUnmount?.();
+        }
+
         current = null;
-        options.onUnmount?.();
     }
 
     function check() {
-        const el = document.querySelector(
-            '#Desktop_PanelContainer_Id:has(.main-nowPlayingView-nowPlayingWidget)',
+        const panel = document.querySelector(
+            '#Desktop_PanelContainer_Id',
         ) as HTMLElement | null;
 
-        if (!current && el) {
-            attach(el);
+        const widget = panel?.querySelector(
+            '.main-nowPlayingView-nowPlayingWidget',
+        ) as HTMLElement | null;
+
+        if (!current && panel && widget) {
+            attach(panel);
         }
 
-        if (current && !document.body.contains(current)) {
+        if (current && (!panel || !widget)) {
             detach();
         }
 
-        requestAnimationFrame(check);
+        rafId = requestAnimationFrame(check);
     }
+
+    const playPauseHandler = () => {
+        if (Spicetify.Player.isPlaying()) {
+            options.onPlay?.();
+        } else {
+            options.onPause?.();
+        }
+    };
+
+    Spicetify.Player.addEventListener('onplaypause', playPauseHandler);
 
     check();
 
     return {
         disconnect() {
             detach();
+
+            if (rafId) {
+                cancelAnimationFrame(rafId);
+                rafId = null;
+            }
+
+            Spicetify.Player.removeEventListener(
+                'onplaypause',
+                playPauseHandler,
+            );
         },
     };
 }

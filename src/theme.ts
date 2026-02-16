@@ -65,22 +65,25 @@ async function refreshBackgroundState() {
 }
 
 async function init() {
-    const version = '1.2.0';
     const start = performance.now();
 
-    printBanner(version);
-
+    printBanner();
     Logger.info('Waiting for Spotify Player...', 'Main');
 
     await waitForSongInfo();
-
     scheduleRefresh();
 
     observeNowPlaying({
         onMount: () => {
-            Logger.info('NowPlaying mounted', 'Main');
+            Logger.info('NowPlaying canvas mounted', 'Main');
             scheduleRefresh();
         },
+        onUnmount: () => Logger.info('NowPlaying canvas unmounted', 'Main'),
+        onPlay: () => {
+            Logger.info('NowPlaying canvas playback started', 'Main');
+            scheduleRefresh();
+        },
+        onPause: () => Logger.info('NowPlaying canvas playback paused', 'Main'),
     });
 
     Spicetify.Player.addEventListener('songchange', () => {
