@@ -4,17 +4,13 @@ Luminous is a lightweight dynamic Spicetify theme with a transparent glass-style
 
 It automatically upgrades from image to canvas when available and keeps transitions smooth and consistent.
 
----
-
 ## Features
 
-- Dynamic background (artwork → canvas)
+- Dynamic background (artwork or canvas)
 - Transparent glass-like interface
 - Smooth background transitions
 - Reactive to track changes
-- Minimal and clean design
-
----
+- Only upgraded design without break it
 
 ## Requirements
 
@@ -23,16 +19,12 @@ It automatically upgrades from image to canvas when available and keeps transiti
 - Spicetify 2.42.10
 - Configured Spicetify CLI
 
----
-
 ## Install & Apply
 
 ```bash
 npm install
 npm run apply
-````
-
----
+```
 
 ## Build
 
@@ -51,20 +43,12 @@ You can customize the output path in `vite.config.ts`:
 
 ```ts
 spicetifySync({
-    spicetifyRoot: 'path/to/spicetify'
-})
+    spicetifyRoot: 'path/to/spicetify',
+});
 ```
-
----
 
 ## Revert to default theme
 
 ```bash
 npm run discard
 ```
-
----
-
-## License
-
-MIT

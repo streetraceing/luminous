@@ -29,7 +29,7 @@ export class Logger {
 }
 
 export function printBanner() {
-    const buildDate = new Date(__BUILD_TIME__).toLocaleString('en-GB', {
+    const buildDate = new Date().toLocaleString('en-GB', {
         hour12: false,
     });
 
@@ -39,7 +39,7 @@ export function printBanner() {
         'background:#181818;color:#1DB954;padding:6px 12px;border-radius:0 8px 8px 0;font-weight:500;',
     );
 
-    console.log(`%c build: ${buildDate} `, 'color:#888;font-size:12px;');
+    console.log(`%c build: ${__BUILD_TIME__} `, 'color:#888;font-size:12px;');
 }
 
 export function logInitComplete(duration: string) {

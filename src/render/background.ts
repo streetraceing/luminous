@@ -110,6 +110,8 @@ export function renderImage(src: string | null) {
     const nextLayer = imageLayers[nextIndex];
 
     if (currentLayer.src === src) {
+        currentLayer.style.opacity = '1';
+        imageLayers[activeImage === 0 ? 1 : 0].style.opacity = '0';
         switchTo('image');
         return;
     }

@@ -1,31 +1,45 @@
 import { Logger, logInitComplete, printBanner } from './tools';
 import { renderCanvas, renderImage } from './render/background';
-import { observePlaylistBackgroundSync } from './render/page';
 import {
     observeNowPlaying,
+    observePlaylistBackgroundSync,
     waitForCanvas,
     waitForSongInfo,
 } from './render/utils';
 
-let updateScheduled = false;
+let scheduled = false;
 
 function scheduleRefresh() {
-    if (updateScheduled) return;
-    updateScheduled = true;
+    if (scheduled) return;
+    scheduled = true;
 
-    Promise.resolve().then(() => {
-        updateScheduled = false;
+    requestAnimationFrame(() => {
+        scheduled = false;
         refreshBackgroundState();
     });
 }
 
-async function refreshBackgroundState() {
+function getCurrentSong() {
     const song = Spicetify.Player.data?.item;
-    if (!song) return;
+    if (!song) return undefined;
 
     const title = `${song.name} - ${song.artists?.map((a) => a.name).join(', ')}`;
-
     const image = song.images?.[0]?.url ?? song.album?.images?.[0]?.url;
+    const { uri } = song;
+
+    return {
+        song,
+        title,
+        image,
+        uri,
+    };
+}
+
+async function refreshBackgroundState() {
+    const data = getCurrentSong();
+    if (!data) return;
+
+    const { title, image, uri } = data;
 
     if (image) {
         renderImage(image);
@@ -39,10 +53,10 @@ async function refreshBackgroundState() {
     }
 
     try {
-        const canvas = await waitForCanvas(song.uri);
+        const canvas = await waitForCanvas(uri);
 
         const current = Spicetify.Player.data?.item;
-        if (!current || current.uri !== song.uri) {
+        if (!current || current.uri !== uri) {
             Logger.info(
                 `Canvas cancelled (track changed) for "${title}"`,
                 'BackgroundRenderer',
@@ -66,32 +80,45 @@ async function refreshBackgroundState() {
 
 async function init() {
     const start = performance.now();
-
     printBanner();
     Logger.info('Waiting for Spotify Player...', 'Main');
 
     await waitForSongInfo();
     scheduleRefresh();
 
+    Spicetify.Player.addEventListener('songchange', () => {
+        const data = getCurrentSong();
+        if (!data) return;
+        Logger.info(`Song changed to ${data.title}`, 'Main');
+    });
+
     observeNowPlaying({
         onMount: () => {
-            Logger.info('NowPlaying canvas mounted', 'Main');
+            Logger.info('NowPlaying mounted', 'Main');
+        },
+        onUnmount: () => {
+            Logger.info('NowPlaying unmounted', 'Main');
+        },
+        onCanvasChange: (hasCanvas) => {
+            Logger.info(
+                hasCanvas ? 'Canvas mode enabled' : 'Artwork mode enabled',
+                'Main',
+            );
             scheduleRefresh();
         },
-        onUnmount: () => Logger.info('NowPlaying canvas unmounted', 'Main'),
         onPlay: () => {
-            Logger.info('NowPlaying canvas playback started', 'Main');
-            scheduleRefresh();
+            Logger.info('Playback started', 'Main');
         },
-        onPause: () => Logger.info('NowPlaying canvas playback paused', 'Main'),
+        onPause: () => {
+            Logger.info('Playback paused', 'Main');
+        },
     });
 
-    Spicetify.Player.addEventListener('songchange', () => {
-        Logger.info('Song change detected', 'Main');
-        scheduleRefresh();
+    observePlaylistBackgroundSync({
+        onBackgroundChange: (bg) => {
+            Logger.info(`Playlist header background synced: ${bg}`, 'Main');
+        },
     });
-
-    observePlaylistBackgroundSync();
 
     const duration = (performance.now() - start).toFixed(0);
     logInitComplete(duration);
