@@ -90,6 +90,7 @@ async function init() {
         const data = getCurrentSong();
         if (!data) return;
         Logger.info(`Song changed to ${data.title}`, 'Main');
+        scheduleRefresh();
     });
 
     observeNowPlaying({
