@@ -2,6 +2,7 @@
 /// <reference types="react-dom" />
 
 export {};
+export type UnstableSpicetify = typeof Spicetify & Record<string, any>;
 
 declare global {
     namespace Spicetify {

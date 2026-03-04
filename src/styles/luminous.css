@@ -1,0 +1,24 @@
+html:root {
+    --luminous-background: color-mix(
+        in srgb,
+        var(--spice-sidebar) 40%,
+        transparent
+    );
+    --luminous-background-blur: 30px;
+    --luminous-ui-blur: 20px;
+}
+
+.luminous-hidden {
+    opacity: 0 !important;
+    pointer-events: none !important;
+}
+
+.luminous-collapse-x {
+    transform: scaleX(0) !important;
+    transform-origin: left !important;
+}
+
+.luminous-collapse-y {
+    transform: scaleY(0) !important;
+    transform-origin: top !important;
+}

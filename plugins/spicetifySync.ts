@@ -10,18 +10,23 @@ interface SpicetifySyncOptions {
     themeName: string;
     /**
      * Path to spicetify root, e.g.
-     * `C:/Users/<your_username>/AppData/Roaming/spicetify`
+     * `C:/Users/<yourUsername>/AppData/Roaming/spicetify`
      */
     spicetifyRoot?: string;
     /**
-     * Location of the source color.ini file, e.g.
-     * `src/color.ini`
+     * Location of the source color.ini file, e.g. `src/color.ini`
      */
     colorIni?: string;
+    /**
+     * Sync mode:
+     * - "copy" (default) → copy dist to Spicetify theme folder
+     * - "delete" → remove theme folder from Spicetify
+     */
+    mode?: 'copy' | 'delete';
 }
 
 export function spicetifySync(options: SpicetifySyncOptions): Plugin {
-    const { themeName, colorIni = 'src/color.ini' } = options;
+    const { themeName, colorIni = 'src/color.ini', mode = 'copy' } = options;
 
     let spicetifyRoot = options.spicetifyRoot || '';
 
@@ -32,7 +37,11 @@ export function spicetifySync(options: SpicetifySyncOptions): Plugin {
         return spicetifyRoot;
     }
 
-    function prepareDist() {
+    function getThemeRoot(): string {
+        return path.join(getSpicetifyRoot(), 'Themes', themeName);
+    }
+
+    function prepareColorIni() {
         if (!colorIni) return;
 
         const from = path.resolve(colorIni);
@@ -42,17 +51,13 @@ export function spicetifySync(options: SpicetifySyncOptions): Plugin {
 
         fs.mkdirSync(path.dirname(to), { recursive: true });
         fs.copyFileSync(from, to);
-
-        /* Quiet now
-        console.log('[spicetify-sync] color.ini → dist');*/
     }
 
-    function syncDistToTheme() {
+    function copyDistToSpicetify() {
         const sourceDir = path.resolve('dist');
         if (!fs.existsSync(sourceDir)) return;
 
-        const themeRoot = path.join(getSpicetifyRoot(), 'Themes', themeName);
-
+        const themeRoot = getThemeRoot();
         fs.mkdirSync(themeRoot, { recursive: true });
 
         for (const file of fs.readdirSync(sourceDir)) {
@@ -64,16 +69,33 @@ export function spicetifySync(options: SpicetifySyncOptions): Plugin {
             }
         }
 
-        console.log(`[spicetify-sync] dist → ${themeRoot}`);
+        console.log(`[spicetify-sync] copied dist → ${themeRoot}`);
+    }
+
+    function deleteTheme() {
+        const themeRoot = getThemeRoot();
+
+        if (!fs.existsSync(themeRoot)) {
+            console.log(`[spicetify-sync] theme not found: ${themeRoot}`);
+            return;
+        }
+
+        fs.rmSync(themeRoot, { recursive: true, force: true });
+
+        console.log(`[spicetify-sync] deleted ${themeRoot}`);
     }
 
     return {
         name: 'spicetify-sync',
         apply: 'build',
-
         closeBundle() {
-            prepareDist();
-            syncDistToTheme();
+            if (mode === 'delete') {
+                deleteTheme();
+                return;
+            }
+
+            prepareColorIni();
+            copyDistToSpicetify();
         },
     };
 }

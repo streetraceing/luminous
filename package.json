@@ -1,18 +1,19 @@
 {
     "name": "luminous",
-    "version": "1.2.0-alpha",
+    "version": "1.0.0",
     "author": "streetraceing",
     "description": "A lightweight dynamic Spicetify theme with transparent glass UI and artwork/canvas-based immersive backgrounds.",
     "scripts": {
-        "apply": "npm run build && spicetify config current_theme Luminous && spicetify apply",
-        "discard": "spicetify config current_theme marketplace && spicetify apply",
         "build": "vite build",
+        "apply": "npm run build && spicetify config current_theme Luminous && spicetify apply",
+        "discard": "spicetify config current_theme marketplace && spicetify apply && vite build --mode delete",
         "watch": "spicetify watch -s"
     },
     "devDependencies": {
-        "@types/node": "^25.2.2",
+        "@types/node": "^25.3.3",
         "@types/react": "^19.2.14",
         "@types/react-dom": "^19.2.3",
+        "tsx": "^4.21.0",
         "typescript": "^5.9.3",
         "vite": "^7.3.1"
     }

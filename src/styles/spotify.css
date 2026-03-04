@@ -1,13 +1,4 @@
-/* Root theme variables */
-html:root {
-    --luminous-background: color-mix(
-        in srgb,
-        var(--spice-sidebar) 37.5%,
-        transparent
-    );
-}
-
-/* Spotify colors management */
+/* Colors override */
 html:root {
     --spice-main: transparent !important;
     --spice-main-elevated: var(--luminous-background);
@@ -20,7 +11,11 @@ html:root {
     padding-inline: 16px;
     border-radius: 8px;
     top: 32px;
-    backdrop-filter: blur(20px);
+    backdrop-filter: blur(--luminous-ui-blur);
+}
+
+.x-explicit-label {
+    --background-base: var(--spice-card);
 }
 
 .GenericModal > .main-embedWidgetGenerator-container {
@@ -30,12 +25,12 @@ html:root {
 
 .marketplace-installButton {
     background: var(--luminous-background);
-    backdrop-filter: blur(20px);
+    backdrop-filter: blur(--luminous-ui-blur);
     color: var(--spice-text);
 }
 
 .main-home-filterChipsSection::after {
-    backdrop-filter: blur(20px);
+    backdrop-filter: blur(--luminous-ui-blur);
 }
 
 .main-home-content
@@ -65,16 +60,40 @@ div[data-encore-id='tabList']:has(#queue-tab) > button {
 }
 
 .main-entityHeader-container::before {
-    content: "";
+    content: '';
     position: absolute;
     inset: 0;
     background: linear-gradient(
         to bottom,
-        rgba(0,0,0,0) 0%,
-        rgba(0,0,0,0.3) 50%,
-        rgba(0,0,0,0.8) 100%
+        rgba(0, 0, 0, 0) 0%,
+        rgba(0, 0, 0, 0.3) 50%,
+        rgba(0, 0, 0, 0.8) 100%
     );
     pointer-events: none;
+}
+
+/* Cinema mode */
+.luminous-cinema-mode
+    :is(
+        button[data-testid='lyrics-button'],
+        button[data-testid='control-button-queue'],
+        button[data-restore-focus-key='device_picker'],
+        button[data-testid='pip-toggle-button'],
+        button[data-testid='fullscreen-mode-button']
+    ) {
+    opacity: 0.3;
+    color: var(--text-subdued, #656565);
+    pointer-events: none;
+    cursor: not-allowed;
+    transition: opacity 250ms ease;
+}
+
+.Root__right-sidebar,
+.Root__now-playing-bar,
+.Root__main-view,
+.Root__nav-bar,
+.Root__globalNav {
+    transition: opacity 250ms ease;
 }
 
 /* Useless menus hide */
@@ -84,17 +103,17 @@ div[data-testid='test-ref-div'] {
 }
 
 /* Root screen views cleanify */
+
+/** dynamic */
 .main-yourLibraryX-library,
 .main-yourLibraryX-libraryContainer,
 .playlist-playlist-playlistContent,
 .YourLibraryX,
 .Root__right-sidebar,
-.main-home-homeHeader,
 .main-topBar-overlay,
 #Desktop_PanelContainer_Id,
 #Desktop_PanelContainer_Id::before,
 div[aria-labelledby^='listrow-title-spotify:album:'],
-.main-actionBarBackground-background,
 .main-topBar-background,
 .lyrics-lyrics-background,
 .custom-navlinks-scrollable_container
@@ -102,7 +121,12 @@ div[aria-labelledby^='listrow-title-spotify:album:'],
     > .search-searchCategory-categoryGrid.search-searchCategory-categoryGrid
     button,
 .main-globalNav-searchSection > .main-globalNav-searchContainer > button {
-    background: transparent !important;
+    transition: background 0.5s ease;
+    background: var(--luminous-view-background);
+}
+
+.Root__right-sidebar {
+    --luminous-view-background: transparent !important;
 }
 
 .main-trackList-trackListHeader {
@@ -117,7 +141,9 @@ div[aria-labelledby^='listrow-title-spotify:album:'],
 .main-nowPlayingView-contextItemInfo:before,
 .main-topBar-topbarContent,
 .main-topBar-container,
-.before-scroll-node {
+.before-scroll-node,
+.main-actionBarBackground-background,
+.main-home-homeHeader {
     display: none !important;
 }
 
@@ -129,7 +155,8 @@ div[aria-labelledby^='listrow-title-spotify:album:'],
 .marketplace-header .searchbar-bar,
 .marketplace-header-icon-button {
     background: var(--luminous-background) !important;
-    backdrop-filter: blur(20px);
+    backdrop-filter: blur(--luminous-ui-blur);
+    transition: background 0.5s ease;
 }
 
 /* Now playing view setup */
@@ -159,7 +186,7 @@ div[data-testid='NPV_Panel_OpenDiv'] {
     > div
     > div[class*=' ']:not(:has(.main-nowPlayingView-nowPlayingWidget))
     > div {
-    backdrop-filter: blur(20px);
+    backdrop-filter: blur(--luminous-ui-blur);
 }
 
 #Desktop_PanelContainer_Id
