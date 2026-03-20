@@ -9,9 +9,28 @@ html:root {
 .marketplace-header {
     padding: 8px;
     padding-inline: 16px;
+    border-radius: 0px 0px 8px 8px;
+    top: 64px;
+    background: var(--luminous-background) !important;
+    position: static;
+}
+
+.main-trackCreditsModal-container {
+    background: var(--spice-sidebar) !important;
     border-radius: 8px;
-    top: 32px;
-    backdrop-filter: blur(--luminous-ui-blur);
+    --spice-main: var(--spice-sidebar);
+}
+
+section.contentSpacing:has(.marketplace-header) {
+    padding: 0 !important;
+}
+
+#main-view:has(.marketplace-header) {
+    background: transparent !important;
+}
+
+.marketplace-add-snippet-btn {
+    --spice-main: var(--spice-sidebar);
 }
 
 .x-explicit-label {
@@ -25,12 +44,12 @@ html:root {
 
 .marketplace-installButton {
     background: var(--luminous-background);
-    backdrop-filter: blur(--luminous-ui-blur);
+    backdrop-filter: blur(var(--luminous-ui-blur));
     color: var(--spice-text);
 }
 
 .main-home-filterChipsSection::after {
-    backdrop-filter: blur(--luminous-ui-blur);
+    backdrop-filter: blur(var(--luminous-ui-blur));
 }
 
 .main-home-content
@@ -135,6 +154,18 @@ div[aria-labelledby^='listrow-title-spotify:album:'],
     box-shadow: unset !important;
 }
 
+#main-view:has(.marketplace-header) > .main-topBar-container {
+    display: flex !important;
+    padding-inline: 8px;
+    border-radius: 8px 8px 0px 0px;
+    background: var(--luminous-background) !important;
+    position: static;
+}
+
+#main-view:has(.marketplace-header) .marketplace-content {
+    margin-top: 0px;
+}
+
 .playlist-playlist-actionBarBackground-background,
 .main-nowPlayingView-coverArtContainer > div::before,
 .main-nowPlayingView-coverArtContainer > div::after,
@@ -155,7 +186,7 @@ div[aria-labelledby^='listrow-title-spotify:album:'],
 .marketplace-header .searchbar-bar,
 .marketplace-header-icon-button {
     background: var(--luminous-background) !important;
-    backdrop-filter: blur(--luminous-ui-blur);
+    backdrop-filter: blur(var(--luminous-ui-blur));
     transition: background 0.5s ease;
 }
 
@@ -186,7 +217,7 @@ div[data-testid='NPV_Panel_OpenDiv'] {
     > div
     > div[class*=' ']:not(:has(.main-nowPlayingView-nowPlayingWidget))
     > div {
-    backdrop-filter: blur(--luminous-ui-blur);
+    backdrop-filter: blur(var(--luminous-ui-blur));
 }
 
 #Desktop_PanelContainer_Id
