@@ -15,6 +15,28 @@ html:root {
     position: static;
 }
 
+.playback-progressbar
+    .x-progressBar-progressBarBg
+    .x-progressBar-sliderArea
+    div {
+    visibility: visible;
+}
+
+.main-image-image {
+    z-index: 1;
+}
+
+.main-view-container__scroll-node-child
+    main
+    > section[data-test-uri^='spotify:artist:']
+    > div {
+    background: var(--luminous-background) !important;
+    backdrop-filter: blur(var(--luminous-ui-blur));
+    top: 0;
+    margin-top: -64px;
+    height: 64px;
+}
+
 .main-trackCreditsModal-container {
     background: var(--spice-sidebar) !important;
     border-radius: 8px;
@@ -25,7 +47,26 @@ section.contentSpacing:has(.marketplace-header) {
     padding: 0 !important;
 }
 
-#main-view:has(.marketplace-header) {
+#main-view:has(.marketplace-header),
+.main-view-container
+    main
+    > :is(section, div)
+    > div:not(
+        .main-entityHeader-container,
+        .main-entityHeader-containerNormal,
+        .contentSpacing,
+        .main-actionBar-ActionBarContainer
+    ),
+.main-view-container
+    main
+    > section
+    > div:not(.main-entityHeader-container, .contentSpacing)
+    > div:not(
+        .main-entityHeader-container,
+        .main-entityHeader-containerNormal,
+        .contentSpacing,
+        .main-actionBar-ActionBarContainer
+    ) {
     background: transparent !important;
 }
 
@@ -98,7 +139,9 @@ div[data-encore-id='tabList']:has(#queue-tab) > button {
         button[data-testid='control-button-queue'],
         button[data-restore-focus-key='device_picker'],
         button[data-testid='pip-toggle-button'],
-        button[data-testid='fullscreen-mode-button']
+        button[data-testid='fullscreen-mode-button'],
+        .main-nowPlayingBar-extraControls
+            button[aria-describedby='connect-message-nudge']
     ) {
     opacity: 0.3;
     color: var(--text-subdued, #656565);
@@ -163,7 +206,7 @@ div[aria-labelledby^='listrow-title-spotify:album:'],
 }
 
 #main-view:has(.marketplace-header) .marketplace-content {
-    margin-top: 0px;
+    margin-top: -16px;
 }
 
 .playlist-playlist-actionBarBackground-background,
@@ -184,7 +227,8 @@ div[aria-labelledby^='listrow-title-spotify:album:'],
 .main-nowPlayingBar-nowPlayingBar,
 .marketplace-header .Dropdown-control,
 .marketplace-header .searchbar-bar,
-.marketplace-header-icon-button {
+.marketplace-header-icon-button,
+div[data-testid='NPV_Panel_OpenDiv'] div[data-testid='lyrics-npv-section'] {
     background: var(--luminous-background) !important;
     backdrop-filter: blur(var(--luminous-ui-blur));
     transition: background 0.5s ease;
@@ -193,6 +237,36 @@ div[aria-labelledby^='listrow-title-spotify:album:'],
 /* Now playing view setup */
 div[data-testid='NPV_Panel_OpenDiv'] {
     --section-background-base: var(--luminous-background);
+}
+
+.main-nowPlayingView-nowPlayingGrid
+    div:not(.main-nowPlayingView-contextItemInfo) {
+    margin-top: 0;
+}
+
+.main-nowPlayingView-nowPlayingGrid
+    > div:not(.main-nowPlayingView-contextItemInfo)
+    > div:not(
+        #VideoPlayerNpv_ReactPortal,
+        .main-nowPlayingView-coverArtVisualEnhancement
+    )::before {
+    background: linear-gradient(
+        #121212a1 0%,
+        #12121200 24.09% 80%,
+        #121212cc 93.25%,
+        var(--spice-sidebar) 100%
+    );
+    border-radius: 8px;
+}
+
+.main-nowPlayingView-panel:has(.canvasVideoContainerNPV)
+    .main-nowPlayingView-contextItemInfo {
+    margin-top: 16px;
+}
+
+.main-nowPlayingView-panel:has(.canvasVideoContainerNPV)
+    .main-nowPlayingView-nowPlayingWidget {
+    margin-inline: 8px;
 }
 
 .main-nowPlayingBar-nowPlayingBar {

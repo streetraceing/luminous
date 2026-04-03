@@ -14,9 +14,9 @@ It automatically upgrades from image to canvas when available and keeps transiti
 
 ## Requirements
 
-- NodeJS v25.5.0
-- NPM ~11.11.0
-- Spicetify ~2.42.14
+- NodeJS 25.5.0
+- NPM 11.12.0
+- Spicetify 2.42.15
 - Configured Spicetify CLI
 
 ## Install & Apply
