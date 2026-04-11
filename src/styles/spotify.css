@@ -140,6 +140,7 @@ div[data-encore-id='tabList']:has(#queue-tab) > button {
         button[data-restore-focus-key='device_picker'],
         button[data-testid='pip-toggle-button'],
         button[data-testid='fullscreen-mode-button'],
+        .main-nowPlayingWidget-actionButtonWrapper button,
         .main-nowPlayingBar-extraControls
             button[aria-describedby='connect-message-nudge']
     ) {
@@ -148,6 +149,10 @@ div[data-encore-id='tabList']:has(#queue-tab) > button {
     pointer-events: none;
     cursor: not-allowed;
     transition: opacity 250ms ease;
+}
+
+.luminous-cinema-mode :is(.main-nowPlayingWidget-nowPlaying) {
+    pointer-events: none;
 }
 
 .Root__right-sidebar,
