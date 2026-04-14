@@ -1,11 +1,12 @@
 {
   "name": "Luminous",
   "description": "Lightweight dynamic Spicetify theme",
-  "preview": "preview.png",
-  "main": "user.css",
-  "usercss": "user.css",
-  "schemes": "color.ini",
-  "include": ["theme.js"],
+  "readme": "README.md",
+  "preview": "assets/luminous_1280x720.png",
+  "main": "Luminous/user.css",
+  "usercss": "Luminous/user.css",
+  "schemes": "Luminous/color.ini",
+  "include": ["Luminous/theme.js"],
   "tags": ["dynamic", "canvas", "background"],
   "authors": [
     {
