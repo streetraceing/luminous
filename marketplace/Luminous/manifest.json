@@ -1,0 +1,16 @@
+{
+  "name": "Luminous",
+  "description": "Lightweight dynamic Spicetify theme",
+  "preview": "preview.png",
+  "main": "user.css",
+  "usercss": "user.css",
+  "schemes": "color.ini",
+  "include": ["theme.js"],
+  "tags": ["dynamic", "canvas", "background"],
+  "authors": [
+    {
+      "name": "streetraceing",
+      "url": "https://github.com/streetraceing"
+    }
+  ]
+}

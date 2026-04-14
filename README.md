@@ -3,7 +3,7 @@
 Lightweight dynamic Spicetify theme, idk for what i do this<br>
 Youtube video: https://youtu.be/S-2u6xTFZCs
 
-![Luminous image preview](./assets/luminous.png)
+![Luminous image preview](./assets/luminous_1920x1080.png)
 
 ## Build
 
