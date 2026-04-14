@@ -1,0 +1,17 @@
+/* .Root__globalNav */
+
+.Root__globalNav {
+  background: transparent;
+}
+
+:is(
+    html[data-transition],
+    html[data-cinema-npv-postenter],
+    html[data-cinema-npv-duringenter],
+    html[data-cinema-npv-preenter],
+    html[data-cinema-npv-preexit],
+    html[data-cinema-npv-duringexit]
+  )
+  .Root__globalNav {
+  visibility: hidden;
+}

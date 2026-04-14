@@ -1,0 +1,42 @@
+/* #main-view */
+
+#main-view > div:has(div[data-testid="test-ref-div"]) {
+  display: none;
+}
+
+/* Playlist page */
+
+#main-view:has(.playlist-playlist-page, .main-trackList-trackListContainer)
+  .main-topBar-container {
+  display: none;
+}
+
+#main-view:has(.playlist-playlist-page, .main-trackList-trackListContainer)
+  .main-trackList-trackListHeader {
+  top: unset !important;
+  background: transparent;
+}
+
+/* Marketplace */
+
+#main-view:has(.marketplace-content) .main-topBar-background {
+  opacity: 1 !important;
+}
+
+#main-view:has(.marketplace-content)
+  .main-topBar-background
+  > .main-topBar-overlay {
+  background: transparent;
+}
+
+/* Main page */
+
+#main-view:has(.main-home-filterChipsContainer)
+  .main-home-filterChipsContainer {
+  top: unset !important;
+}
+
+#main-view:has(.main-home-filterChipsContainer)
+  .main-home-filterChipsSectionActive {
+  display: none;
+}

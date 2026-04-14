@@ -1,136 +1,161 @@
-import { Unstable } from './unstable';
-
-export type SongEvent = 'ready' | 'change';
+export type SongEvent = "ready" | "change";
 
 export type SongPayload = {
-    track: Spicetify.PlayerTrack;
-    title: string;
-    name: string;
-    artists: string[];
-    image: string | null;
-    uri: string;
+  track: Spicetify.PlayerTrack;
+  title: string;
+  name: string;
+  artists: string[];
+  image: string | null;
+  uri: string;
 };
 
 export type SongListener = (song: SongPayload) => void;
 
 export class Song {
-    private static current: Spicetify.PlayerTrack | null = null;
-    private static listeners = new Map<SongEvent, Set<SongListener>>();
-    private static initialized = false;
-    private static readyPromise: Promise<void>;
-    private static readyResolve: () => void;
-    private static readyReject: (reason?: unknown) => void;
+  private static current: Spicetify.PlayerTrack | null = null;
+  private static listeners = new Map<SongEvent, Set<SongListener>>();
 
-    static {
-        this.readyPromise = new Promise<void>((resolve, reject) => {
-            this.readyResolve = resolve;
-            this.readyReject = reject;
-        });
+  private static initialized = false;
+  private static ready = false;
 
-        Unstable.Events.webpackLoaded.on(() => {
-            this.init();
-        });
+  private static readyPromise: Promise<void>;
+  private static readyResolve: () => void;
+  private static readyReject: (reason?: unknown) => void;
+
+  static {
+    this.readyPromise = new Promise<void>((resolve, reject) => {
+      this.readyResolve = resolve;
+      this.readyReject = reject;
+    });
+  }
+
+  static async init(timeout = 15000) {
+    if (this.initialized) return this.readyPromise;
+
+    this.initialized = true;
+
+    try {
+      await this.waitForPlayer(timeout);
+
+      const track = Spicetify.Player.data?.item;
+      if (track) {
+        this.setCurrent(track);
+        this.ready = true;
+        this.readyResolve();
+        this.emit("ready");
+      }
+
+      this.bindEvents();
+    } catch (e) {
+      this.readyReject(e);
+      throw e;
     }
 
-    private static init() {
-        if (this.initialized) return;
-        this.initialized = true;
+    return this.readyPromise;
+  }
 
-        const timeoutMs = 20000;
-        const intervalMs = 100;
-        const start = Date.now();
+  private static waitForPlayer(timeout: number) {
+    return new Promise<void>((resolve, reject) => {
+      const start = Date.now();
 
-        const interval = setInterval(() => {
-            const item = Spicetify?.Player?.data?.item;
-
-            if (item) {
-                this.setCurrent(item);
-                clearInterval(interval);
-                this.readyResolve();
-                this.emit('ready', item);
-                return;
-            }
-
-            if (Date.now() - start > timeoutMs) {
-                clearInterval(interval);
-                this.readyReject(
-                    new Error('Player did not initialize in time'),
-                );
-            }
-        }, intervalMs);
-
-        Spicetify.Player.addEventListener('songchange', () => {
-            const item = Spicetify.Player.data.item;
-            this.setCurrent(item);
-            this.emit('change', item);
-        });
-    }
-
-    static addEventListener(event: SongEvent, listener: SongListener) {
-        if (!this.listeners.has(event)) {
-            this.listeners.set(event, new Set());
+      const check = () => {
+        if (Spicetify?.Player?.data) {
+          resolve();
+          return;
         }
 
-        this.listeners.get(event)!.add(listener);
-
-        if (!this.initialized) {
-            Unstable.Events.webpackLoaded.on(() => this.init());
-        }
-    }
-
-    static removeEventListener(event: SongEvent, listener: SongListener) {
-        this.listeners.get(event)?.delete(listener);
-    }
-
-    static async get(): Promise<SongPayload | null> {
-        if (!this.current) {
-            try {
-                await this.readyPromise;
-            } catch {
-                return null;
-            }
+        if (Date.now() - start > timeout) {
+          reject(new Error("Spicetify Player not available"));
+          return;
         }
 
-        return this.getPayload();
+        requestAnimationFrame(check);
+      };
+
+      check();
+    });
+  }
+
+  private static bindEvents() {
+    Spicetify.Player.addEventListener("songchange", () => {
+      const track = Spicetify.Player.data?.item;
+      if (!track) return;
+
+      if (this.current?.uri === track.uri) return;
+
+      this.setCurrent(track);
+      this.emit("change");
+    });
+  }
+
+  static addEventListener(event: SongEvent, listener: SongListener) {
+    if (!this.listeners.has(event)) {
+      this.listeners.set(event, new Set());
     }
 
-    static getSync(): SongPayload | null {
-        return this.getPayload();
+    this.listeners.get(event)!.add(listener);
+
+    if (event === "ready" && this.ready && this.current) {
+      listener(this.createPayload(this.current));
     }
 
-    private static setCurrent(track: Spicetify.PlayerTrack | null) {
-        this.current = track;
+    if (event === "change" && this.current) {
+      listener(this.createPayload(this.current));
+    }
+  }
+
+  static removeEventListener(event: SongEvent, listener: SongListener) {
+    this.listeners.get(event)?.delete(listener);
+  }
+
+  static async get(): Promise<SongPayload | null> {
+    if (!this.ready) {
+      try {
+        await this.readyPromise;
+      } catch {
+        return null;
+      }
     }
 
-    private static getPayload(): SongPayload | null {
-        if (!this.current) return null;
-        return this.createPayload(this.current);
+    return this.current ? this.createPayload(this.current) : null;
+  }
+
+  static getSync(): SongPayload | null {
+    return this.current ? this.createPayload(this.current) : null;
+  }
+
+  private static setCurrent(track: Spicetify.PlayerTrack) {
+    this.current = track;
+  }
+
+  private static createPayload(track: Spicetify.PlayerTrack): SongPayload {
+    const artists = track.artists?.map((a) => a.name) ?? [];
+
+    const image =
+      track.images?.[0]?.url ??
+      track.album?.images?.[0]?.url ??
+      track.metadata?.image_url ??
+      null;
+
+    return {
+      track,
+      name: track.name,
+      title: `${track.name} - ${artists.join(", ")}`,
+      artists,
+      image,
+      uri: track.uri,
+    };
+  }
+
+  private static emit(event: SongEvent) {
+    if (!this.current) return;
+
+    const payload = this.createPayload(this.current);
+    const listeners = this.listeners.get(event);
+    if (!listeners) return;
+
+    for (const listener of listeners) {
+      listener(payload);
     }
-
-    private static createPayload(track: Spicetify.PlayerTrack): SongPayload {
-        const artists = track.artists?.map((a) => a.name) ?? [];
-
-        const image =
-            track.images?.[0]?.url ??
-            track.album?.images?.[0]?.url ??
-            track.metadata?.image_url ??
-            null;
-
-        return {
-            track,
-            name: track.name,
-            title: `${track.name} - ${artists.join(', ')}`,
-            artists,
-            image,
-            uri: track.uri,
-        };
-    }
-
-    private static emit(event: SongEvent, track: Spicetify.PlayerTrack) {
-        const payload = this.createPayload(track);
-
-        this.listeners.get(event)?.forEach((listener) => {
-            listener(payload);
-        });
-    }
+  }
 }

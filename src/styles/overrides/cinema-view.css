@@ -1,0 +1,65 @@
+/* DEPRECATED .Root__top-container > *:has(#VideoPlayerCinema_ReactPortal):has(.main-actionBar-ActionBarContainer):has(.over-cinema-scroll) */
+/* .Root__cinema-view */
+
+.Root__cinema-view {
+  z-index: 10 !important;
+  outline: 0;
+}
+
+.Root__cinema-view .main-actionBar-ActionBarContainer {
+  background: 0;
+  outline: 0;
+}
+
+.Root__cinema-view
+  > div:not(.main-actionBar-ActionBarContainer, .over-cinema-scroll)::before {
+  background: transparent !important;
+}
+
+.Root__cinema-view
+  .main-actionBar-ActionBarContainer
+  > div:not(.os-scrollbar)
+  > div:has(#VideoPlayerCinema_ReactPortal)
+  > div
+  > div
+  > div
+  > div:empty {
+  display: none;
+}
+
+.Root__cinema-view
+  .main-actionBar-ActionBarContainer
+  > .os-scrollbar
+  .os-scrollbar-track {
+  visibility: hidden;
+}
+
+.Root__cinema-view
+  .main-actionBar-ActionBarContainer
+  > div:not(.os-scrollbar)
+  > div:not(:has(#VideoPlayerCinema_ReactPortal))
+  > div
+  > div
+  > div
+  > div
+  > div:empty {
+  background: transparent;
+}
+
+.Root__cinema-view
+  .main-actionBar-ActionBarContainer
+  > div:not(.os-scrollbar)
+  > div:not(:has(#VideoPlayerCinema_ReactPortal))
+  > div {
+  margin-top: 128px;
+}
+
+.Root__cinema-view
+  .main-nowPlayingView-queue
+  .main-nowPlayingView-sectionHeader
+  .main-nowPlayingView-openQueue {
+  opacity: var(--encore-opacity-disabled);
+  color: var(--text-subdued);
+  pointer-events: none;
+  cursor: not-allowed;
+}
