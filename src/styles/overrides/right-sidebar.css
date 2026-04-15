@@ -15,7 +15,7 @@
 }
 
 .Root__right-sidebar::before {
-  background: transparent;
+  background: transparent !important;
 }
 
 :is(
@@ -24,19 +24,14 @@
     html[data-cinema-npv-preenter],
     html[data-cinema-npv-preexit],
     html[data-cinema-npv-duringexit]
+  ):not(
+    :is(
+      html[data-right-sidebar-open-postenter],
+      html[data-right-sidebar-open-duringenter]
+    )
   )
   :is(.Root__right-sidebar, .main-nowPlayingView-mainWrapper) {
   visibility: hidden !important;
   opacity: 0 !important;
   pointer-events: none !important;
-}
-
-:is(
-    html[data-cinema-npv-postenter],
-    html[data-cinema-npv-duringenter],
-    html[data-cinema-npv-duringexit],
-    html[data-cinema-npv-preexit]
-  )
-  .Root__right-sidebar {
-  display: none;
 }
