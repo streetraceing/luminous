@@ -14,14 +14,7 @@
     html[data-cinema-npv-duringexit]
   )
   .Root__now-playing-bar
-  :is(
-    button[data-testid="lyrics-button"],
-    button[data-testid="control-button-queue"],
-    button[data-restore-focus-key="device_picker"],
-    button[data-testid="pip-toggle-button"],
-    .main-nowPlayingBar-extraControls
-      button[aria-describedby="connect-message-nudge"]
-  ) {
+  :is(button[data-testid="pip-toggle-button"]) {
   opacity: var(--encore-opacity-disabled);
   color: var(--text-subdued);
   pointer-events: none;
