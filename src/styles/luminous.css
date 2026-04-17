@@ -1,9 +1,4 @@
 html:root {
-  --luminous-background: color-mix(
-    in srgb,
-    var(--spice-sidebar) 50%,
-    transparent
-  );
   --luminous-background-blur: 24px;
   --luminous-background-brightness: 0.75;
   

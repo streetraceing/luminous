@@ -45,6 +45,8 @@ export class Song {
         this.emit("ready");
       }
 
+      Luminous.Logger.info("Song", "Initialized, current is", track);
+
       this.bindEvents();
     } catch (e) {
       this.readyReject(e);
@@ -65,7 +67,9 @@ export class Song {
         }
 
         if (Date.now() - start > timeout) {
-          reject(new Error("Spicetify Player not available"));
+          reject(
+            Luminous.Logger.error("Song", "Spicetify Player not available"),
+          );
           return;
         }
 
@@ -85,6 +89,8 @@ export class Song {
 
       this.setCurrent(track);
       this.emit("change");
+
+      Luminous.Logger.info("Song", "Changed to", track);
     });
   }
 

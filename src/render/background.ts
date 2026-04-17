@@ -90,6 +90,9 @@ export class Background {
   private static createImageLayer(): HTMLImageElement {
     const img = document.createElement("img");
     Object.assign(img.style, this.baseStyle());
+
+    Luminous.Logger.info("Background", "Created image layer", img);
+
     return img;
   }
 
@@ -101,6 +104,8 @@ export class Background {
     video.playsInline = true;
     video.autoplay = true;
     video.loop = true;
+
+    Luminous.Logger.info("Background", "Created video layer", video);
 
     return video;
   }
@@ -151,30 +156,53 @@ export class Background {
   }) {
     this.ensureBackground();
 
+    const logDefaultLayer = () =>
+      Luminous.Logger.info("Background", "Rendering default layer");
+
     if (!options || (!options.image && !options.canvas)) {
       this.clear();
+      logDefaultLayer();
+
       return;
     }
 
     if (options.canvas) {
       this.renderCanvas(options.canvas);
+      Luminous.Logger.info(
+        "Background",
+        "Rendering canvas layer",
+        options.canvas,
+      );
+
       return;
     }
 
     if (options.image) {
       this.renderImage(options.image);
+      Luminous.Logger.info(
+        "Background",
+        "Rendering image layer",
+        options.image,
+      );
+
       return;
     }
 
     this.clear();
+    logDefaultLayer();
   }
 
   private static renderImage(src: string | null) {
     this.ensureBackground();
-    if (!this.imageLayers) return;
+    if (!this.imageLayers) {
+      Luminous.Logger.warn("Background", "No image layers for render");
+      return;
+    }
 
     if (!src) {
+      Luminous.Logger.warn("Background", "No image src for render");
       this.switchTo("none");
+
       return;
     }
 
@@ -207,10 +235,16 @@ export class Background {
 
   private static renderCanvas(sourceVideo: HTMLVideoElement) {
     this.ensureBackground();
-    if (!this.videoLayers) return;
+    if (!this.videoLayers) {
+      Luminous.Logger.warn("Background", "No video layers for render");
+      return;
+    }
 
     const stream = (sourceVideo as any).captureStream?.();
-    if (!stream) return;
+    if (!stream) {
+      Luminous.Logger.warn("Background", "No canvas stream for render");
+      return;
+    }
 
     const nextIndex = this.activeVideo === 0 ? 1 : 0;
     const current = this.videoLayers[this.activeVideo];

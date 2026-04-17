@@ -1,5 +1,5 @@
 type LoggerLevel = "INFO" | "WARN" | "ERROR";
-type LoggerChannel = "Background" | "Canvas" | "Song" | "Dynamic";
+type LoggerChannel = "Background" | "Canvas" | "Song";
 
 export class Logger {
   private static disabledLevels = new Set<LoggerLevel>();
@@ -28,29 +28,28 @@ export class Logger {
     return `Luminous/${channel}`;
   }
 
-  static log(message: unknown, level: LoggerLevel, channel: LoggerChannel) {
+  static log(level: LoggerLevel, channel: LoggerChannel, ...data: any[]) {
     if (!this.shouldLog(level, channel)) return;
 
     console.log(
-      `%c[${this.getTime()}] %c[${level}] %c[${this.format(channel)}] %c`,
+      `%c[${this.getTime()}] %c[${level}] %c[${this.format(channel)}]`,
       this.baseStyle,
       this.levelStyles[level],
       this.channelStyle,
-      "color:inherit",
-      message,
+      ...data,
     );
   }
 
-  static info(message: unknown, channel: LoggerChannel) {
-    this.log(message, "INFO", channel);
+  static info(channel: LoggerChannel, ...data: any[]) {
+    this.log("INFO", channel, ...data);
   }
 
-  static warn(message: unknown, channel: LoggerChannel) {
-    this.log(message, "WARN", channel);
+  static warn(channel: LoggerChannel, ...data: any[]) {
+    this.log("WARN", channel, ...data);
   }
 
-  static error(message: unknown, channel: LoggerChannel) {
-    this.log(message, "ERROR", channel);
+  static error(channel: LoggerChannel, ...data: any[]) {
+    this.log("ERROR", channel, ...data);
   }
 
   static enableLevel(level: LoggerLevel) {
