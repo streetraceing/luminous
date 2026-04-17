@@ -1,6 +1,9 @@
 /* #main-view */
 
-#main-view > div:has(div[data-testid="test-ref-div"]) {
+#main-view > div:has(div[data-testid="test-ref-div"]),
+#main-view
+  div[data-testid="hpto-parent-container"]
+  > div[data-testid="test-hpto-ref"] {
   display: none;
 }
 

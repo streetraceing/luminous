@@ -4,8 +4,10 @@
 export {};
 
 declare global {
-  namespace Spicetify {
+  declare namespace Spicetify {
     type Icon =
+      | "addToPlaylist"
+      | "addToQueue"
       | "album"
       | "artist"
       | "block"
@@ -19,22 +21,33 @@ declare global {
       | "chevron-right"
       | "chromecast-disconnected"
       | "clock"
+      | "collapseLibrary"
       | "collaborative"
       | "computer"
+      | "connectDevice"
       | "copy"
+      | "create"
+      | "credits"
       | "download"
       | "downloaded"
       | "edit"
       | "enhance"
+      | "enterFullScreen"
       | "exclamation-circle"
+      | "excludeTaste"
+      | "expandLibrary"
       | "external-link"
       | "facebook"
       | "follow"
+      | "friendActivity"
       | "fullscreen"
       | "gamepad"
+      | "goToAlbum"
+      | "goToArtist"
       | "grid-view"
       | "heart"
       | "heart-active"
+      | "heartAdd"
       | "instagram"
       | "laptop"
       | "library"
@@ -45,10 +58,13 @@ declare global {
       | "lyrics"
       | "menu"
       | "minimize"
+      | "miniplayer"
       | "minus"
       | "more"
       | "new-spotify-connect"
+      | "nowPlaying"
       | "offline"
+      | "openDesktop"
       | "pause"
       | "phone"
       | "play"
@@ -59,15 +75,20 @@ declare global {
       | "podcasts"
       | "projector"
       | "queue"
+      | "radio"
       | "repeat"
       | "repeat-once"
       | "search"
       | "search-active"
+      | "share"
       | "shuffle"
       | "skip-back"
       | "skip-back15"
       | "skip-forward"
       | "skip-forward15"
+      | "skipBack"
+      | "skipForward"
+      | "smartShuffle"
       | "soundbetter"
       | "speaker"
       | "spotify"
@@ -80,8 +101,10 @@ declare global {
       | "volume"
       | "volume-off"
       | "volume-one-wave"
+      | "volumeHigh"
       | "volume-two-wave"
       | "watch"
+      | "whatsNew"
       | "x";
     type Variant =
       | "bass"
@@ -182,6 +205,7 @@ declare global {
       index: PlayerIndex;
       item: PlayerTrack;
       shuffle: boolean;
+      smartShuffle: boolean;
       repeat: number;
       speed: number;
       positionAsOfTimestamp: number;
@@ -228,55 +252,62 @@ declare global {
       images?: ImagesEntity[];
     };
     type TrackMetadata = {
-      image_xlarge_url: string;
-      "collection.can_add": string;
-      decision_id: string;
-      "actions.skipping_next_past_track": string;
-      image_url: string;
-      popularity: string;
-      "canvas.artist.uri": string;
-      "canvas.url": string;
-      "canvas.id": string;
-      album_track_count: string;
-      uid: string;
-      duration: string;
-      "canvas.artist.name": string;
-      "canvas.entityUri": string;
-      title: string;
-      image_small_url: string;
-      album_track_number: string;
-      "artist_name:2": string;
-      "canvas.type": string;
-      artist_name: string;
-      "canvas.artist.avatar": string;
-      "canvas.explicit": string;
-      marked_for_download: string;
-      "actions.skipping_prev_past_track": string;
-      iteration: string;
-      "media.start_position": string;
-      "artist_uri:2": string;
-      "artist_name:1": string;
-      "canvas.canvasUri": string;
-      album_title: string;
       artist_uri: string;
-      "canvas.uploadedBy": string;
-      view_index: string;
-      "artist_uri:1": string;
-      reason: string;
-      reason_artist: string;
-      album_uri: string;
-      has_lyrics: string;
-      album_disc_number: string;
-      "collection.can_ban": string;
-      "collection.is_banned": string;
-      "canvas.fileId": string;
-      context_uri: string;
-      image_large_url: string;
-      album_artist_name: string;
       entity_uri: string;
-      track_player: string;
-      album_disc_count: string;
+      iteration: string;
+      title: string;
+      "collection.is_banned": string;
+      "artist_uri:1": string;
       "collection.in_collection": string;
+      image_small_url: string;
+      "collection.can_ban": string;
+      is_explicit: string;
+      album_disc_number: string;
+      album_disc_count: string;
+      track_player: string;
+      album_title: string;
+      "canvas.artist.avatar": string;
+      "canvas.artist.name": string;
+      "canvas.artist.uri": string;
+      "canvas.canvasUri": string;
+      "canvas.entityUri": string;
+      "canvas.explicit": string;
+      "canvas.fileId": string;
+      "canvas.id": string;
+      "canvas.type": string;
+      "canvas.uploadedBy": string;
+      "canvas.url": string;
+      "collection.can_add": string;
+      image_large_url: string;
+      "actions.skipping_prev_past_track": string;
+      page_instance_id: string;
+      image_xlarge_url: string;
+      marked_for_download: string;
+      "actions.skipping_next_past_track": string;
+      context_uri: string;
+      "artist_name:1": string;
+      has_lyrics: string;
+      interaction_id: string;
+      image_url: string;
+      album_uri: string;
+      album_artist_name: string;
+      album_track_number: string;
+      artist_name: string;
+      duration: string;
+      album_track_count: string;
+      popularity: string;
+      associated_video_id: string;
+      video_association: string;
+      video_association_image: string;
+      video_association_image_height: string;
+      video_association_image_height_large: string;
+      video_association_image_height_xxlarge: string;
+      video_association_image_large: string;
+      video_association_image_width: string;
+      video_association_image_width_large: string;
+      video_association_image_width_xxlarge: string;
+      video_association_image_xxlarge: string;
+      [key: string]: string;
     };
     type Album = {
       type: string;
@@ -320,6 +351,12 @@ declare global {
       hifiStatus: number;
     };
     namespace Player {
+      /**
+       *
+       * Contains vast array of internal APIs.
+       * Please explore in Devtool Console.
+       */
+      const origin: any;
       /**
        * Register a listener `type` on Spicetify.Player.
        *
@@ -485,10 +522,6 @@ declare global {
        */
       function setShuffle(state: boolean): void;
       /**
-       * Set track heart state.
-       */
-      function setHeart(state: boolean): void;
-      /**
        * Set volume level
        * @param level 0 to 1
        */
@@ -622,6 +655,7 @@ declare global {
      * @param uri Any type of URI that has artwork (playlist, track, album, artist, show, ...)
      */
     function colorExtractor(uri: string): Promise<{
+      DARK_VIBRANT: string;
       DESATURATED: string;
       LIGHT_VIBRANT: string;
       PROMINENT: string;
@@ -851,11 +885,11 @@ declare global {
         /**
          * Add an item to sub items list
          */
-        addItem(item: Item): any;
+        addItem(item: Item): void;
         /**
          * Remove an item from sub items list
          */
-        removeItem(item: Item): any;
+        removeItem(item: Item): void;
         /**
          * SubMenu is only available in Profile menu when method "register" is called.
          */
@@ -903,7 +937,7 @@ declare global {
      * @param msTimeout Time in milliseconds to display the bubble. Defaults to Spotify's value.
      */
     function showNotification(
-      message: any,
+      message: React.ReactNode,
       isError?: boolean,
       msTimeout?: number,
     ): void;
@@ -1420,9 +1454,10 @@ declare global {
         title: string;
         /**
          * You can specify a string for simple text display
-         * or a HTML element for interactive config/setting menu
+         * or a HTML element for interactive config/setting menu,
+         * or a React JSX element for React-based components
          */
-        content: string | Element;
+        content: string | Element | React.JSX.Element;
         /**
          * Bigger window
          */
@@ -1434,13 +1469,13 @@ declare global {
     }
 
     /** React instance to create components */
-    const React: typeof import("react");
-
+    const React: any;
     /** React DOM instance to render and mount components */
-    const ReactDOM: typeof import("react-dom");
-
+    const ReactDOM: any;
     /** React DOM Server instance to render components to string */
-    const ReactDOMServer: typeof import("react-dom/server");
+    const ReactDOMServer: any;
+    /** React JSX runtime instance to transform JSX elements */
+    const ReactJSX: any;
 
     /** Stock React components exposed from Spotify library */
     namespace ReactComponent {
@@ -1525,7 +1560,7 @@ declare global {
         /**
          * Function that runs when `MenuItem` is clicked
          */
-        onClick?: any;
+        onClick?: React.MouseEventHandler<HTMLButtonElement>;
         /**
          * Indicates if `MenuItem` is disabled. Disabled items will not cause
          * the `Menu` to close when clicked.
@@ -1539,28 +1574,28 @@ declare global {
          * React component icon that will be rendered at the end of the `MenuItem`
          * @deprecated Since Spotify `1.2.8`. Use `leadingIcon` or `trailingIcon` instead
          */
-        icon?: any;
+        icon?: React.ReactNode;
         /**
          * React component icon that will be rendered at the start of the `MenuItem`
          * @since Spotify `1.2.8`
          */
-        leadingIcon?: any;
+        leadingIcon?: React.ReactNode;
         /**
          * React component icon that will be rendered at the end of the `MenuItem`
          * @since Spotify `1.2.8`
          */
-        trailingIcon?: any;
+        trailingIcon?: React.ReactNode;
       };
       type TooltipProps = {
         /**
          * Label to display in the tooltip
          */
-        label: string;
+        label: string | React.ReactNode;
         /**
          * The child element that the tooltip will be attached to
          * and will display when hovered over
          */
-        children: any;
+        children: React.ReactNode;
         /**
          * Decide whether to use the global singleton tooltip (rendered in `<body>`)
          * or a new inline tooltip (rendered in a sibling
@@ -1701,22 +1736,22 @@ declare global {
         /**
          * Function to run when confirm button is clicked
          * The dialog does not close automatically, a handler must be included.
-         * @param {any} event
+         * @param {React.MouseEvent<HTMLButtonElement>} event
          */
-        onConfirm?: (event: any) => void;
+        onConfirm?: (event: React.MouseEvent<HTMLButtonElement>) => void;
         /**
          * Function to run when cancel button is clicked.
          * The dialog does not close automatically, a handler must be included.
-         * @param {any} event
+         * @param {React.MouseEvent<HTMLButtonElement>} event
          */
-        onClose?: (event: any) => void;
+        onClose?: (event: React.MouseEvent<HTMLButtonElement>) => void;
         /**
          * Function to run when dialog is clicked outside of.
          * By default, this will run `onClose`.
          * A handler must be included to close the dialog.
-         * @param {any} event
+         * @param {React.MouseEvent<HTMLButtonElement>} event
          */
-        onOutside?: (event: any) => void;
+        onOutside?: (event: React.MouseEvent<HTMLButtonElement>) => void;
       };
       type SliderProps = {
         /**
@@ -1832,13 +1867,13 @@ declare global {
          * Values from the colorSet will be pasted into the CSS.
          */
         UNSAFE_colorSet?: ColorSetBody;
-        onClick?: (event: MouseEvent) => void;
-        onMouseEnter?: (event: MouseEvent) => void;
-        onMouseLeave?: (event: MouseEvent) => void;
-        onMouseDown?: (event: MouseEvent) => void;
-        onMouseUp?: (event: MouseEvent) => void;
-        onFocus?: (event: FocusEvent) => void;
-        onBlur?: (event: FocusEvent) => void;
+        onClick?: (event: React.MouseEvent<HTMLButtonElement>) => void;
+        onMouseEnter?: (event: React.MouseEvent<HTMLButtonElement>) => void;
+        onMouseLeave?: (event: React.MouseEvent<HTMLButtonElement>) => void;
+        onMouseDown?: (event: React.MouseEvent<HTMLButtonElement>) => void;
+        onMouseUp?: (event: React.MouseEvent<HTMLButtonElement>) => void;
+        onFocus?: (event: React.FocusEvent<HTMLButtonElement>) => void;
+        onBlur?: (event: React.FocusEvent<HTMLButtonElement>) => void;
       };
       /**
        * Generic context menu provider
@@ -1955,11 +1990,13 @@ declare global {
           icon: Icon | string,
           onClick: (self: Button) => void,
           disabled?: boolean,
+          isRight?: boolean,
         );
         label: string;
         icon: string;
         onClick: (self: Button) => void;
         disabled: boolean;
+        isRight: boolean;
         element: HTMLButtonElement;
         tippy: any;
       }
@@ -2022,13 +2059,6 @@ declare global {
     const SVGIcons: Record<Icon, string>;
 
     /**
-     * Return font styling used by Spotify.
-     * @param font Name of the font.
-     * Can match any of the fonts listed in `Spicetify._fontStyle` or returns a generic style otherwise.
-     */
-    function getFontStyle(font: Variant): string;
-
-    /**
      * A filtered copy of user's `config-xpui` file.
      */
     namespace Config {
@@ -2075,9 +2105,7 @@ declare global {
        * @param callback Callback to call when title changes
        * @return Object with method to unsubscribe
        */
-      function sub(callback: (title: string) => void): {
-        clear: () => void;
-      };
+      function sub(callback: (title: string) => void): { clear: () => void };
     }
 
     /**
@@ -2186,18 +2214,6 @@ declare global {
        */
       const Definitions: Record<Query | string, any>;
       /**
-       * GraphQL query definitions. Subset of `Definitions` that are used as query requests.
-       */
-      const QueryDefinitions: Record<Query | string, any>;
-      /**
-       * GraphQL mutation definitions. Subset of `Definitions` that are used as mutation requests.
-       */
-      const MutationDefinitions: Record<Query | string, any>;
-      /**
-       * GraphQL response definitions. Subset of `Definitions` that are used as response types.
-       */
-      const ResponseDefinitions: Record<Query | string, any>;
-      /**
        * Sends a GraphQL query to Spotify.
        * @description A preinitialized version of `Spicetify.GraphQL.Handler` using current context.
        * @param query Query to send
@@ -2248,7 +2264,7 @@ declare global {
         sectionIndex?: number,
         dropOriginUri?: string,
       ): (
-        event: any,
+        event: React.DragEvent,
         uris?: string[],
         label?: string,
         contextUri?: string,
@@ -2460,7 +2476,10 @@ declare global {
        * @param children React children to pass the string into
        * @return Localized string or React Fragment of the children
        */
-      function get(key: string, ...children: any[]): string | any;
+      function get(
+        key: string,
+        ...children: React.ReactNode[]
+      ): string | React.ReactNode;
       /**
        * Get date time format of the passed options.
        *

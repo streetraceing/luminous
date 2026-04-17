@@ -10,6 +10,7 @@ export default defineConfig(({ mode }) => {
   return {
     define: {
       __APP_VERSION__: JSON.stringify(packageJson.version),
+      __APP_AUTHOR__: JSON.stringify(packageJson.author.name),
       __BUILD_TIME__: JSON.stringify(getBuildTime()),
     },
 

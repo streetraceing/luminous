@@ -1,6 +1,10 @@
 {
   "name": "luminous",
-  "version": "2.0.0",
+  "version": "2.0.1",
+  "author": {
+    "name": "streetraceing",
+    "url": "https://github.com/streetraceing/"
+  },
   "scripts": {
     "build": "vite build",
     "watch": "spicetify watch -s",
