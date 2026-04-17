@@ -11,8 +11,13 @@ export class Logger {
     ERROR: "color:#ef4444",
   };
 
+  private static channelStyles: Record<LoggerChannel, string> = {
+    Background: "color:#60a5fa",
+    Canvas: "color:#a78bfa",
+    Song: "color:#34d399",
+  };
+
   private static baseStyle = "color:#888";
-  private static channelStyle = "color:#1DB954";
 
   private static getTime(): string {
     return new Date().toLocaleTimeString("en-GB", { hour12: false });
@@ -35,7 +40,7 @@ export class Logger {
       `%c[${this.getTime()}] %c[${level}] %c[${this.format(channel)}]`,
       this.baseStyle,
       this.levelStyles[level],
-      this.channelStyle,
+      this.channelStyles[channel],
       ...data,
     );
   }
