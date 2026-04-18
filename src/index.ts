@@ -1,4 +1,4 @@
-import { cinemaModeObserver, dynamicBackground } from "./api/dynamic";
+import { cinemaModeObserver, dynamicBackground } from "./render/dynamic";
 import { exposeGlobalAPI } from "./api/global";
 
 import.meta.glob("./styles/**/*.css", { eager: true });

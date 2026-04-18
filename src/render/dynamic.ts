@@ -1,24 +1,41 @@
-import { CanvasPayload } from "./canvas";
-import { SongPayload } from "./song";
+import { CanvasPayload } from "../api/canvas";
+import { SongPayload } from "../api/song";
 
 export function dynamicBackground() {
   let currentSong: SongPayload | null = null;
-  let wantCanvas = false;
+  let currentCanvas: HTMLVideoElement | null = null;
+
+  function render() {
+    if (currentCanvas && !document.hidden) {
+      Luminous.Background.render({ canvas: currentCanvas });
+      return;
+    }
+
+    if (currentSong?.image) {
+      Luminous.Background.render({ image: currentSong.image });
+      return;
+    }
+
+    Luminous.Background.render();
+  }
 
   function handleSong(song: SongPayload) {
     currentSong = song;
-    wantCanvas = song.track.metadata["canvas.id"] !== undefined;
 
-    if (!wantCanvas) {
-      Luminous.Background.render({ image: song.image });
-      return;
-    }
+    render();
   }
 
   function handleCanvas(canvas: CanvasPayload) {
-    if (!wantCanvas || !canvas.video) return;
+    if (!canvas.video) return;
 
-    Luminous.Background.render({ canvas: canvas.video });
+    currentCanvas = canvas.video;
+
+    render();
+  }
+
+  function handleCanvasUnmount() {
+    currentCanvas = null;
+    render();
   }
 
   Luminous.Song.addEventListener("ready", handleSong);
@@ -26,12 +43,7 @@ export function dynamicBackground() {
 
   Luminous.Canvas.addEventListener("mount", handleCanvas);
   Luminous.Canvas.addEventListener("change", handleCanvas);
-
-  Luminous.Canvas.addEventListener("unmount", () => {
-    if (!currentSong) return;
-
-    Luminous.Background.render({ image: currentSong.image });
-  });
+  Luminous.Canvas.addEventListener("unmount", handleCanvasUnmount);
 }
 
 export function cinemaModeObserver() {
