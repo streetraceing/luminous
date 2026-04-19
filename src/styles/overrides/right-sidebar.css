@@ -1,5 +1,33 @@
 /* .Root__right-sidebar */
 
+.Root__right-sidebar > div:first-child {
+  background: var(--luminous-ui-background);
+}
+
+.Root__right-sidebar #Desktop_PanelContainer_Id,
+#Desktop_PanelContainer_Id::before {
+  background: transparent !important;
+}
+
+.Root__right-sidebar
+  .main-nowPlayingView-coverArtContainer
+  > div:not(
+    .main-nowPlayingView-coverArtVisualEnhancement,
+    #VideoPlayerNpv_ReactPortal
+  )::before {
+  border-radius: 8px;
+  background-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    var(--luminous-ui-base) 100%
+  );
+}
+
+.Root__right-sidebar:has(.canvasVideoContainerNPV)
+  .main-nowPlayingView-nowPlayingGrid {
+  gap: 0;
+}
+
 .Root__right-sidebar div:has(div > .canvasVideoContainerNPV)::after {
   display: none;
 }

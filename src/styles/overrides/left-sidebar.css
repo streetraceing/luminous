@@ -1,5 +1,14 @@
 /* #Desktop_LeftSidebar_Id */
 
+#Desktop_LeftSidebar_Id {
+  background: var(--luminous-ui-background);
+}
+
 #Desktop_LeftSidebar_Id .search-searchCategory-carouselButton {
   display: none;
+}
+
+#Desktop_LeftSidebar_Id
+  :is(.main-yourLibraryX-library, .main-yourLibraryX-libraryContainer) {
+  background: transparent;
 }

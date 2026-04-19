@@ -7,6 +7,33 @@
   display: none;
 }
 
+/* Global */
+
+#main-view {
+  background: var(--luminous-ui-background);
+}
+
+#main-view
+  :is(
+    .playlist-playlist-playlistContent,
+    .main-actionBarBackground-background,
+    .playlist-playlist-actionBarBackground-background,
+    .main-view-container__scroll-node-child
+      > main
+      > section
+      > div
+      > div:has(
+        .main-actionBarBackground-background,
+        .playlist-playlist-actionBarBackground-background
+      )
+  ) {
+  background: transparent !important;
+}
+
+#main-view .main-view-container .before-scroll-node {
+  display: none;
+}
+
 /* Playlist page */
 
 #main-view:has(.playlist-playlist-page, .main-trackList-trackListContainer)
@@ -42,4 +69,10 @@
 #main-view:has(.main-home-filterChipsContainer)
   .main-home-filterChipsSectionActive {
   display: none;
+}
+
+#main-view .main-home-homeHeader {
+  background-image:
+    linear-gradient(#00000050 0%, var(--luminous-ui-base) 100%),
+    var(--background-noise);
 }

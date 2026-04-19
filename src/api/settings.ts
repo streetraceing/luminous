@@ -69,6 +69,10 @@ export class Settings {
     document.documentElement.style.setProperty(name, value);
   }
 
+  static removeVar(name: string) {
+    document.documentElement.style.removeProperty(name);
+  }
+
   static toggleClass(className: string, force?: boolean) {
     document.documentElement.classList.toggle(className, force);
   }

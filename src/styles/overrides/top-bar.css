@@ -1,7 +1,7 @@
 /* .Root__globalNav */
 
 .Root__globalNav {
-  background: transparent;
+  background: var(--luminous-background);
 }
 
 :is(

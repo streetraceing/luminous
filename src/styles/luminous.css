@@ -1,6 +1,17 @@
 html:root {
+  --luminous-background: var(--spice-sidebar);
   --luminous-background-blur: 24px;
   --luminous-background-brightness: 0.75;
-  
-  --luminous-ui-blur: 16px;
+
+  --luminous-ui-opacity: 100%;
+  --luminous-ui-base: var(--spice-main);
+  --luminous-ui-background: color-mix(
+    in srgb,
+    var(--luminous-ui-base) var(--luminous-ui-opacity),
+    transparent
+  );
+}
+
+html.hideDynamicBackground #luminous-dynamic-background {
+  display: none;
 }

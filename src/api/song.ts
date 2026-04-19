@@ -42,10 +42,9 @@ export class Song {
         this.setCurrent(track);
         this.ready = true;
         this.readyResolve();
+        Luminous.Logger.info("Song", "Ready, current is", track);
         this.emit("ready");
       }
-
-      Luminous.Logger.info("Song", "Initialized, current is", track);
 
       this.bindEvents();
     } catch (e) {
@@ -88,9 +87,8 @@ export class Song {
       if (this.current?.uri === track.uri) return;
 
       this.setCurrent(track);
-      this.emit("change");
-
       Luminous.Logger.info("Song", "Changed to", track);
+      this.emit("change");
     });
   }
 

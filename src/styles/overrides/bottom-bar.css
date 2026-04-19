@@ -1,8 +1,13 @@
 /* .Root__now-playing-bar */
 
 .Root__now-playing-bar {
-  background: transparent;
+  background: var(--luminous-background);
   z-index: 11 !important;
+}
+
+.Root__now-playing-bar > aside {
+  background: var(--luminous-ui-background);
+  border-radius: 8px;
 }
 
 :is(

@@ -131,7 +131,7 @@ export class Background {
       position: "absolute",
       inset: "0",
       background: "var(--spice-sidebar)",
-      transition: "opacity 0.5s ease",
+      transition: "opacity 0.25s ease-in",
       opacity: "1",
     });
 
@@ -217,6 +217,8 @@ export class Background {
       return;
     }
 
+    this.switchTo("image");
+
     const preload = new Image();
     preload.src = src;
 
@@ -229,8 +231,6 @@ export class Background {
         this.activeImage = nextIndex;
       });
     };
-
-    this.switchTo("image");
   }
 
   private static renderCanvas(sourceVideo: HTMLVideoElement) {

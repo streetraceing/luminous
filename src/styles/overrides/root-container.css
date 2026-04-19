@@ -1,5 +1,5 @@
 /* .Root__top-container */
 
 .Root__top-container {
-  background: transparent;
+  background: var(--luminous-background);
 }
