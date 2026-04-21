@@ -1,4 +1,4 @@
 import fs from "fs";
 
-fs.mkdirSync("Luminous", { recursive: true });
-fs.cpSync("dist", "./", { recursive: true });
+fs.mkdirSync("release", { recursive: true });
+fs.cpSync("dist", "release", { recursive: true });
