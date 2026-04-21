@@ -2,11 +2,11 @@
   "name": "Luminous",
   "description": "Lightweight dynamic Spicetify theme",
   "readme": "README.md",
-  "preview": "Luminous/preview.png",
-  "usercss": "Luminous/user.css",
-  "schemes": "Luminous/color.ini",
+  "preview": "assets/preview.png",
+  "usercss": "user.css",
+  "schemes": "color.ini",
   "include": [
-    "https://raw.githubusercontent.com/streetraceing/luminous/main/Luminous/theme.js"
+    "https://raw.githubusercontent.com/streetraceing/luminous/main/theme.js"
   ],
   "tags": ["dynamic", "canvas", "background"],
   "authors": [
