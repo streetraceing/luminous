@@ -43,6 +43,10 @@ export class DynamicBackground {
   };
 
   private static handleCanvasUnmount = () => {
+    if (this.currentSong?.track.metadata["canvas.id"] !== undefined) {
+      return;
+    }
+
     this.currentCanvas = null;
     this.render();
   };

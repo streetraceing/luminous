@@ -12,3 +12,7 @@
   :is(.main-yourLibraryX-library, .main-yourLibraryX-libraryContainer) {
   background: transparent;
 }
+
+#Desktop_LeftSidebar_Id .main-yourLibraryX-listItem:hover > div > div::after {
+  background: var(--luminous-ui-background);
+}

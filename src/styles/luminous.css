@@ -4,6 +4,7 @@ html:root {
   --luminous-background-brightness: 0.75;
 
   --luminous-ui-opacity: 100%;
+  --luminous-ui-blur: 16px;
   --luminous-ui-base: var(--spice-main);
   --luminous-ui-background: color-mix(
     in srgb,

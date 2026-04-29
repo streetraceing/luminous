@@ -49,14 +49,48 @@
 
 /* Marketplace */
 
+#main-view .marketplace-header {
+  position: relative;
+  background: transparent;
+}
+
 #main-view:has(.marketplace-content) .main-topBar-background {
-  opacity: 1 !important;
+  background: var(--luminous-ui-background);
+  backdrop-filter: blur(var(--luminous-ui-blur));
 }
 
 #main-view:has(.marketplace-content)
   .main-topBar-background
   > .main-topBar-overlay {
   background: transparent;
+}
+
+/* Search */
+
+#main-view:has(#searchPage) main > div > div:first-child {
+  background: var(--luminous-ui-background);
+  backdrop-filter: blur(var(--luminous-ui-blur));
+}
+
+/* Diskography */
+
+#main-view:has(section[data-test-uri^="spotify:artist:"])
+  div:has(.main-entityHeader-image) {
+  background: transparent;
+}
+
+#main-view:has(section[data-test-uri^="spotify:artist:"]) > div {
+  box-shadow: none;
+  background: transparent;
+  position: relative;
+}
+
+/* What's New */
+
+#main-view
+  ul[role="treegrid"]
+  div[aria-labelledby^="listrow-title-spotify:album:"] {
+  background: transparent !important;
 }
 
 /* Main page */
@@ -73,6 +107,7 @@
 
 #main-view .main-home-homeHeader {
   background-image:
-    linear-gradient(#00000050 0%, var(--luminous-ui-base) 100%),
+    linear-gradient(transparent 0%, var(--luminous-ui-background) 100%),
     var(--background-noise);
+  height: 192px;
 }

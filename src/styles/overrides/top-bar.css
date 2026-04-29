@@ -15,3 +15,12 @@
   .Root__globalNav {
   visibility: hidden;
 }
+
+.Root__globalNav
+  :is(
+    .main-globalNav-searchContainer,
+    .main-globalNav-historyButtonsContainer
+      .custom-navlinks-scrollable_container
+  ) {
+  --background-elevated-base: var(--luminous-ui-background);
+}

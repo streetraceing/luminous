@@ -10,6 +10,10 @@
   border-radius: 8px;
 }
 
+html.hideDynamicBackground :is(.Root__now-playing-bar, .Root__now-playing-bar > aside) {
+  background: transparent;
+}
+
 :is(
     html[data-transition],
     html[data-cinema-npv-postenter],

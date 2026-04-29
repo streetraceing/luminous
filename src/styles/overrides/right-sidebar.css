@@ -9,6 +9,19 @@
   background: transparent !important;
 }
 
+.Root__right-sidebar:has(.canvasVideoContainerNPV)
+  .main-nowPlayingView-headerWrapper {
+  background: var(--luminous-ui-background);
+  backdrop-filter: blur(var(--luminous-ui-blur));
+  border-radius: 8px;
+}
+
+.Root__right-sidebar
+  .main-nowPlayingView-aboutArtist
+  :is(button, button > div > div:last-child) {
+  background: transparent;
+}
+
 .Root__right-sidebar
   .main-nowPlayingView-coverArtContainer
   > div:not(
@@ -62,4 +75,10 @@
   visibility: hidden !important;
   opacity: 0 !important;
   pointer-events: none !important;
+}
+
+/* Colors */
+
+.Root__right-sidebar .main-nowPlayingView-section {
+  --section-background-base: var(--luminous-ui-background);
 }
