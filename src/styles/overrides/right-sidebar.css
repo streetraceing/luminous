@@ -11,8 +11,8 @@
 
 .Root__right-sidebar:has(.canvasVideoContainerNPV)
   .main-nowPlayingView-headerWrapper {
-  background: var(--luminous-ui-background);
-  backdrop-filter: blur(var(--luminous-ui-blur));
+  --background-base: var(--luminous-ui-base);
+  box-shadow: none;
   border-radius: 8px;
 }
 

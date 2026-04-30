@@ -83,7 +83,7 @@
   background: transparent;
 }
 
-#main-view:has(section[data-test-uri^="spotify:artist:"]) > div {
+#main-view section[data-test-uri^="spotify:artist:"] > div {
   box-shadow: none;
   background: transparent;
   position: relative;

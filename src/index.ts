@@ -21,9 +21,9 @@ Synchronize.playlistBackground();
 
 Luminous.Settings.register("dynamicBackground", {
   default: true,
-  apply: (value) => {
-    Luminous.Settings.toggleClass("hideDynamicBackground", !value);
-    if (value) {
+  apply: (statement) => {
+    Luminous.Settings.toggleClass("hideDynamicBackground", !statement);
+    if (statement) {
       Luminous.Settings.setVar("--luminous-background", "transparent");
 
       Luminous.Settings.setVar("--luminous-ui-base", "var(--spice-sidebar)");
