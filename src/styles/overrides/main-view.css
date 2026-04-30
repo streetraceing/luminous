@@ -47,6 +47,10 @@
   background: transparent;
 }
 
+#main-view .main-trackList-trackListHeader {
+  box-sizing: none;
+}
+
 /* Marketplace */
 
 #main-view .marketplace-header {
