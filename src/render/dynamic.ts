@@ -1,3 +1,8 @@
+import {
+  PlaylistBackgroundSyncOptions,
+  SyncController,
+  HomeHeaderHeightSyncOptions,
+} from "../../types/runtime/dynamic.types";
 import { CanvasPayload } from "../api/canvas";
 import { SongPayload } from "../api/song";
 
@@ -82,19 +87,29 @@ export class CinemaObserver {
   }
 }
 
-type PlaylistBackgroundSyncOptions = {
-  onBackgroundChange?: (
-    bg: string,
-    source: HTMLElement,
-    target: HTMLElement,
-  ) => void;
-};
-
-type SyncController = {
-  disconnect(): void;
-};
-
 export class Synchronize {
+  private static createCooldown(delay: number) {
+    let last = 0;
+
+    return {
+      check() {
+        const now = Date.now();
+
+        if (now - last < delay) {
+          return false;
+        }
+
+        last = now;
+
+        return true;
+      },
+
+      reset() {
+        last = 0;
+      },
+    };
+  }
+
   static playlistBackground(
     options?: PlaylistBackgroundSyncOptions,
   ): SyncController {
@@ -182,6 +197,106 @@ export class Synchronize {
         root = null;
         lastBg = null;
         lastTarget = null;
+      },
+    };
+  }
+  static homeHeaderHeight(
+    options?: HomeHeaderHeightSyncOptions,
+  ): SyncController {
+    let root: HTMLElement | null = null;
+    let observer: MutationObserver | null = null;
+    let rafId: number | null = null;
+
+    let lastHeight: number | null = null;
+
+    const cooldown = this.createCooldown(60_000);
+
+    function outerHeight(el: HTMLElement): number {
+      const style = getComputedStyle(el);
+
+      return (
+        el.offsetHeight +
+        parseFloat(style.marginTop) +
+        parseFloat(style.marginBottom)
+      );
+    }
+
+    function scheduleSync() {
+      if (!cooldown.check()) return;
+
+      if (rafId !== null) return;
+
+      rafId = requestAnimationFrame(() => {
+        rafId = null;
+        sync();
+      });
+    }
+
+    function sync() {
+      if (!root) return;
+
+      const header = root.querySelector(
+        ".main-home-homeHeader",
+      ) as HTMLElement | null;
+
+      const chips = root.querySelector(
+        ".main-home-filterChipsContainer",
+      ) as HTMLElement | null;
+
+      const firstSection = root.querySelector(
+        'section[data-testid="home-page"] .main-home-content section:first-child',
+      ) as HTMLElement | null;
+
+      if (!header || !chips || !firstSection) return;
+
+      const height = outerHeight(chips) + outerHeight(firstSection);
+      console.log(header, height);
+
+      if (height === lastHeight) return;
+
+      lastHeight = height;
+
+      header.style.height = `${height}px`;
+
+      options?.onHeightChange?.(height, chips, firstSection, header);
+    }
+
+    function attach() {
+      root = document.querySelector("#main-view") as HTMLElement | null;
+
+      if (!root) {
+        requestAnimationFrame(attach);
+        return;
+      }
+
+      observer = new MutationObserver(scheduleSync);
+
+      observer.observe(root, {
+        subtree: true,
+        childList: true,
+        attributes: true,
+        attributeFilter: ["style", "class"],
+      });
+
+      sync();
+    }
+
+    attach();
+
+    return {
+      disconnect() {
+        observer?.disconnect();
+        observer = null;
+
+        if (rafId !== null) {
+          cancelAnimationFrame(rafId);
+          rafId = null;
+        }
+
+        cooldown.reset();
+
+        root = null;
+        lastHeight = null;
       },
     };
   }

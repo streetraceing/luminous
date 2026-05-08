@@ -17,7 +17,9 @@ Luminous.Background.render();
 
 DynamicBackground.init();
 CinemaObserver.init();
+
 Synchronize.playlistBackground();
+Synchronize.homeHeaderHeight();
 
 Luminous.Settings.register("dynamicBackground", {
   default: true,

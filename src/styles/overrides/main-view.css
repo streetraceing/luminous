@@ -113,5 +113,14 @@
   background-image:
     linear-gradient(transparent 0%, var(--luminous-ui-background) 100%),
     var(--background-noise);
-  height: 192px;
+}
+
+#main-view div[data-testid="home-ads-container"] {
+  display: none;
+}
+
+/* Lyrics */
+
+#main-view .lyrics-lyrics-background {
+  background: transparent;
 }

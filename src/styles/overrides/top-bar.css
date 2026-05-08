@@ -24,3 +24,7 @@
   ) {
   --background-elevated-base: var(--luminous-ui-background);
 }
+
+.Root__globalNav .custom-navlinks-scrollable_container button {
+  transform: none;
+}
