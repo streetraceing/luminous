@@ -209,8 +209,6 @@ export class Synchronize {
 
     let lastHeight: number | null = null;
 
-    const cooldown = this.createCooldown(60_000);
-
     function outerHeight(el: HTMLElement): number {
       const style = getComputedStyle(el);
 
@@ -222,8 +220,6 @@ export class Synchronize {
     }
 
     function scheduleSync() {
-      if (!cooldown.check()) return;
-
       if (rafId !== null) return;
 
       rafId = requestAnimationFrame(() => {
@@ -250,7 +246,6 @@ export class Synchronize {
       if (!header || !chips || !firstSection) return;
 
       const height = outerHeight(chips) + outerHeight(firstSection);
-      console.log(header, height);
 
       if (height === lastHeight) return;
 
@@ -292,8 +287,6 @@ export class Synchronize {
           cancelAnimationFrame(rafId);
           rafId = null;
         }
-
-        cooldown.reset();
 
         root = null;
         lastHeight = null;
