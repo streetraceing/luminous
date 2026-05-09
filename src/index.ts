@@ -1,4 +1,5 @@
-import { DynamicBackground, Synchronize } from "./render/dynamic";
+import { DynamicBackground } from "./ui/dynamic";
+import { Synchronize } from "./ui/synchronize";
 import { exposeGlobalAPI } from "./api/global";
 
 import.meta.glob("./styles/**/*.css", { eager: true });

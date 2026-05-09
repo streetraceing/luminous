@@ -71,7 +71,7 @@
 
 /* Search */
 
-#main-view:has(#searchPage) main > div > div:first-child {
+#main-view:has(#searchPage):not(:has(.main-shelf-shelf)) main > div > div:first-child {
   background: var(--luminous-ui-background);
   backdrop-filter: blur(var(--luminous-ui-blur));
 }
