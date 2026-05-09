@@ -1,5 +1,5 @@
 type LoggerLevel = "INFO" | "WARN" | "ERROR";
-type LoggerChannel = "Background" | "Canvas" | "Song";
+type LoggerChannel = "Main" | "Background" | "Canvas" | "Song";
 
 export class Logger {
   private static disabledLevels = new Set<LoggerLevel>();
@@ -12,9 +12,10 @@ export class Logger {
   };
 
   private static channelStyles: Record<LoggerChannel, string> = {
+    Main: "color:#d6d6d6",
     Background: "color:#60a5fa",
     Canvas: "color:#a78bfa",
-    Song: "color:#34d399",
+    Song: "color:#34d399"
   };
 
   private static baseStyle = "color:#888";

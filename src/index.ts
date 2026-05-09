@@ -1,12 +1,10 @@
-import {
-  DynamicBackground,
-  CinemaObserver,
-  Synchronize,
-} from "./render/dynamic";
+import { DynamicBackground, Synchronize } from "./render/dynamic";
 import { exposeGlobalAPI } from "./api/global";
 
 import.meta.glob("./styles/**/*.css", { eager: true });
 exposeGlobalAPI();
+
+Synchronize.brokenUiWatcher();
 
 Luminous.Logger.printBanner();
 
@@ -16,8 +14,8 @@ Luminous.Canvas.init();
 Luminous.Background.render();
 
 DynamicBackground.init();
-CinemaObserver.init();
 
+Synchronize.observeCinema();
 Synchronize.playlistBackground();
 Synchronize.homeHeaderHeight();
 

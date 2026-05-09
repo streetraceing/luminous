@@ -113,6 +113,14 @@
   background-image:
     linear-gradient(transparent 0%, var(--luminous-ui-background) 100%),
     var(--background-noise);
+  height: 0px;
+}
+
+#main-view:not(
+    :has(section[data-testid="home-page"] .view-homeShortcutsGrid-shortcuts)
+  )
+  .main-home-homeHeader {
+  display: none;
 }
 
 #main-view div[data-testid="home-ads-container"] {
@@ -122,5 +130,11 @@
 /* Lyrics */
 
 #main-view .lyrics-lyrics-background {
+  background: transparent;
+}
+
+/* Genre */
+
+#main-view:has(.main-shelf-shelf) main div:last-child {
   background: transparent;
 }
