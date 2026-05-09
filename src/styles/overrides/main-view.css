@@ -34,6 +34,16 @@
   display: none;
 }
 
+/* Hide when left-sidebar expanded */
+
+.Root__top-container:has(#Desktop_LeftSidebar_Id:not([class="Root__nav-bar"]))
+  #main-view {
+  visibility: hidden;
+  opacity: 0;
+  transition: none;
+  pointer-events: none;
+}
+
 /* Playlist page */
 
 #main-view:has(.playlist-playlist-page, .main-trackList-trackListContainer)
@@ -71,9 +81,31 @@
 
 /* Search */
 
-#main-view:has(#searchPage):not(:has(.main-shelf-shelf)) main > div > div:first-child {
+#main-view:has(#searchPage):not(:has(.main-shelf-shelf))
+  main
+  > div
+  > div:first-child {
   background: var(--luminous-ui-background);
   backdrop-filter: blur(var(--luminous-ui-blur));
+}
+
+/* Episode */
+
+#main-view
+  main
+  > section[data-testid="episode"]
+  div:not(.main-entityHeader-container) {
+  background: transparent;
+}
+
+#main-view:has(section[data-testid="episode"]) ul[data-encore-id="navBarList"] {
+  border-bottom: none;
+  background: transparent;
+  position: static;
+}
+
+#main-view:has(section[data-testid="episode"]) .main-topBar-container {
+  display: none;
 }
 
 /* Diskography */

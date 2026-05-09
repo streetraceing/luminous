@@ -31,9 +31,13 @@ export class Synchronize {
         ".before-scroll-node > div > :first-child",
       ) as HTMLElement | null;
 
-      const target = root.querySelector(
-        "section > .main-entityHeader-container, section > div > .main-entityHeader-container",
-      ) as HTMLElement | null;
+      const target =
+        (root.querySelector(
+          "section > .main-entityHeader-container, section > div > .main-entityHeader-container",
+        ) as HTMLElement | null) ||
+        (root.querySelector(
+          "main > div > .main-entityHeader-container",
+        ) as HTMLElement | null);
 
       if (!source || !target) return;
 
@@ -48,8 +52,11 @@ export class Synchronize {
       lastBg = bg;
       lastTarget = target;
 
-      target.style.backgroundImage = bg;
-      target.style.backgroundSize = "cover";
+      target.style.backgroundImage = `
+        linear-gradient(rgba(0,0,0,.25), rgba(0,0,0,.75)),
+        ${bg}
+      `;
+      target.style.backgroundSize = "100% 101%, cover";
       target.style.backgroundPosition = "center";
       target.style.backgroundRepeat = "no-repeat";
 
