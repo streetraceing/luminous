@@ -81,7 +81,7 @@ export class Background {
       filter: `blur(var(--luminous-background-blur)) brightness(var(--luminous-background-brightness))`,
       transform: "scale(1.2) translateZ(0)",
       pointerEvents: "none",
-      transition: "opacity 0.5s ease-in-out",
+      transition: "opacity 0.25s linear",
       opacity: "0",
       willChange: "opacity, transform",
     };
@@ -131,7 +131,7 @@ export class Background {
       position: "absolute",
       inset: "0",
       background: "var(--spice-sidebar)",
-      transition: "opacity 0.25s ease-in",
+      transition: "opacity 0.25s linear",
       opacity: "1",
     });
 

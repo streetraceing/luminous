@@ -63,3 +63,7 @@
   pointer-events: none;
   cursor: not-allowed;
 }
+
+.Root__cinema-view div:has(video) {
+  --cinema-canvas-height: 70vh;
+}
