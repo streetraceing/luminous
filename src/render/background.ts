@@ -269,6 +269,12 @@ export class Background {
   }
 
   private static clear() {
+    if (this.videoLayers) {
+      this.videoLayers.forEach((el) => {
+        this.resetVideo(el);
+      });
+    }
+
     this.switchTo("none");
   }
 
@@ -297,5 +303,12 @@ export class Background {
     }
 
     this.emit("change");
+  }
+
+  private static resetVideo(video: HTMLVideoElement) {
+    video.pause();
+    video.srcObject = null;
+    video.removeAttribute("src");
+    video.load();
   }
 }
