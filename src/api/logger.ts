@@ -12,7 +12,7 @@ export class Logger {
   };
 
   private static channelStyles: Record<LoggerChannel, string> = {
-    Main: "color:#d6d6d6",
+    Main: "color:#68c4e8",
     Background: "color:#60a5fa",
     Canvas: "color:#a78bfa",
     Song: "color:#34d399"

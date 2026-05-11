@@ -12,7 +12,6 @@ Luminous.Logger.printBanner();
 Luminous.Settings.init();
 Luminous.Song.init();
 Luminous.Canvas.init();
-Luminous.Background.render();
 
 DynamicBackground.init();
 
