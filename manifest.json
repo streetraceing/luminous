@@ -8,7 +8,7 @@
   "include": [
     "https://raw.githubusercontent.com/streetraceing/luminous/main/release/theme.js"
   ],
-  "tags": ["dynamic", "canvas", "background"],
+  "tags": ["dynamic", "canvas", "background", "spicetify", "spotify"],
   "authors": [
     {
       "name": "streetraceing",
