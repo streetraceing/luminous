@@ -1,5 +1,5 @@
-import { CanvasPayload } from "../api/canvas";
-import { SongPayload } from "../api/song";
+import { CanvasPayload } from "../../types/runtime/canvas.types";
+import { SongPayload } from "../../types/runtime/song.types";
 
 export class DynamicBackground {
   private static currentSong: SongPayload | null = null;

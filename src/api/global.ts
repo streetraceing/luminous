@@ -19,15 +19,3 @@ export function exposeGlobalAPI() {
     configurable: true,
   });
 }
-
-declare global {
-  const Luminous: {
-    Background: typeof Background;
-    Canvas: typeof Canvas;
-    Song: typeof Song;
-    Native: typeof Native;
-    Settings: typeof Settings;
-    Logger: typeof Logger;
-    version: string;
-  };
-}

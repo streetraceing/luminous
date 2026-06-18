@@ -1,9 +1,7 @@
-type SettingValue = string | number | boolean;
-
-type SettingDefinition = {
-  default: SettingValue;
-  apply?: (value: SettingValue) => void;
-};
+import {
+  SettingDefinition,
+  SettingValue,
+} from "../../types/runtime/settings.types";
 
 export class Settings {
   private static STORAGE_KEY = "luminous-settings";

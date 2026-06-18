@@ -1,5 +1,4 @@
-type LoggerLevel = "INFO" | "WARN" | "ERROR";
-type LoggerChannel = "Main" | "Background" | "Canvas" | "Song";
+import { LoggerLevel, LoggerChannel } from "../../types/runtime/logger.types";
 
 export class Logger {
   private static disabledLevels = new Set<LoggerLevel>();
@@ -15,7 +14,7 @@ export class Logger {
     Main: "color:#68c4e8",
     Background: "color:#60a5fa",
     Canvas: "color:#a78bfa",
-    Song: "color:#34d399"
+    Song: "color:#34d399",
   };
 
   private static baseStyle = "color:#888";

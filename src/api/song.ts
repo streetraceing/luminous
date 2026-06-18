@@ -1,15 +1,8 @@
-export type SongEvent = "ready" | "change";
-
-export type SongPayload = {
-  track: Spicetify.PlayerTrack;
-  title: string;
-  name: string;
-  artists: string[];
-  image: string | null;
-  uri: string;
-};
-
-export type SongListener = (song: SongPayload) => void;
+import {
+  SongEvent,
+  SongListener,
+  SongPayload,
+} from "../../types/runtime/song.types";
 
 export class Song {
   private static current: Spicetify.PlayerTrack | null = null;

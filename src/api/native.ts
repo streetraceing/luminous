@@ -1,16 +1,4 @@
-type VersionInfo = {
-  containerVersion: string;
-  containerBuildType: string;
-  containerPlatform: string;
-  uiVersion: string;
-  cefVersion: string;
-  cefRuntime?: string;
-};
-
-type ToastPayload = {
-  title: string;
-  body: string;
-};
+import { ToastPayload, VersionInfo } from "../../types/runtime/native.types";
 
 export class Native {
   static isDesktop(): boolean {

@@ -1,13 +1,9 @@
-export type CanvasEvent = "mount" | "unmount" | "change";
-
-export type CanvasPayload = {
-  video: HTMLVideoElement | null;
-  mode: CanvasMode;
-};
-
-export type CanvasListener = (payload: CanvasPayload) => void;
-
-export type CanvasMode = "npv" | "cinema" | null;
+import {
+  CanvasEvent,
+  CanvasListener,
+  CanvasMode,
+  CanvasPayload,
+} from "../../types/runtime/canvas.types";
 
 export class Canvas {
   private static listeners = new Map<CanvasEvent, Set<CanvasListener>>();
