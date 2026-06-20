@@ -1,11 +1,19 @@
 # Luminous
 
-Lightweight dynamic Spicetify theme, idk for what i do this<br>
-Youtube video: https://youtu.be/S-2u6xTFZCs
+Lightweight dynamic Spicetify theme
 
+This theme is a simple default change of the interface to a more pleasant one with glass and transparency effects, as well as replacing the dark background with a song image or its animated canvas video.
+
+### YouTube video preview: 
+https://youtu.be/S-2u6xTFZCs
+### Image preview:
 ![Luminous image preview](./assets/preview.png)
+### Gif preview:
+![Luminous gif preview](./assets/preview.gif)
 
 ## Build
+
+You can install this theme from spicetify marketplace or install it locally.
 
 ### Requirements
 
@@ -13,22 +21,21 @@ Youtube video: https://youtu.be/S-2u6xTFZCs
 - NPM 11.12.1
 - Spicetify 2.43.1
 
-### Local Install & Apply
-
-```bash
-npm install
-npm run apply
-```
-
-### Local Build
+### Build
 
 ```bash
 npm install
 npm run build
 ```
 
-## Revert to default theme
+### Apply local theme
 
 ```bash
-npm run discard
+npm run enable
+```
+
+### Revert to default theme
+
+```bash
+npm run disable
 ```

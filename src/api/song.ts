@@ -2,7 +2,7 @@ import {
   SongEvent,
   SongListener,
   SongPayload,
-} from "../../types/runtime/song.types";
+} from "../types/runtime/song.types";
 
 export class Song {
   private static current: Spicetify.PlayerTrack | null = null;

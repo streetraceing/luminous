@@ -1,4 +1,4 @@
-import { LoggerLevel, LoggerChannel } from "../../types/runtime/logger.types";
+import { LoggerLevel, LoggerChannel } from "../types/runtime/logger.types";
 
 export class Logger {
   private static disabledLevels = new Set<LoggerLevel>();

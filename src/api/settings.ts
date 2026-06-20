@@ -1,7 +1,7 @@
 import {
   SettingDefinition,
   SettingValue,
-} from "../../types/runtime/settings.types";
+} from "../types/runtime/settings.types";
 
 export class Settings {
   private static STORAGE_KEY = "luminous-settings";

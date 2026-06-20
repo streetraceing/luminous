@@ -1,4 +1,4 @@
-import { ToastPayload, VersionInfo } from "../../types/runtime/native.types";
+import { ToastPayload, VersionInfo } from "../types/runtime/native.types";
 
 export class Native {
   static isDesktop(): boolean {

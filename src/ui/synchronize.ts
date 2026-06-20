@@ -2,7 +2,7 @@ import {
   PlaylistBackgroundSyncOptions,
   SyncController,
   HomeHeaderHeightSyncOptions,
-} from "../../types/runtime/dynamic.types";
+} from "../types/runtime/dynamic.types";
 import { Logger } from "../api/logger";
 
 export class Synchronize {

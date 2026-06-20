@@ -3,7 +3,7 @@ import {
   CanvasListener,
   CanvasMode,
   CanvasPayload,
-} from "../../types/runtime/canvas.types";
+} from "../types/runtime/canvas.types";
 
 export class Canvas {
   private static listeners = new Map<CanvasEvent, Set<CanvasListener>>();
