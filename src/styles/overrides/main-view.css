@@ -79,6 +79,10 @@
   background: transparent;
 }
 
+#marketplace-readme {
+  background: transparent;
+}
+
 /* Search */
 
 #main-view:has(#searchPage):not(:has(.main-shelf-shelf))
