@@ -9,7 +9,7 @@ https://youtu.be/S-2u6xTFZCs
 ### Image preview:
 ![Luminous image preview](./assets/preview.png)
 ### Gif preview:
-![Luminous gif preview](./assets/preview.gif)
+![Luminous gif preview](./assets/preview-compressed.gif)
 
 ## Build
 
