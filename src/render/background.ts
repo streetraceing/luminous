@@ -9,7 +9,11 @@ export type BackgroundPayload = {
 
 export type BackgroundListener = (payload: BackgroundPayload) => void;
 
+type BackgroundElement = HTMLVideoElement | HTMLImageElement;
+
 export class Background {
+  private static readonly TRANSITION_MS = 250;
+
   private static root: HTMLDivElement | null = null;
   private static base: HTMLDivElement | null = null;
 
@@ -17,6 +21,7 @@ export class Background {
     null;
   private static activeImage = 0;
   private static imageRenderId = 0;
+  private static preloadedImages = new Map<string, HTMLImageElement>();
 
   private static videoLayers: [HTMLVideoElement, HTMLVideoElement] | null =
     null;
@@ -83,7 +88,7 @@ export class Background {
       filter: `blur(var(--luminous-background-blur)) brightness(var(--luminous-background-brightness))`,
       transform: "scale(1.2) translateZ(0)",
       pointerEvents: "none",
-      transition: "opacity 0.25s linear",
+      transition: `opacity ${this.TRANSITION_MS}ms linear`,
       opacity: "0",
       willChange: "opacity, transform",
     };
@@ -133,7 +138,7 @@ export class Background {
       position: "absolute",
       inset: "0",
       background: "var(--spice-sidebar)",
-      transition: "opacity 0.25s linear",
+      transition: `opacity ${this.TRANSITION_MS}ms linear`,
       opacity: "1",
     });
 
@@ -194,6 +199,14 @@ export class Background {
     logDefaultLayer();
   }
 
+  static preloadImage(src: string | null | undefined) {
+    if (!src || this.preloadedImages.has(src)) return;
+
+    const image = new Image();
+    image.src = src;
+    this.preloadedImages.set(src, image);
+  }
+
   private static renderImage(src: string | null) {
     this.ensureBackground();
     if (!this.imageLayers) {
@@ -203,7 +216,7 @@ export class Background {
 
     if (!src) {
       Luminous.Logger.warn("Background", "No image src for render");
-      this.switchTo("none");
+      this.transitionTo("none");
 
       return;
     }
@@ -214,17 +227,13 @@ export class Background {
     const next = this.imageLayers[nextIndex];
 
     if (current.src === src) {
-      current.style.opacity = "1";
-      next.style.opacity = "0";
-      this.switchTo("image");
+      this.transitionTo("image", current);
       return;
     }
 
-    this.switchTo("image");
+    const preload = this.getPreloadedImage(src);
 
-    const preload = new Image();
-
-    preload.onload = () => {
+    const showImage = () => {
       if (renderId !== this.imageRenderId) return;
 
       next.src = src;
@@ -232,11 +241,17 @@ export class Background {
       requestAnimationFrame(() => {
         if (renderId !== this.imageRenderId) return;
 
-        next.style.opacity = "1";
-        current.style.opacity = "0";
         this.activeImage = nextIndex;
+        this.transitionTo("image", next);
       });
     };
+
+    if (preload.complete && preload.naturalWidth > 0) {
+      showImage();
+      return;
+    }
+
+    preload.onload = showImage;
 
     preload.onerror = () => {
       if (renderId !== this.imageRenderId) return;
@@ -244,11 +259,25 @@ export class Background {
       Luminous.Logger.warn("Background", "Failed to load image", src);
 
       if (!current.src) {
-        this.switchTo("none");
+        this.transitionTo("none");
       }
     };
 
-    preload.src = src;
+    if (!preload.src) {
+      preload.src = src;
+    }
+  }
+
+  private static getPreloadedImage(src: string): HTMLImageElement {
+    let image = this.preloadedImages.get(src);
+
+    if (!image) {
+      image = new Image();
+      image.src = src;
+      this.preloadedImages.set(src, image);
+    }
+
+    return image;
   }
 
   private static renderCanvas(sourceVideo: HTMLVideoElement) {
@@ -265,7 +294,6 @@ export class Background {
     }
 
     const nextIndex = this.activeVideo === 0 ? 1 : 0;
-    const current = this.videoLayers[this.activeVideo];
     const next = this.videoLayers[nextIndex];
     const renderId = ++this.videoRenderId;
 
@@ -280,15 +308,12 @@ export class Background {
       requestAnimationFrame(() => {
         if (renderId !== this.videoRenderId) return;
 
-        next.style.opacity = "1";
-        current.style.opacity = "0";
         this.activeVideo = nextIndex;
+        this.transitionTo("canvas", next);
       });
     };
 
     next.play().catch(() => {});
-
-    this.switchTo("canvas");
   }
 
   private static clear() {
@@ -301,32 +326,26 @@ export class Background {
       });
     }
 
-    this.switchTo("none");
+    this.transitionTo("none");
   }
 
-  private static switchTo(type: BackgroundType) {
+  private static transitionTo(
+    type: BackgroundType,
+    activeElement: BackgroundElement | null = null,
+  ) {
     if (!this.imageLayers || !this.videoLayers) return;
 
     this.currentType = type;
 
-    if (type === "none") {
-      this.base && (this.base.style.opacity = "1");
+    this.base && (this.base.style.opacity = type === "none" ? "1" : "0");
 
-      this.imageLayers.forEach((el) => (el.style.opacity = "0"));
-      this.videoLayers.forEach((el) => (el.style.opacity = "0"));
-    }
+    this.imageLayers.forEach((el) => {
+      el.style.opacity = type === "image" && el === activeElement ? "1" : "0";
+    });
 
-    if (type === "image") {
-      this.base && (this.base.style.opacity = "0");
-
-      this.videoLayers.forEach((el) => (el.style.opacity = "0"));
-    }
-
-    if (type === "canvas") {
-      this.base && (this.base.style.opacity = "0");
-
-      this.imageLayers.forEach((el) => (el.style.opacity = "0"));
-    }
+    this.videoLayers.forEach((el) => {
+      el.style.opacity = type === "canvas" && el === activeElement ? "1" : "0";
+    });
 
     this.emit("change");
   }

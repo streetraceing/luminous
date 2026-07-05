@@ -6,7 +6,6 @@ export class DynamicBackground {
   private static currentCanvas: HTMLVideoElement | null = null;
 
   private static lastRenderKey: string | null = null;
-  private static canvasUnmountTimeout: number | null = null;
 
   static init() {
     Luminous.Song.addEventListener("ready", this.handleSong);
@@ -58,33 +57,17 @@ export class DynamicBackground {
 
   private static handleSong = (song: SongPayload) => {
     this.currentSong = song;
+    Luminous.Background.preloadImage(song.image);
     this.render();
   };
 
   private static handleCanvas = (canvas: CanvasPayload) => {
-    if (this.canvasUnmountTimeout) {
-      clearTimeout(this.canvasUnmountTimeout);
-      this.canvasUnmountTimeout = null;
-    }
-
     this.currentCanvas = canvas.video;
     this.render();
   };
 
   private static handleCanvasUnmount = () => {
     this.currentCanvas = null;
-
-    if (this.canvasUnmountTimeout) {
-      clearTimeout(this.canvasUnmountTimeout);
-    }
-
-    this.canvasUnmountTimeout = window.setTimeout(() => {
-      // new canvas may already appear
-      if (this.currentCanvas) {
-        return;
-      }
-
-      this.render();
-    }, 300);
+    this.render();
   };
 }
