@@ -16,10 +16,12 @@ export class Background {
   private static imageLayers: [HTMLImageElement, HTMLImageElement] | null =
     null;
   private static activeImage = 0;
+  private static imageRenderId = 0;
 
   private static videoLayers: [HTMLVideoElement, HTMLVideoElement] | null =
     null;
   private static activeVideo = 0;
+  private static videoRenderId = 0;
 
   private static currentType: BackgroundType = "none";
 
@@ -206,6 +208,7 @@ export class Background {
       return;
     }
 
+    const renderId = ++this.imageRenderId;
     const nextIndex = this.activeImage === 0 ? 1 : 0;
     const current = this.imageLayers[this.activeImage];
     const next = this.imageLayers[nextIndex];
@@ -220,17 +223,32 @@ export class Background {
     this.switchTo("image");
 
     const preload = new Image();
-    preload.src = src;
 
     preload.onload = () => {
+      if (renderId !== this.imageRenderId) return;
+
       next.src = src;
 
       requestAnimationFrame(() => {
+        if (renderId !== this.imageRenderId) return;
+
         next.style.opacity = "1";
         current.style.opacity = "0";
         this.activeImage = nextIndex;
       });
     };
+
+    preload.onerror = () => {
+      if (renderId !== this.imageRenderId) return;
+
+      Luminous.Logger.warn("Background", "Failed to load image", src);
+
+      if (!current.src) {
+        this.switchTo("none");
+      }
+    };
+
+    preload.src = src;
   }
 
   private static renderCanvas(sourceVideo: HTMLVideoElement) {
@@ -249,14 +267,19 @@ export class Background {
     const nextIndex = this.activeVideo === 0 ? 1 : 0;
     const current = this.videoLayers[this.activeVideo];
     const next = this.videoLayers[nextIndex];
+    const renderId = ++this.videoRenderId;
 
     next.style.opacity = "0";
     next.srcObject = stream;
 
     next.onplaying = () => {
+      if (renderId !== this.videoRenderId) return;
+
       next.onplaying = null;
 
       requestAnimationFrame(() => {
+        if (renderId !== this.videoRenderId) return;
+
         next.style.opacity = "1";
         current.style.opacity = "0";
         this.activeVideo = nextIndex;
@@ -269,6 +292,9 @@ export class Background {
   }
 
   private static clear() {
+    this.imageRenderId++;
+    this.videoRenderId++;
+
     if (this.videoLayers) {
       this.videoLayers.forEach((el) => {
         this.resetVideo(el);

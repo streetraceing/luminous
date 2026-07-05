@@ -6,6 +6,11 @@ import {
 } from "../types/runtime/canvas.types";
 
 export class Canvas {
+  private static readonly ROOT_SELECTOR = ".Root__top-container";
+  private static readonly NPV_VIDEO_SELECTOR = ".canvasVideoContainerNPV video";
+  private static readonly CINEMA_VIDEO_SELECTOR =
+    ".Root__top-container:has(#VideoPlayerCinema_ReactPortal) video";
+
   private static listeners = new Map<CanvasEvent, Set<CanvasListener>>();
   private static observer: MutationObserver | null = null;
 
@@ -22,11 +27,15 @@ export class Canvas {
   }
 
   static addEventListener(event: CanvasEvent, listener: CanvasListener) {
-    if (!this.listeners.has(event)) {
-      this.listeners.set(event, new Set());
-    }
+    this.getListeners(event).add(listener);
 
-    this.listeners.get(event)!.add(listener);
+    if (
+      (event === "mount" || event === "change") &&
+      this.currentVideo &&
+      this.currentMode
+    ) {
+      listener(this.createPayload(this.currentVideo, this.currentMode));
+    }
 
     if (!this.initialized) {
       this.init();
@@ -46,6 +55,8 @@ export class Canvas {
   }
 
   static init() {
+    if (this.initialized) return;
+
     this.initialized = true;
 
     this.waitForRoot().then((root) => {
@@ -63,7 +74,7 @@ export class Canvas {
   private static waitForRoot(): Promise<HTMLElement> {
     return new Promise((resolve) => {
       const existing = document.querySelector(
-        ".Root__top-container",
+        this.ROOT_SELECTOR,
       ) as HTMLElement | null;
 
       if (existing) {
@@ -73,7 +84,7 @@ export class Canvas {
 
       const obs = new MutationObserver(() => {
         const el = document.querySelector(
-          ".Root__top-container",
+          this.ROOT_SELECTOR,
         ) as HTMLElement | null;
 
         if (el) {
@@ -91,7 +102,7 @@ export class Canvas {
 
   private static detect(): CanvasPayload {
     const npv = document.querySelector(
-      ".canvasVideoContainerNPV video",
+      this.NPV_VIDEO_SELECTOR,
     ) as HTMLVideoElement | null;
 
     if (npv) {
@@ -99,7 +110,7 @@ export class Canvas {
     }
 
     const cinema = document.querySelector(
-      ".Root__top-container:has(#VideoPlayerCinema_ReactPortal) video",
+      this.CINEMA_VIDEO_SELECTOR,
     ) as HTMLVideoElement | null;
 
     if (cinema) {
@@ -152,8 +163,19 @@ export class Canvas {
   }
 
   private static emit(event: CanvasEvent, payload: CanvasPayload) {
-    this.listeners.get(event)?.forEach((listener) => {
+    this.getListeners(event).forEach((listener) => {
       listener(payload);
     });
+  }
+
+  private static getListeners(event: CanvasEvent): Set<CanvasListener> {
+    let listeners = this.listeners.get(event);
+
+    if (!listeners) {
+      listeners = new Set();
+      this.listeners.set(event, listeners);
+    }
+
+    return listeners;
   }
 }

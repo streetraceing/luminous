@@ -1,4 +1,4 @@
-import type { Plugin } from "vite";
+import type { Plugin, ResolvedConfig } from "vite";
 import fs from "fs";
 import path from "path";
 import { execSync } from "child_process";
@@ -24,6 +24,7 @@ export default function spicetifySync(options: SpicetifySyncOptions): Plugin {
   const { themeName, mode = "copy" } = options;
 
   let cachedRoot: string | null = options.spicetifyRoot ?? null;
+  let config: ResolvedConfig | null = null;
 
   const log = (msg: string) => {
     console.log(`[spicetify-sync] ${msg}`);
@@ -47,13 +48,23 @@ export default function spicetifySync(options: SpicetifySyncOptions): Plugin {
     return path.join(getSpicetifyRoot(), "Themes", themeName);
   }
 
+  function resolveProjectPath(...parts: string[]) {
+    return path.resolve(config?.root ?? process.cwd(), ...parts);
+  }
+
+  function getDistRoot(): string {
+    const outDir = config?.build.outDir ?? "dist";
+
+    return path.isAbsolute(outDir) ? outDir : resolveProjectPath(outDir);
+  }
+
   function copyFileSafe(from: string, to: string) {
     fs.mkdirSync(path.dirname(to), { recursive: true });
     fs.copyFileSync(from, to);
   }
 
   function copyDist() {
-    const dist = path.resolve("dist");
+    const dist = getDistRoot();
 
     if (!fs.existsSync(dist)) {
       log("dist not found, skipping");
@@ -72,12 +83,12 @@ export default function spicetifySync(options: SpicetifySyncOptions): Plugin {
       }
     }
 
-    log(`copied dist → ${themeRoot}`);
+    log(`copied dist -> ${themeRoot}`);
   }
 
   function syncColorIni() {
-    const from = path.resolve("src/color.ini");
-    const to = path.resolve("dist/color.ini");
+    const from = resolveProjectPath("src", "color.ini");
+    const to = path.join(getDistRoot(), "color.ini");
 
     if (!fs.existsSync(from)) return;
 
@@ -100,6 +111,10 @@ export default function spicetifySync(options: SpicetifySyncOptions): Plugin {
   return {
     name: "spicetify-sync",
     apply: "build",
+
+    configResolved(resolvedConfig) {
+      config = resolvedConfig;
+    },
 
     closeBundle() {
       // vite build --mode delete

@@ -5,6 +5,9 @@ import {
 } from "../types/runtime/song.types";
 
 export class Song {
+  private static readonly PLAYER_TIMEOUT_MESSAGE =
+    "Spicetify Player not available";
+
   private static current: Spicetify.PlayerTrack | null = null;
   private static listeners = new Map<SongEvent, Set<SongListener>>();
 
@@ -29,17 +32,9 @@ export class Song {
 
     try {
       await this.waitForPlayer(timeout);
-
-      const track = Spicetify.Player.data?.item;
-      if (track) {
-        this.setCurrent(track);
-        this.ready = true;
-        this.readyResolve();
-        Luminous.Logger.info("Song", "Ready, current is", track);
-        this.emit("ready");
-      }
-
       this.bindEvents();
+
+      this.handleTrack(Spicetify.Player.data?.item ?? null);
     } catch (e) {
       this.readyReject(e);
       throw e;
@@ -53,15 +48,15 @@ export class Song {
       const start = Date.now();
 
       const check = () => {
-        if (Spicetify?.Player?.data) {
+        if (typeof Spicetify !== "undefined" && Spicetify.Player?.data) {
           resolve();
           return;
         }
 
         if (Date.now() - start > timeout) {
-          reject(
-            Luminous.Logger.error("Song", "Spicetify Player not available"),
-          );
+          const error = new Error(this.PLAYER_TIMEOUT_MESSAGE);
+          Luminous.Logger.error("Song", error.message);
+          reject(error);
           return;
         }
 
@@ -74,23 +69,12 @@ export class Song {
 
   private static bindEvents() {
     Spicetify.Player.addEventListener("songchange", () => {
-      const track = Spicetify.Player.data?.item;
-      if (!track) return;
-
-      if (this.current?.uri === track.uri) return;
-
-      this.setCurrent(track);
-      Luminous.Logger.info("Song", "Changed to", track);
-      this.emit("change");
+      this.handleTrack(Spicetify.Player.data?.item ?? null);
     });
   }
 
   static addEventListener(event: SongEvent, listener: SongListener) {
-    if (!this.listeners.has(event)) {
-      this.listeners.set(event, new Set());
-    }
-
-    this.listeners.get(event)!.add(listener);
+    this.getListeners(event).add(listener);
 
     if (event === "ready" && this.ready && this.current) {
       listener(this.createPayload(this.current));
@@ -125,6 +109,23 @@ export class Song {
     this.current = track;
   }
 
+  private static handleTrack(track: Spicetify.PlayerTrack | null) {
+    if (!track || this.current?.uri === track.uri) return;
+
+    this.setCurrent(track);
+
+    if (!this.ready) {
+      this.ready = true;
+      this.readyResolve();
+      Luminous.Logger.info("Song", "Ready, current is", track);
+      this.emit("ready");
+      return;
+    }
+
+    Luminous.Logger.info("Song", "Changed to", track);
+    this.emit("change");
+  }
+
   private static createPayload(track: Spicetify.PlayerTrack): SongPayload {
     const artists = track.artists?.map((a) => a.name) ?? [];
 
@@ -137,7 +138,9 @@ export class Song {
     return {
       track,
       name: track.name,
-      title: `${track.name} - ${artists.join(", ")}`,
+      title: artists.length
+        ? `${track.name} - ${artists.join(", ")}`
+        : track.name,
       artists,
       image,
       uri: track.uri,
@@ -148,11 +151,19 @@ export class Song {
     if (!this.current) return;
 
     const payload = this.createPayload(this.current);
-    const listeners = this.listeners.get(event);
-    if (!listeners) return;
-
-    for (const listener of listeners) {
+    for (const listener of this.getListeners(event)) {
       listener(payload);
     }
+  }
+
+  private static getListeners(event: SongEvent): Set<SongListener> {
+    let listeners = this.listeners.get(event);
+
+    if (!listeners) {
+      listeners = new Set();
+      this.listeners.set(event, listeners);
+    }
+
+    return listeners;
   }
 }
