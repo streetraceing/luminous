@@ -1,5 +1,6 @@
 import {
   SettingDefinition,
+  SettingListener,
   SettingValue,
 } from "../types/runtime/settings.types";
 
@@ -8,6 +9,7 @@ export class Settings {
 
   private static registry = new Map<string, SettingDefinition>();
   private static values = new Map<string, SettingValue>();
+  private static listeners = new Map<string, Set<SettingListener>>();
 
   static init() {
     const saved = Spicetify.LocalStorage.get(this.STORAGE_KEY);
@@ -45,7 +47,24 @@ export class Settings {
   static set(key: string, value: SettingValue) {
     this.values.set(key, value);
     this.registry.get(key)?.apply?.(value);
+    this.emit(key, value);
     this.persist();
+  }
+
+  static subscribe<T extends SettingValue>(
+    key: string,
+    listener: SettingListener<T>,
+    options: { immediate?: boolean } = {},
+  ): () => void {
+    this.getListeners(key).add(listener as SettingListener);
+
+    if (options.immediate && this.values.has(key)) {
+      listener(this.values.get(key) as T, key);
+    }
+
+    return () => {
+      this.listeners.get(key)?.delete(listener as SettingListener);
+    };
   }
 
   private static persist() {
@@ -77,5 +96,22 @@ export class Settings {
 
   static hasClass(className: string): boolean {
     return document.documentElement.classList.contains(className);
+  }
+
+  private static emit(key: string, value: SettingValue) {
+    this.listeners.get(key)?.forEach((listener) => {
+      listener(value, key);
+    });
+  }
+
+  private static getListeners(key: string): Set<SettingListener> {
+    let listeners = this.listeners.get(key);
+
+    if (!listeners) {
+      listeners = new Set();
+      this.listeners.set(key, listeners);
+    }
+
+    return listeners;
   }
 }

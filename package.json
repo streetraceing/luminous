@@ -9,7 +9,7 @@
     "build": "vite build",
     "watch": "spicetify watch -s",
     "enable": "npm run build && spicetify config current_theme Luminous && spicetify apply",
-    "disable": "spicetify config current_theme marketplace && spicetify apply && vite build --mode delete",
+    "disable": "spicetify config current_theme Luminous- && spicetify apply && vite build --mode delete",
     "release": "npm run build && tsx vite/releaseScript.ts"
   },
   "devDependencies": {

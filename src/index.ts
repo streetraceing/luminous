@@ -1,23 +1,14 @@
-import { DynamicBackground } from "./ui/dynamic";
-import { Synchronize } from "./ui/synchronize";
 import { exposeGlobalAPI } from "./api/global";
+import { mountLuminousApp } from "./app/runtime";
 
 import.meta.glob("./styles/**/*.css", { eager: true });
 exposeGlobalAPI();
-
-Synchronize.brokenUiWatcher();
 
 Luminous.Logger.printBanner();
 
 Luminous.Settings.init();
 Luminous.Song.init();
 Luminous.Canvas.init();
-
-DynamicBackground.init();
-
-Synchronize.observeCinema();
-Synchronize.playlistBackground();
-Synchronize.homeHeaderHeight();
 
 Luminous.Settings.register("dynamicBackground", {
   default: true,
@@ -28,8 +19,6 @@ Luminous.Settings.register("dynamicBackground", {
 
       Luminous.Settings.setVar("--luminous-ui-base", "var(--spice-sidebar)");
       Luminous.Settings.setVar("--luminous-ui-opacity", "50%");
-
-      DynamicBackground.render();
     } else {
       Luminous.Settings.removeVar("--luminous-background");
 
@@ -38,3 +27,5 @@ Luminous.Settings.register("dynamicBackground", {
     }
   },
 });
+
+mountLuminousApp();
