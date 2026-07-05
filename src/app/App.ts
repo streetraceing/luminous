@@ -1,4 +1,5 @@
 import { DynamicBackgroundFeature } from "./features/DynamicBackgroundFeature";
+import { ThemeMenuFeature } from "./features/ThemeMenuFeature";
 import { SynchronizeFeature } from "./features/SynchronizeFeature";
 
 export function App() {
@@ -9,5 +10,6 @@ export function App() {
     null,
     React.createElement(SynchronizeFeature),
     React.createElement(DynamicBackgroundFeature),
+    React.createElement(ThemeMenuFeature),
   );
 }

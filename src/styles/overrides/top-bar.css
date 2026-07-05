@@ -25,6 +25,72 @@
   --background-elevated-base: var(--luminous-ui-background);
 }
 
+.Root__globalNav
+  :is(
+    button[data-testid="top-bar-back-button"],
+    button[data-testid="top-bar-forward-button"],
+    .main-actionButtons-spacer.main-actionButtons button,
+    .main-globalNav-historyButtonsContainer button,
+    .main-globalNav-navLink,
+    .main-globalNav-iconButton,
+    .main-globalNav-activityFeedButton,
+    .main-globalNav-friendsActivityButton
+  ) {
+  background: var(--luminous-ui-background);
+  backdrop-filter: blur(var(--luminous-ui-blur));
+}
+
+.Root__globalNav
+  :is(
+    button[data-testid="top-bar-back-button"],
+    button[data-testid="top-bar-forward-button"],
+    .main-actionButtons-spacer.main-actionButtons button,
+    .main-globalNav-historyButtonsContainer button,
+    .main-globalNav-iconButton,
+    .main-globalNav-activityFeedButton,
+    .main-globalNav-friendsActivityButton,
+    .luminous-theme-menu-button
+  ) {
+  width: 32px;
+  min-width: 32px;
+  height: 32px;
+  border-radius: 50%;
+}
+
+.Root__globalNav
+  :is(
+    button[data-testid="top-bar-back-button"],
+    button[data-testid="top-bar-forward-button"],
+    .main-actionButtons-spacer.main-actionButtons button,
+    .main-globalNav-historyButtonsContainer button,
+    .main-globalNav-navLink,
+    .main-globalNav-iconButton,
+    .main-globalNav-activityFeedButton,
+    .main-globalNav-friendsActivityButton
+  ):hover {
+  background: var(--luminous-ui-background);
+}
+
+.Root__globalNav .main-userWidget-box {
+  background-color: var(--luminous-ui-background);
+}
+
+.Root__globalNav .main-globalNav-contentRight {
+  margin-inline-end: calc(
+    var(--panel-gap) / (var(--zoom-level, 100) / 100) * -4.5
+  ) !important;
+}
+
+.Root__globalNav
+  :is(.main-topBar-topbarContentRight, .main-globalNav-topbarContentRight) {
+  width: calc((135px + 32px) / (var(--zoom-level, 100) / 100));
+}
+
+.Root__globalNav .spicetify-sc-contentArea button {
+  width: 40px !important;
+  height: 40px !important;
+}
+
 .Root__globalNav .custom-navlinks-scrollable_container button {
   transform: none;
 }

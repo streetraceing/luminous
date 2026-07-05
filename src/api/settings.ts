@@ -51,6 +51,26 @@ export class Settings {
     this.persist();
   }
 
+  static reset(key: string) {
+    const definition = this.registry.get(key);
+    if (!definition) return;
+
+    this.set(key, definition.default);
+  }
+
+  static resetMany(keys: string[]) {
+    keys.forEach((key) => {
+      const definition = this.registry.get(key);
+      if (!definition) return;
+
+      this.values.set(key, definition.default);
+      definition.apply?.(definition.default);
+      this.emit(key, definition.default);
+    });
+
+    this.persist();
+  }
+
   static subscribe<T extends SettingValue>(
     key: string,
     listener: SettingListener<T>,
