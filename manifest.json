@@ -2,7 +2,7 @@
   "name": "Luminous",
   "description": "Lightweight dynamic Spicetify theme",
   "readme": "README.md",
-  "preview": "assets/preview.png",
+  "preview": "assets/luminous.png",
   "usercss": "release/user.css",
   "schemes": "release/color.ini",
   "include": [
