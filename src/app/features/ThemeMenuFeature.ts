@@ -108,10 +108,7 @@ export function ThemeMenuFeature() {
       const button = buttonRef.current?.element;
       const menu = menuRef.current;
 
-      if (
-        (button && path.includes(button)) ||
-        (menu && path.includes(menu))
-      ) {
+      if ((button && path.includes(button)) || (menu && path.includes(menu))) {
         return;
       }
 
@@ -201,7 +198,16 @@ function ThemeMenuPopover({
     React.createElement(
       "div",
       { className: "luminous-theme-menu__header" },
-      React.createElement("div", { className: "luminous-theme-menu__mark" }, "L"),
+      React.createElement(
+        "div",
+        { className: "luminous-theme-menu__mark" },
+        React.createElement("svg", {
+          className: "luminous-theme-menu__luminous-icon",
+          dangerouslySetInnerHTML: {
+            __html: Spicetify.SVGIcons["brightness"],
+          },
+        }),
+      ),
       React.createElement(
         "div",
         { className: "luminous-theme-menu__title" },
@@ -225,7 +231,12 @@ function ThemeMenuPopover({
           "aria-label": "Close",
           onClick: onClose,
         },
-        "x",
+        React.createElement("svg", {
+          className: "luminous-theme-menu__close-icon",
+          dangerouslySetInnerHTML: {
+            __html: Spicetify.SVGIcons["x"],
+          },
+        }),
       ),
     ),
     React.createElement(

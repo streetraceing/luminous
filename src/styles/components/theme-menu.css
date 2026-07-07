@@ -37,6 +37,14 @@
   place-items: center;
 }
 
+.luminous-theme-menu__luminous-icon {
+  display: grid;
+  width: 16px;
+  height: 16px;
+  place-items: center;
+  fill: currentColor;
+}
+
 .luminous-theme-menu__title {
   display: grid;
   gap: 2px;
@@ -83,7 +91,6 @@
   padding: 0 12px;
   border-radius: 999px;
   font-size: 12px;
-  font-weight: 750;
 }
 
 .luminous-theme-menu__icon-button {
@@ -94,6 +101,14 @@
   border-radius: 50%;
   font-size: 13px;
   place-items: center;
+}
+
+.luminous-theme-menu__close-icon {
+  display: grid;
+  width: 16px;
+  height: 16px;
+  place-items: center;
+  fill: currentColor;
 }
 
 .luminous-theme-menu__reset-button:hover,
