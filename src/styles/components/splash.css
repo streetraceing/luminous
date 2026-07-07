@@ -1,0 +1,128 @@
+body::before,
+body::after {
+  position: fixed;
+  z-index: 9999;
+  pointer-events: none;
+  content: "";
+}
+
+body::before {
+  inset: 0;
+  background: color-mix(in srgb, var(--luminous-ui-base) 96%, #000);
+}
+
+body:has(.luminous-splash)::before,
+body:has(.luminous-splash)::after {
+  display: none;
+}
+
+.luminous-splash {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: grid;
+  color: var(--spice-text);
+  background: color-mix(in srgb, var(--luminous-ui-base) 96%, #000);
+  place-items: center;
+  opacity: 1;
+  pointer-events: auto;
+  transition:
+    opacity 240ms ease,
+    visibility 240ms ease;
+  visibility: visible;
+}
+
+.luminous-splash--hidden {
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
+}
+
+.luminous-splash__panel {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  width: min(360px, calc(100vw - 48px));
+  padding: 18px;
+  column-gap: 14px;
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0)),
+    var(--luminous-ui-background);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  box-shadow:
+    0 28px 80px rgba(0, 0, 0, 0.42),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(calc(var(--luminous-ui-blur) + 10px));
+}
+
+.luminous-splash__mark {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  color: #000;
+  background: var(--spice-button-active);
+  border-radius: 8px;
+  place-items: center;
+}
+
+.luminous-splash__luminous-icon {
+  display: block;
+  width: 24px;
+  height: 24px;
+  pointer-events: none;
+  user-select: none;
+  fill: currentColor;
+}
+
+.luminous-splash__copy {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.luminous-splash__copy span,
+.luminous-splash__copy small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.luminous-splash__copy span {
+  font-size: 16px;
+  font-weight: 850;
+}
+
+.luminous-splash__copy small {
+  color: var(--spice-subtext);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.luminous-splash__loader {
+  grid-column: 1 / -1;
+  height: 3px;
+  margin-top: 16px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+}
+
+.luminous-splash__loader span {
+  display: block;
+  width: 42%;
+  height: 100%;
+  background: var(--spice-button-active);
+  border-radius: inherit;
+  animation: luminous-splash-loader 900ms ease-in-out infinite;
+}
+
+@keyframes luminous-splash-loader {
+  0% {
+    transform: translateX(-110%);
+  }
+
+  100% {
+    transform: translateX(250%);
+  }
+}

@@ -4,6 +4,7 @@ import {
   HomeHeaderHeightSyncOptions,
 } from "../types/runtime/dynamic.types";
 import { Logger } from "../api/logger";
+import { setUiHealth } from "./health";
 
 export class Synchronize {
   static playlistBackground(
@@ -238,7 +239,10 @@ export class Synchronize {
     function check() {
       const main = document.querySelector("#main");
 
-      if (!main) return;
+      if (!main) {
+        setUiHealth({ status: "booting", brokenSince: null });
+        return;
+      }
 
       const uiMounted = hasSpotifyUi();
 
@@ -246,6 +250,7 @@ export class Synchronize {
       if (uiMounted) {
         brokenSince = null;
         recovered = false;
+        setUiHealth({ status: "ready", brokenSince: null });
 
         stopPolling();
 
@@ -255,6 +260,7 @@ export class Synchronize {
       // first broken detection
       if (brokenSince === null) {
         brokenSince = Date.now();
+        setUiHealth({ status: "waiting", brokenSince });
 
         Logger.log("INFO", "Main", "Waiting for Spotify UI mount...");
 
@@ -274,6 +280,7 @@ export class Synchronize {
       }
 
       recovered = true;
+      setUiHealth({ status: "reloading", brokenSince });
 
       Logger.log("WARN", "Main", "Spotify UI appears broken, reloading...");
 
@@ -307,6 +314,7 @@ export class Synchronize {
 
         brokenSince = null;
         recovered = false;
+        setUiHealth({ status: "ready", brokenSince: null });
       },
     };
   }

@@ -203,6 +203,9 @@ function ThemeMenuPopover({
         { className: "luminous-theme-menu__mark" },
         React.createElement("svg", {
           className: "luminous-theme-menu__luminous-icon",
+          viewBox: "0 0 16 16",
+          "aria-hidden": "true",
+          focusable: "false",
           dangerouslySetInnerHTML: {
             __html: Spicetify.SVGIcons["brightness"],
           },

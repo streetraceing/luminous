@@ -39,8 +39,8 @@
 
 .luminous-theme-menu__luminous-icon {
   display: grid;
-  width: 16px;
-  height: 16px;
+  width: 20px;
+  height: 20px;
   place-items: center;
   fill: currentColor;
 }
