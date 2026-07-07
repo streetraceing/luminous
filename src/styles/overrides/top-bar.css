@@ -30,7 +30,7 @@
     button[data-testid="top-bar-back-button"],
     button[data-testid="top-bar-forward-button"],
     .main-actionButtons-spacer.main-actionButtons button,
-    .main-globalNav-historyButtonsContainer button,
+    .main-globalNav-historyButtons button,
     .main-globalNav-navLink,
     .main-globalNav-iconButton,
     .main-globalNav-activityFeedButton,
@@ -62,13 +62,17 @@
     button[data-testid="top-bar-back-button"],
     button[data-testid="top-bar-forward-button"],
     .main-actionButtons-spacer.main-actionButtons button,
-    .main-globalNav-historyButtonsContainer button,
+    .main-globalNav-historyButtons button,
     .main-globalNav-navLink,
     .main-globalNav-iconButton,
     .main-globalNav-activityFeedButton,
     .main-globalNav-friendsActivityButton
   ):hover {
   background: var(--luminous-ui-background);
+}
+
+.Root__globalNav .main-globalNav-navLinkActive {
+  color: var(--text-subdued);
 }
 
 .Root__globalNav .main-userWidget-box {
