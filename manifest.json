@@ -6,7 +6,7 @@
   "usercss": "release/user.css",
   "schemes": "release/color.ini",
   "include": [
-    "https://raw.githubusercontent.com/streetraceing/luminous/main/release/theme.js"
+    "https://streetraceing.github.io/luminous/release/theme.js?version=2.0.10"
   ],
   "tags": ["dynamic", "canvas", "background", "spicetify", "spotify"],
   "authors": [
