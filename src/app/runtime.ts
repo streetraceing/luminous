@@ -1,4 +1,5 @@
 import { App } from "./App";
+import { getReact } from "./react";
 
 const ROOT_ID = "luminous-react-root";
 const REACT_READY_TIMEOUT = 15000;
@@ -15,7 +16,8 @@ export function mountLuminousApp() {
 }
 
 function renderApp() {
-  const { React, ReactDOM } = Spicetify;
+  const React = getReact();
+  const { ReactDOM } = Spicetify;
   const container = ensureRoot();
   const element = React.createElement(App);
 

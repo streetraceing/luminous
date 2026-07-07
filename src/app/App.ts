@@ -1,9 +1,10 @@
 import { DynamicBackgroundFeature } from "./features/DynamicBackgroundFeature";
 import { ThemeMenuFeature } from "./features/ThemeMenuFeature";
 import { SynchronizeFeature } from "./features/SynchronizeFeature";
+import { getReact } from "./react";
 
 export function App() {
-  const { React } = Spicetify;
+  const React = getReact();
 
   return React.createElement(
     React.Fragment,

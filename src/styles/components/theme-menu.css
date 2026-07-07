@@ -1,27 +1,40 @@
 .luminous-theme-menu {
   position: fixed;
   z-index: 9999;
-  width: min(340px, calc(100vw - 24px));
+  width: min(360px, calc(100vw - 24px));
   padding: 12px;
   color: var(--spice-text);
   background:
-    linear-gradient(rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0)),
-    color-mix(in srgb, var(--spice-main) 90%, transparent);
+    linear-gradient(rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0)),
+    color-mix(in srgb, var(--luminous-ui-base) 92%, transparent);
   border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 8px;
   box-shadow:
-    0 18px 48px rgba(0, 0, 0, 0.38),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(var(--luminous-ui-blur));
+    0 22px 60px rgba(0, 0, 0, 0.42),
+    inset 0 1px 0 rgba(255, 255, 255, 0.09);
+  backdrop-filter: blur(calc(var(--luminous-ui-blur) + 8px));
 }
 
 .luminous-theme-menu__header {
   display: grid;
-  grid-template-columns: 1fr auto auto;
+  grid-template-columns: auto 1fr auto auto;
   align-items: center;
-  gap: 8px;
-  min-height: 34px;
-  padding: 0 0 10px;
+  gap: 10px;
+  min-height: 38px;
+  padding: 2px 2px 12px;
+}
+
+.luminous-theme-menu__mark {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  color: #000;
+  background: var(--spice-button-active);
+  border-radius: 8px;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.22);
+  font-size: 15px;
+  font-weight: 900;
+  place-items: center;
 }
 
 .luminous-theme-menu__title {
@@ -30,77 +43,105 @@
   min-width: 0;
 }
 
-.luminous-theme-menu__title span {
+.luminous-theme-menu__title span,
+.luminous-theme-menu__copy > span {
   overflow: hidden;
-  font-size: 14px;
-  font-weight: 750;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.luminous-theme-menu__title span {
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.luminous-theme-menu__title small,
+.luminous-theme-menu__copy small {
+  overflow: hidden;
+  color: var(--spice-subtext);
+  line-height: 1.35;
+  text-overflow: ellipsis;
 }
 
 .luminous-theme-menu__title small {
-  overflow: hidden;
-  color: var(--spice-subtext);
   font-size: 11px;
-  font-weight: 500;
-  text-overflow: ellipsis;
+  font-weight: 600;
   white-space: nowrap;
 }
 
-.luminous-theme-menu__reset-button {
-  min-width: 64px;
-  height: 28px;
-  padding: 0 12px;
+.luminous-theme-menu__reset-button,
+.luminous-theme-menu__icon-button {
   color: var(--spice-text);
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 700;
   cursor: pointer;
+  background: rgba(255, 255, 255, 0.075);
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.luminous-theme-menu__reset-button:hover {
-  background: rgba(255, 255, 255, 0.13);
+.luminous-theme-menu__reset-button {
+  height: 30px;
+  min-width: 66px;
+  padding: 0 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 750;
 }
 
 .luminous-theme-menu__icon-button {
   display: grid;
-  width: 28px;
-  height: 28px;
+  width: 30px;
+  height: 30px;
   padding: 0;
-  color: var(--spice-subtext);
-  background: transparent;
-  border: 0;
   border-radius: 50%;
+  font-size: 13px;
   place-items: center;
-  cursor: pointer;
 }
 
+.luminous-theme-menu__reset-button:hover,
 .luminous-theme-menu__icon-button:hover {
-  color: var(--spice-text);
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.12);
 }
 
 .luminous-theme-menu__section {
   display: grid;
-  gap: 2px;
-  padding: 6px;
-  background: rgba(255, 255, 255, 0.045);
-  border: 1px solid rgba(255, 255, 255, 0.07);
+  gap: 4px;
+  padding: 7px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.075);
   border-radius: 8px;
+}
+
+.luminous-theme-menu__section-header {
+  padding: 4px 8px 6px;
+  color: var(--spice-subtext);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
 }
 
 .luminous-theme-menu__row {
   display: grid;
-  gap: 9px;
-  padding: 10px 8px;
-  border-radius: 6px;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 7px;
   font-size: 13px;
 }
 
 .luminous-theme-menu__row:hover {
   background: rgba(255, 255, 255, 0.045);
+}
+
+.luminous-theme-menu__copy {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.luminous-theme-menu__copy > span {
+  font-weight: 700;
+}
+
+.luminous-theme-menu__copy small {
+  font-size: 11px;
 }
 
 .luminous-theme-menu__toggle {
@@ -111,8 +152,8 @@
 .luminous-theme-menu__switch {
   position: relative;
   display: inline-grid;
-  width: 40px;
-  height: 22px;
+  width: 42px;
+  height: 24px;
   align-items: center;
 }
 
@@ -126,8 +167,8 @@
 .luminous-theme-menu__switch span {
   position: absolute;
   inset: 0;
-  background: rgba(255, 255, 255, 0.16);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.11);
   border-radius: 999px;
   transition:
     background 160ms ease,
@@ -138,37 +179,46 @@
   position: absolute;
   top: 3px;
   left: 3px;
-  width: 14px;
-  height: 14px;
+  width: 16px;
+  height: 16px;
   background: var(--spice-text);
   border-radius: 50%;
-  box-shadow: 0 2px 7px rgba(0, 0, 0, 0.32);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.34);
   content: "";
   transition: transform 160ms ease;
 }
 
 .luminous-theme-menu__switch input:checked + span {
-  background: color-mix(in srgb, var(--spice-button-active) 72%, #000);
-  border-color: rgba(255, 255, 255, 0.16);
+  background: var(--spice-button-active);
+  border-color: rgba(255, 255, 255, 0.18);
 }
 
 .luminous-theme-menu__switch input:checked + span::after {
   transform: translateX(18px);
 }
 
-.luminous-theme-menu__range > span {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+.luminous-theme-menu__range-header {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: start;
   gap: 12px;
 }
 
 .luminous-theme-menu__range strong {
-  min-width: 42px;
-  color: var(--spice-subtext);
+  min-width: 46px;
+  padding: 3px 7px;
+  color: var(--spice-text);
+  background: rgba(255, 255, 255, 0.07);
+  border-radius: 999px;
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 800;
   text-align: right;
+}
+
+.luminous-theme-menu__range-control {
+  display: grid;
+  height: 22px;
+  align-items: center;
 }
 
 .luminous-theme-menu__range input {

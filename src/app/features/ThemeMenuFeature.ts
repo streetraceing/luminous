@@ -1,8 +1,4 @@
-import type {
-  useEffect as ReactUseEffect,
-  useRef as ReactUseRef,
-  useState as ReactUseState,
-} from "react";
+import { getReact, ReactRef, useEffect, useRef, useState } from "../react";
 
 const BUTTON_LABEL = "Luminous settings";
 const BUTTON_ICON: Spicetify.Icon = "brightness";
@@ -10,6 +6,7 @@ const BUTTON_ICON: Spicetify.Icon = "brightness";
 type NumericSetting = {
   key: string;
   label: string;
+  description: string;
   min: number;
   max: number;
   step: number;
@@ -21,6 +18,7 @@ const numericSettings: NumericSetting[] = [
   {
     key: "backgroundBlur",
     label: "Background blur",
+    description: "Softens album art and canvas motion.",
     min: 0,
     max: 48,
     step: 1,
@@ -30,6 +28,7 @@ const numericSettings: NumericSetting[] = [
   {
     key: "backgroundBrightness",
     label: "Background brightness",
+    description: "Controls the ambient backdrop intensity.",
     min: 30,
     max: 120,
     step: 1,
@@ -39,6 +38,7 @@ const numericSettings: NumericSetting[] = [
   {
     key: "uiOpacity",
     label: "UI opacity",
+    description: "Adjusts the glass surface strength.",
     min: 0,
     max: 100,
     step: 1,
@@ -52,13 +52,8 @@ const resettableSettings = [
   ...numericSettings.map((setting) => setting.key),
 ];
 
-const useEffect = () =>
-  Spicetify.React.useEffect as typeof ReactUseEffect;
-const useRef = () => Spicetify.React.useRef as typeof ReactUseRef;
-const useState = () => Spicetify.React.useState as typeof ReactUseState;
-
 export function ThemeMenuFeature() {
-  const React = Spicetify.React;
+  const React = getReact();
   const effect = useEffect();
   const ref = useRef();
   const state = useState();
@@ -108,7 +103,7 @@ export function ThemeMenuFeature() {
   effect(() => {
     if (!open) return;
 
-    const handlePointerDown = (event: PointerEvent) => {
+    const handleOutsideInteraction = (event: PointerEvent | MouseEvent) => {
       const path = event.composedPath();
       const button = buttonRef.current?.element;
       const menu = menuRef.current;
@@ -129,11 +124,17 @@ export function ThemeMenuFeature() {
       }
     };
 
-    document.addEventListener("pointerdown", handlePointerDown, true);
+    document.addEventListener("pointerdown", handleOutsideInteraction, true);
+    document.addEventListener("click", handleOutsideInteraction, true);
     document.addEventListener("keydown", handleKeyDown, true);
 
     return () => {
-      document.removeEventListener("pointerdown", handlePointerDown, true);
+      document.removeEventListener(
+        "pointerdown",
+        handleOutsideInteraction,
+        true,
+      );
+      document.removeEventListener("click", handleOutsideInteraction, true);
       document.removeEventListener("keydown", handleKeyDown, true);
     };
   }, [open]);
@@ -153,10 +154,10 @@ function ThemeMenuPopover({
   onClose,
 }: {
   anchor: HTMLElement | null;
-  menuRef: React.MutableRefObject<HTMLDivElement | null>;
+  menuRef: ReactRef<HTMLDivElement | null>;
   onClose: () => void;
 }) {
-  const React = Spicetify.React;
+  const React = getReact();
   const effect = useEffect();
   const state = useState();
   const [position, setPosition] = state(() => getMenuPosition(anchor));
@@ -200,6 +201,7 @@ function ThemeMenuPopover({
     React.createElement(
       "div",
       { className: "luminous-theme-menu__header" },
+      React.createElement("div", { className: "luminous-theme-menu__mark" }, "L"),
       React.createElement(
         "div",
         { className: "luminous-theme-menu__title" },
@@ -229,8 +231,14 @@ function ThemeMenuPopover({
     React.createElement(
       "div",
       { className: "luminous-theme-menu__section" },
+      React.createElement(
+        "div",
+        { className: "luminous-theme-menu__section-header" },
+        "Appearance",
+      ),
       React.createElement(ToggleRow, {
         label: "Dynamic background",
+        description: "Use the current cover or Spotify Canvas as backdrop.",
         checked: dynamicBackground,
         onChange: (checked: boolean) =>
           Luminous.Settings.set("dynamicBackground", checked),
@@ -247,19 +255,26 @@ function ThemeMenuPopover({
 
 function ToggleRow({
   label,
+  description,
   checked,
   onChange,
 }: {
   label: string;
+  description: string;
   checked: boolean;
   onChange: (checked: boolean) => void;
 }) {
-  const React = Spicetify.React;
+  const React = getReact();
 
   return React.createElement(
     "label",
     { className: "luminous-theme-menu__row luminous-theme-menu__toggle" },
-    React.createElement("span", null, label),
+    React.createElement(
+      "span",
+      { className: "luminous-theme-menu__copy" },
+      React.createElement("span", null, label),
+      React.createElement("small", null, description),
+    ),
     React.createElement(
       "span",
       { className: "luminous-theme-menu__switch" },
@@ -275,7 +290,7 @@ function ToggleRow({
 }
 
 function NumericSettingRow({ setting }: { setting: NumericSetting }) {
-  const React = Spicetify.React;
+  const React = getReact();
   const effect = useEffect();
   const state = useState();
   const [value, setValue] = state(() => readNumericSetting(setting));
@@ -293,8 +308,13 @@ function NumericSettingRow({ setting }: { setting: NumericSetting }) {
     { className: "luminous-theme-menu__row luminous-theme-menu__range" },
     React.createElement(
       "span",
-      null,
-      React.createElement("span", null, setting.label),
+      { className: "luminous-theme-menu__range-header" },
+      React.createElement(
+        "span",
+        { className: "luminous-theme-menu__copy" },
+        React.createElement("span", null, setting.label),
+        React.createElement("small", null, setting.description),
+      ),
       React.createElement(
         "strong",
         null,
@@ -303,18 +323,22 @@ function NumericSettingRow({ setting }: { setting: NumericSetting }) {
           : value,
       ),
     ),
-    React.createElement("input", {
-      type: "range",
-      min: setting.min,
-      max: setting.max,
-      step: setting.step,
-      value,
-      onChange: (event: Event) =>
-        Luminous.Settings.set(
-          setting.key,
-          Number((event.currentTarget as HTMLInputElement).value),
-        ),
-    }),
+    React.createElement(
+      "span",
+      { className: "luminous-theme-menu__range-control" },
+      React.createElement("input", {
+        type: "range",
+        min: setting.min,
+        max: setting.max,
+        step: setting.step,
+        value,
+        onChange: (event: Event) =>
+          Luminous.Settings.set(
+            setting.key,
+            Number((event.currentTarget as HTMLInputElement).value),
+          ),
+      }),
+    ),
   );
 }
 

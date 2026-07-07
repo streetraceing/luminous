@@ -1,11 +1,11 @@
-import type { useEffect as ReactUseEffect } from "react";
+import { useEffect } from "../react";
 import { Synchronize } from "../../ui/synchronize";
 import { SyncController } from "../../types/runtime/dynamic.types";
 
 export function SynchronizeFeature() {
-  const useEffect = Spicetify.React.useEffect as typeof ReactUseEffect;
+  const effect = useEffect();
 
-  useEffect(() => {
+  effect(() => {
     const controllers: SyncController[] = [
       Synchronize.brokenUiWatcher(),
       Synchronize.observeCinema(),

@@ -1,34 +1,30 @@
-import type {
-  useEffect as ReactUseEffect,
-  useMemo as ReactUseMemo,
-  useState as ReactUseState,
-} from "react";
+import { useEffect, useMemo, useState } from "../react";
 import { CanvasPayload } from "../../types/runtime/canvas.types";
 import { SongPayload } from "../../types/runtime/song.types";
 
 export function DynamicBackgroundFeature() {
-  const useEffect = Spicetify.React.useEffect as typeof ReactUseEffect;
-  const useMemo = Spicetify.React.useMemo as typeof ReactUseMemo;
-  const useState = Spicetify.React.useState as typeof ReactUseState;
+  const effect = useEffect();
+  const memo = useMemo();
+  const state = useState();
 
-  const [song, setSong] = useState<SongPayload | null>(() =>
+  const [song, setSong] = state<SongPayload | null>(() =>
     Luminous.Song.getSync(),
   );
-  const [canvas, setCanvas] = useState<HTMLVideoElement | null>(() =>
+  const [canvas, setCanvas] = state<HTMLVideoElement | null>(() =>
     Luminous.Canvas.getVideo(),
   );
-  const [enabled, setEnabled] = useState(
+  const [enabled, setEnabled] = state(
     () => Luminous.Settings.get("dynamicBackground") !== false,
   );
 
-  const renderKey = useMemo(() => {
+  const renderKey = memo(() => {
     if (!enabled) return "disabled";
     if (canvas) return `canvas:${canvas.currentSrc}`;
     if (song?.image) return `image:${song.image}`;
     return "empty";
   }, [canvas, enabled, song?.image]);
 
-  useEffect(() => {
+  effect(() => {
     const handleSong = (nextSong: SongPayload) => {
       setSong(nextSong);
       Luminous.Background.preloadImage(nextSong.image);
@@ -69,7 +65,7 @@ export function DynamicBackgroundFeature() {
     };
   }, []);
 
-  useEffect(() => {
+  effect(() => {
     if (!enabled) return;
 
     if (canvas) {
