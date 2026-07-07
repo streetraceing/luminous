@@ -72,7 +72,7 @@
 }
 
 .Root__globalNav .main-globalNav-navLinkActive {
-  color: var(--text-subdued);
+  color: unset;
 }
 
 .Root__globalNav .main-userWidget-box {
