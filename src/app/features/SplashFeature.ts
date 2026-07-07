@@ -3,6 +3,7 @@ import { getUiHealth, subscribeUiHealth, UiHealthState } from "../../ui/health";
 
 const NORMAL_MIN_MS = 900;
 const NORMAL_MAX_MS = 1800;
+const HELP_HINT_DELAY_MS = 8000;
 
 export function SplashFeature() {
   const React = getReact();
@@ -59,6 +60,12 @@ export function SplashFeature() {
     return "Welcome back. Lighting up Spotify...";
   }, [health.brokenSince, health.status, now]);
 
+  const showHelpHint =
+    health.status === "reloading" ||
+    (health.status === "waiting" &&
+      health.brokenSince !== null &&
+      now - health.brokenSince >= HELP_HINT_DELAY_MS);
+
   return React.createElement(
     "div",
     {
@@ -92,6 +99,23 @@ export function SplashFeature() {
         { className: "luminous-splash__loader" },
         React.createElement("span"),
       ),
+      showHelpHint &&
+        React.createElement(
+          "div",
+          { className: "luminous-splash__hint" },
+          React.createElement(
+            "span",
+            null,
+            "Still stuck? Spotify may have updated or Spicetify may be out of sync.",
+          ),
+          React.createElement(
+            "span",
+            null,
+            "Try running ",
+            React.createElement("code", null, "spicetify restore"),
+            " in a terminal.",
+          ),
+        ),
     ),
   );
 }
