@@ -3,7 +3,7 @@
   "description": "Lightweight dynamic Spicetify theme",
   "readme": "README.md",
   "preview": "assets/luminous.png",
-  "usercss": "release/user.css",
+  "usercss": "https://streetraceing.github.io/luminous/release/user.css?version=2.0.11",
   "schemes": "release/color.ini",
   "include": [
     "https://streetraceing.github.io/luminous/release/theme.js?version=2.0.11"

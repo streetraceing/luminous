@@ -7,10 +7,10 @@
   },
   "scripts": {
     "build": "vite build",
+    "release": "npm run build && tsx vite/releaseScript.ts",
     "watch": "spicetify watch -s",
-    "enable": "npm run build && spicetify config current_theme Luminous && spicetify apply",
-    "disable": "spicetify config current_theme marketplace && spicetify apply && vite build --mode delete",
-    "release": "npm run build && tsx vite/releaseScript.ts"
+    "apply": "npm run build -- --mode sync && spicetify config current_theme Luminous && spicetify apply",
+    "revert": "spicetify config current_theme marketplace && spicetify apply && npm run build -- --mode delete"
   },
   "devDependencies": {
     "@types/node": "^25.9.3",

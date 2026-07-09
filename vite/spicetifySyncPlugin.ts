@@ -13,15 +13,10 @@ interface SpicetifySyncOptions {
    * Optional manual spicetify root
    */
   spicetifyRoot?: string;
-
-  /**
-   * "copy" (default) or "delete"
-   */
-  mode?: "copy" | "delete";
 }
 
 export default function spicetifySync(options: SpicetifySyncOptions): Plugin {
-  const { themeName, mode = "copy" } = options;
+  const { themeName } = options;
 
   let cachedRoot: string | null = options.spicetifyRoot ?? null;
   let config: ResolvedConfig | null = null;
@@ -117,16 +112,18 @@ export default function spicetifySync(options: SpicetifySyncOptions): Plugin {
     },
 
     closeBundle() {
-      // vite build --mode delete
-      const isDelete = mode === "delete" || process.env.NODE_ENV === "delete";
+      const mode = config?.mode;
 
-      if (isDelete) {
-        deleteTheme();
+      if (mode === "sync") {
+        syncColorIni();
+        copyDist();
         return;
       }
 
-      syncColorIni();
-      copyDist();
+      if (mode === "delete") {
+        deleteTheme();
+        return;
+      }
     },
   };
 }
