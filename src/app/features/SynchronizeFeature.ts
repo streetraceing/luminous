@@ -1,6 +1,6 @@
-import { useEffect } from "../react";
-import { Synchronize } from "../../ui/synchronize";
-import { SyncController } from "../../types/runtime/dynamic.types";
+import { useEffect } from '../react';
+import { Synchronize } from '../../ui/synchronize';
+import { SyncController } from '../../types/runtime/dynamic.types';
 
 export function SynchronizeFeature() {
   const effect = useEffect();

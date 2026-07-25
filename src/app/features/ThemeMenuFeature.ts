@@ -1,7 +1,7 @@
-import { getReact, ReactRef, useEffect, useRef, useState } from "../react";
+import { getReact, ReactRef, useEffect, useRef, useState } from '../react';
 
-const BUTTON_LABEL = "Luminous settings";
-const BUTTON_ICON: Spicetify.Icon = "brightness";
+const BUTTON_LABEL = 'Luminous settings';
+const BUTTON_ICON: Spicetify.Icon = 'brightness';
 
 type NumericSetting = {
   key: string;
@@ -10,45 +10,45 @@ type NumericSetting = {
   min: number;
   max: number;
   step: number;
-  unit: "px" | "%" | "";
+  unit: 'px' | '%' | '';
   fallback: number;
 };
 
 const numericSettings: NumericSetting[] = [
   {
-    key: "backgroundBlur",
-    label: "Background blur",
-    description: "Softens album art and canvas motion.",
+    key: 'backgroundBlur',
+    label: 'Background blur',
+    description: 'Softens album art and canvas motion.',
     min: 0,
     max: 48,
     step: 1,
-    unit: "px",
+    unit: 'px',
     fallback: 24,
   },
   {
-    key: "backgroundBrightness",
-    label: "Background brightness",
-    description: "Controls the ambient backdrop intensity.",
+    key: 'backgroundBrightness',
+    label: 'Background brightness',
+    description: 'Controls the ambient backdrop intensity.',
     min: 30,
     max: 120,
     step: 1,
-    unit: "%",
+    unit: '%',
     fallback: 75,
   },
   {
-    key: "uiOpacity",
-    label: "UI opacity",
-    description: "Adjusts the glass surface strength.",
+    key: 'uiOpacity',
+    label: 'UI opacity',
+    description: 'Adjusts the glass surface strength.',
     min: 0,
     max: 100,
     step: 1,
-    unit: "%",
+    unit: '%',
     fallback: 50,
   },
 ];
 
 const resettableSettings = [
-  "dynamicBackground",
+  'dynamicBackground',
   ...numericSettings.map((setting) => setting.key),
 ];
 
@@ -82,7 +82,7 @@ export function ThemeMenuFeature() {
         true,
       );
 
-      button.element.classList.add("luminous-theme-menu-button");
+      button.element.classList.add('luminous-theme-menu-button');
       buttonRef.current = button;
     };
 
@@ -116,23 +116,23 @@ export function ThemeMenuFeature() {
     };
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
+      if (event.key === 'Escape') {
         setOpen(false);
       }
     };
 
-    document.addEventListener("pointerdown", handleOutsideInteraction, true);
-    document.addEventListener("click", handleOutsideInteraction, true);
-    document.addEventListener("keydown", handleKeyDown, true);
+    document.addEventListener('pointerdown', handleOutsideInteraction, true);
+    document.addEventListener('click', handleOutsideInteraction, true);
+    document.addEventListener('keydown', handleKeyDown, true);
 
     return () => {
       document.removeEventListener(
-        "pointerdown",
+        'pointerdown',
         handleOutsideInteraction,
         true,
       );
-      document.removeEventListener("click", handleOutsideInteraction, true);
-      document.removeEventListener("keydown", handleKeyDown, true);
+      document.removeEventListener('click', handleOutsideInteraction, true);
+      document.removeEventListener('keydown', handleKeyDown, true);
     };
   }, [open]);
 
@@ -159,103 +159,103 @@ function ThemeMenuPopover({
   const state = useState();
   const [position, setPosition] = state(() => getMenuPosition(anchor));
   const [dynamicBackground, setDynamicBackground] = state(
-    () => Luminous.Settings.get("dynamicBackground") !== false,
+    () => Luminous.Settings.get('dynamicBackground') !== false,
   );
 
   effect(() => {
     const syncPosition = () => setPosition(getMenuPosition(anchor));
 
     syncPosition();
-    window.addEventListener("resize", syncPosition);
-    window.addEventListener("scroll", syncPosition, true);
+    window.addEventListener('resize', syncPosition);
+    window.addEventListener('scroll', syncPosition, true);
 
     return () => {
-      window.removeEventListener("resize", syncPosition);
-      window.removeEventListener("scroll", syncPosition, true);
+      window.removeEventListener('resize', syncPosition);
+      window.removeEventListener('scroll', syncPosition, true);
     };
   }, [anchor]);
 
   effect(() => {
     return Luminous.Settings.subscribe<boolean>(
-      "dynamicBackground",
+      'dynamicBackground',
       (value) => setDynamicBackground(value !== false),
       { immediate: true },
     );
   }, []);
 
   return React.createElement(
-    "div",
+    'div',
     {
       ref: menuRef,
-      className: "luminous-theme-menu",
+      className: 'luminous-theme-menu',
       style: {
         top: `${position.top}px`,
         right: `${position.right}px`,
       },
-      role: "dialog",
-      "aria-label": "Luminous settings",
+      role: 'dialog',
+      'aria-label': 'Luminous settings',
     },
     React.createElement(
-      "div",
-      { className: "luminous-theme-menu__header" },
+      'div',
+      { className: 'luminous-theme-menu__header' },
       React.createElement(
-        "div",
-        { className: "luminous-theme-menu__mark" },
-        React.createElement("svg", {
-          className: "luminous-theme-menu__luminous-icon",
-          viewBox: "0 0 16 16",
-          "aria-hidden": "true",
-          focusable: "false",
+        'div',
+        { className: 'luminous-theme-menu__mark' },
+        React.createElement('svg', {
+          className: 'luminous-theme-menu__luminous-icon',
+          viewBox: '0 0 16 16',
+          'aria-hidden': 'true',
+          focusable: 'false',
           dangerouslySetInnerHTML: {
-            __html: Spicetify.SVGIcons["brightness"],
+            __html: Spicetify.SVGIcons['brightness'],
           },
         }),
       ),
       React.createElement(
-        "div",
-        { className: "luminous-theme-menu__title" },
-        React.createElement("span", null, "Luminous"),
-        React.createElement("small", null, "Theme settings"),
+        'div',
+        { className: 'luminous-theme-menu__title' },
+        React.createElement('span', null, 'Luminous'),
+        React.createElement('small', null, 'Theme settings'),
       ),
       React.createElement(
-        "button",
+        'button',
         {
-          className: "luminous-theme-menu__reset-button",
-          type: "button",
+          className: 'luminous-theme-menu__reset-button',
+          type: 'button',
           onClick: () => Luminous.Settings.resetMany(resettableSettings),
         },
-        "Reset",
+        'Reset',
       ),
       React.createElement(
-        "button",
+        'button',
         {
-          className: "luminous-theme-menu__icon-button",
-          type: "button",
-          "aria-label": "Close",
+          className: 'luminous-theme-menu__icon-button',
+          type: 'button',
+          'aria-label': 'Close',
           onClick: onClose,
         },
-        React.createElement("svg", {
-          className: "luminous-theme-menu__close-icon",
+        React.createElement('svg', {
+          className: 'luminous-theme-menu__close-icon',
           dangerouslySetInnerHTML: {
-            __html: Spicetify.SVGIcons["x"],
+            __html: Spicetify.SVGIcons['x'],
           },
         }),
       ),
     ),
     React.createElement(
-      "div",
-      { className: "luminous-theme-menu__section" },
+      'div',
+      { className: 'luminous-theme-menu__section' },
       React.createElement(
-        "div",
-        { className: "luminous-theme-menu__section-header" },
-        "Appearance",
+        'div',
+        { className: 'luminous-theme-menu__section-header' },
+        'Appearance',
       ),
       React.createElement(ToggleRow, {
-        label: "Dynamic background",
-        description: "Use the current cover or Spotify Canvas as backdrop.",
+        label: 'Dynamic background',
+        description: 'Use the current cover or Spotify Canvas as backdrop.',
         checked: dynamicBackground,
         onChange: (checked: boolean) =>
-          Luminous.Settings.set("dynamicBackground", checked),
+          Luminous.Settings.set('dynamicBackground', checked),
       }),
       numericSettings.map((setting) =>
         React.createElement(NumericSettingRow, {
@@ -281,24 +281,24 @@ function ToggleRow({
   const React = getReact();
 
   return React.createElement(
-    "label",
-    { className: "luminous-theme-menu__row luminous-theme-menu__toggle" },
+    'label',
+    { className: 'luminous-theme-menu__row luminous-theme-menu__toggle' },
     React.createElement(
-      "span",
-      { className: "luminous-theme-menu__copy" },
-      React.createElement("span", null, label),
-      React.createElement("small", null, description),
+      'span',
+      { className: 'luminous-theme-menu__copy' },
+      React.createElement('span', null, label),
+      React.createElement('small', null, description),
     ),
     React.createElement(
-      "span",
-      { className: "luminous-theme-menu__switch" },
-      React.createElement("input", {
-        type: "checkbox",
+      'span',
+      { className: 'luminous-theme-menu__switch' },
+      React.createElement('input', {
+        type: 'checkbox',
         checked,
         onChange: (event: Event) =>
           onChange((event.currentTarget as HTMLInputElement).checked),
       }),
-      React.createElement("span"),
+      React.createElement('span'),
     ),
   );
 }
@@ -318,30 +318,30 @@ function NumericSettingRow({ setting }: { setting: NumericSetting }) {
   }, [setting.key]);
 
   return React.createElement(
-    "label",
-    { className: "luminous-theme-menu__row luminous-theme-menu__range" },
+    'label',
+    { className: 'luminous-theme-menu__row luminous-theme-menu__range' },
     React.createElement(
-      "span",
-      { className: "luminous-theme-menu__range-header" },
+      'span',
+      { className: 'luminous-theme-menu__range-header' },
       React.createElement(
-        "span",
-        { className: "luminous-theme-menu__copy" },
-        React.createElement("span", null, setting.label),
-        React.createElement("small", null, setting.description),
+        'span',
+        { className: 'luminous-theme-menu__copy' },
+        React.createElement('span', null, setting.label),
+        React.createElement('small', null, setting.description),
       ),
       React.createElement(
-        "strong",
+        'strong',
         null,
-        setting.unit === "%" || setting.unit === "px"
+        setting.unit === '%' || setting.unit === 'px'
           ? `${value}${setting.unit}`
           : value,
       ),
     ),
     React.createElement(
-      "span",
-      { className: "luminous-theme-menu__range-control" },
-      React.createElement("input", {
-        type: "range",
+      'span',
+      { className: 'luminous-theme-menu__range-control' },
+      React.createElement('input', {
+        type: 'range',
         min: setting.min,
         max: setting.max,
         step: setting.step,

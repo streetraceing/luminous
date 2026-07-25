@@ -1,7 +1,7 @@
-import type { Plugin, ResolvedConfig } from "vite";
-import fs from "fs";
-import path from "path";
-import { execSync } from "child_process";
+import type { Plugin, ResolvedConfig } from 'vite';
+import fs from 'fs';
+import path from 'path';
+import { execSync } from 'child_process';
 
 interface SpicetifySyncOptions {
   /**
@@ -29,10 +29,10 @@ export default function spicetifySync(options: SpicetifySyncOptions): Plugin {
     if (cachedRoot) return cachedRoot;
 
     try {
-      cachedRoot = execSync("spicetify path").toString().trim();
+      cachedRoot = execSync('spicetify path').toString().trim();
     } catch {
       throw new Error(
-        "[spicetify-sync] Failed to resolve spicetify path. Install Spicetify or pass spicetifyRoot manually.",
+        '[spicetify-sync] Failed to resolve spicetify path. Install Spicetify or pass spicetifyRoot manually.',
       );
     }
 
@@ -40,7 +40,7 @@ export default function spicetifySync(options: SpicetifySyncOptions): Plugin {
   }
 
   function getThemeRoot(): string {
-    return path.join(getSpicetifyRoot(), "Themes", themeName);
+    return path.join(getSpicetifyRoot(), 'Themes', themeName);
   }
 
   function resolveProjectPath(...parts: string[]) {
@@ -48,7 +48,7 @@ export default function spicetifySync(options: SpicetifySyncOptions): Plugin {
   }
 
   function getDistRoot(): string {
-    const outDir = config?.build.outDir ?? "dist";
+    const outDir = config?.build.outDir ?? 'dist';
 
     return path.isAbsolute(outDir) ? outDir : resolveProjectPath(outDir);
   }
@@ -62,7 +62,7 @@ export default function spicetifySync(options: SpicetifySyncOptions): Plugin {
     const dist = getDistRoot();
 
     if (!fs.existsSync(dist)) {
-      log("dist not found, skipping");
+      log('dist not found, skipping');
       return;
     }
 
@@ -82,20 +82,20 @@ export default function spicetifySync(options: SpicetifySyncOptions): Plugin {
   }
 
   function syncColorIni() {
-    const from = resolveProjectPath("src", "color.ini");
-    const to = path.join(getDistRoot(), "color.ini");
+    const from = resolveProjectPath('src', 'color.ini');
+    const to = path.join(getDistRoot(), 'color.ini');
 
     if (!fs.existsSync(from)) return;
 
     copyFileSafe(from, to);
-    log("color.ini synced");
+    log('color.ini synced');
   }
 
   function deleteTheme() {
     const themeRoot = getThemeRoot();
 
     if (!fs.existsSync(themeRoot)) {
-      log("theme not found, skipping delete");
+      log('theme not found, skipping delete');
       return;
     }
 
@@ -104,8 +104,8 @@ export default function spicetifySync(options: SpicetifySyncOptions): Plugin {
   }
 
   return {
-    name: "spicetify-sync",
-    apply: "build",
+    name: 'spicetify-sync',
+    apply: 'build',
 
     configResolved(resolvedConfig) {
       config = resolvedConfig;
@@ -114,13 +114,13 @@ export default function spicetifySync(options: SpicetifySyncOptions): Plugin {
     closeBundle() {
       const mode = config?.mode;
 
-      if (mode === "sync") {
+      if (mode === 'sync') {
         syncColorIni();
         copyDist();
         return;
       }
 
-      if (mode === "delete") {
+      if (mode === 'delete') {
         deleteTheme();
         return;
       }

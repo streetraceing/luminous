@@ -2,11 +2,11 @@ import {
   SongEvent,
   SongListener,
   SongPayload,
-} from "../types/runtime/song.types";
+} from '../types/runtime/song.types';
 
 export class Song {
   private static readonly PLAYER_TIMEOUT_MESSAGE =
-    "Spicetify Player not available";
+    'Spicetify Player not available';
 
   private static current: Spicetify.PlayerTrack | null = null;
   private static listeners = new Map<SongEvent, Set<SongListener>>();
@@ -48,14 +48,14 @@ export class Song {
       const start = Date.now();
 
       const check = () => {
-        if (typeof Spicetify !== "undefined" && Spicetify.Player?.data) {
+        if (typeof Spicetify !== 'undefined' && Spicetify.Player?.data) {
           resolve();
           return;
         }
 
         if (Date.now() - start > timeout) {
           const error = new Error(this.PLAYER_TIMEOUT_MESSAGE);
-          Luminous.Logger.error("Song", error.message);
+          Luminous.Logger.error('Song', error.message);
           reject(error);
           return;
         }
@@ -68,7 +68,7 @@ export class Song {
   }
 
   private static bindEvents() {
-    Spicetify.Player.addEventListener("songchange", () => {
+    Spicetify.Player.addEventListener('songchange', () => {
       this.handleTrack(Spicetify.Player.data?.item ?? null);
     });
   }
@@ -76,11 +76,11 @@ export class Song {
   static addEventListener(event: SongEvent, listener: SongListener) {
     this.getListeners(event).add(listener);
 
-    if (event === "ready" && this.ready && this.current) {
+    if (event === 'ready' && this.ready && this.current) {
       listener(this.createPayload(this.current));
     }
 
-    if (event === "change" && this.current) {
+    if (event === 'change' && this.current) {
       listener(this.createPayload(this.current));
     }
   }
@@ -117,13 +117,13 @@ export class Song {
     if (!this.ready) {
       this.ready = true;
       this.readyResolve();
-      Luminous.Logger.info("Song", "Ready, current is", track);
-      this.emit("ready");
+      Luminous.Logger.info('Song', 'Ready, current is', track);
+      this.emit('ready');
       return;
     }
 
-    Luminous.Logger.info("Song", "Changed to", track);
-    this.emit("change");
+    Luminous.Logger.info('Song', 'Changed to', track);
+    this.emit('change');
   }
 
   private static createPayload(track: Spicetify.PlayerTrack): SongPayload {
@@ -139,7 +139,7 @@ export class Song {
       track,
       name: track.name,
       title: artists.length
-        ? `${track.name} - ${artists.join(", ")}`
+        ? `${track.name} - ${artists.join(', ')}`
         : track.name,
       artists,
       image,

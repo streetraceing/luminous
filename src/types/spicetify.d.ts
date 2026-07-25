@@ -6,166 +6,166 @@ export {};
 declare global {
   declare namespace Spicetify {
     type Icon =
-      | "addToPlaylist"
-      | "addToQueue"
-      | "album"
-      | "artist"
-      | "block"
-      | "brightness"
-      | "car"
-      | "chart-down"
-      | "chart-up"
-      | "check"
-      | "check-alt-fill"
-      | "chevron-left"
-      | "chevron-right"
-      | "chromecast-disconnected"
-      | "clock"
-      | "collapseLibrary"
-      | "collaborative"
-      | "computer"
-      | "connectDevice"
-      | "copy"
-      | "create"
-      | "credits"
-      | "download"
-      | "downloaded"
-      | "edit"
-      | "enhance"
-      | "enterFullScreen"
-      | "exclamation-circle"
-      | "excludeTaste"
-      | "expandLibrary"
-      | "external-link"
-      | "facebook"
-      | "follow"
-      | "friendActivity"
-      | "fullscreen"
-      | "gamepad"
-      | "goToAlbum"
-      | "goToArtist"
-      | "grid-view"
-      | "heart"
-      | "heart-active"
-      | "heartAdd"
-      | "instagram"
-      | "laptop"
-      | "library"
-      | "list-view"
-      | "location"
-      | "locked"
-      | "locked-active"
-      | "lyrics"
-      | "menu"
-      | "minimize"
-      | "miniplayer"
-      | "minus"
-      | "more"
-      | "new-spotify-connect"
-      | "nowPlaying"
-      | "offline"
-      | "openDesktop"
-      | "pause"
-      | "phone"
-      | "play"
-      | "playlist"
-      | "playlist-folder"
-      | "plus-alt"
-      | "plus2px"
-      | "podcasts"
-      | "projector"
-      | "queue"
-      | "radio"
-      | "repeat"
-      | "repeat-once"
-      | "search"
-      | "search-active"
-      | "share"
-      | "shuffle"
-      | "skip-back"
-      | "skip-back15"
-      | "skip-forward"
-      | "skip-forward15"
-      | "skipBack"
-      | "skipForward"
-      | "smartShuffle"
-      | "soundbetter"
-      | "speaker"
-      | "spotify"
-      | "subtitles"
-      | "tablet"
-      | "ticket"
-      | "twitter"
-      | "visualizer"
-      | "voice"
-      | "volume"
-      | "volume-off"
-      | "volume-one-wave"
-      | "volumeHigh"
-      | "volume-two-wave"
-      | "watch"
-      | "whatsNew"
-      | "x";
+      | 'addToPlaylist'
+      | 'addToQueue'
+      | 'album'
+      | 'artist'
+      | 'block'
+      | 'brightness'
+      | 'car'
+      | 'chart-down'
+      | 'chart-up'
+      | 'check'
+      | 'check-alt-fill'
+      | 'chevron-left'
+      | 'chevron-right'
+      | 'chromecast-disconnected'
+      | 'clock'
+      | 'collapseLibrary'
+      | 'collaborative'
+      | 'computer'
+      | 'connectDevice'
+      | 'copy'
+      | 'create'
+      | 'credits'
+      | 'download'
+      | 'downloaded'
+      | 'edit'
+      | 'enhance'
+      | 'enterFullScreen'
+      | 'exclamation-circle'
+      | 'excludeTaste'
+      | 'expandLibrary'
+      | 'external-link'
+      | 'facebook'
+      | 'follow'
+      | 'friendActivity'
+      | 'fullscreen'
+      | 'gamepad'
+      | 'goToAlbum'
+      | 'goToArtist'
+      | 'grid-view'
+      | 'heart'
+      | 'heart-active'
+      | 'heartAdd'
+      | 'instagram'
+      | 'laptop'
+      | 'library'
+      | 'list-view'
+      | 'location'
+      | 'locked'
+      | 'locked-active'
+      | 'lyrics'
+      | 'menu'
+      | 'minimize'
+      | 'miniplayer'
+      | 'minus'
+      | 'more'
+      | 'new-spotify-connect'
+      | 'nowPlaying'
+      | 'offline'
+      | 'openDesktop'
+      | 'pause'
+      | 'phone'
+      | 'play'
+      | 'playlist'
+      | 'playlist-folder'
+      | 'plus-alt'
+      | 'plus2px'
+      | 'podcasts'
+      | 'projector'
+      | 'queue'
+      | 'radio'
+      | 'repeat'
+      | 'repeat-once'
+      | 'search'
+      | 'search-active'
+      | 'share'
+      | 'shuffle'
+      | 'skip-back'
+      | 'skip-back15'
+      | 'skip-forward'
+      | 'skip-forward15'
+      | 'skipBack'
+      | 'skipForward'
+      | 'smartShuffle'
+      | 'soundbetter'
+      | 'speaker'
+      | 'spotify'
+      | 'subtitles'
+      | 'tablet'
+      | 'ticket'
+      | 'twitter'
+      | 'visualizer'
+      | 'voice'
+      | 'volume'
+      | 'volume-off'
+      | 'volume-one-wave'
+      | 'volumeHigh'
+      | 'volume-two-wave'
+      | 'watch'
+      | 'whatsNew'
+      | 'x';
     type Variant =
-      | "bass"
-      | "forte"
-      | "brio"
-      | "altoBrio"
-      | "alto"
-      | "canon"
-      | "celloCanon"
-      | "cello"
-      | "ballad"
-      | "balladBold"
-      | "viola"
-      | "violaBold"
-      | "mesto"
-      | "mestoBold"
-      | "metronome"
-      | "finale"
-      | "finaleBold"
-      | "minuet"
-      | "minuetBold";
+      | 'bass'
+      | 'forte'
+      | 'brio'
+      | 'altoBrio'
+      | 'alto'
+      | 'canon'
+      | 'celloCanon'
+      | 'cello'
+      | 'ballad'
+      | 'balladBold'
+      | 'viola'
+      | 'violaBold'
+      | 'mesto'
+      | 'mestoBold'
+      | 'metronome'
+      | 'finale'
+      | 'finaleBold'
+      | 'minuet'
+      | 'minuetBold';
     type SemanticColor =
-      | "textBase"
-      | "textSubdued"
-      | "textBrightAccent"
-      | "textNegative"
-      | "textWarning"
-      | "textPositive"
-      | "textAnnouncement"
-      | "essentialBase"
-      | "essentialSubdued"
-      | "essentialBrightAccent"
-      | "essentialNegative"
-      | "essentialWarning"
-      | "essentialPositive"
-      | "essentialAnnouncement"
-      | "decorativeBase"
-      | "decorativeSubdued"
-      | "backgroundBase"
-      | "backgroundHighlight"
-      | "backgroundPress"
-      | "backgroundElevatedBase"
-      | "backgroundElevatedHighlight"
-      | "backgroundElevatedPress"
-      | "backgroundTintedBase"
-      | "backgroundTintedHighlight"
-      | "backgroundTintedPress"
-      | "backgroundUnsafeForSmallTextBase"
-      | "backgroundUnsafeForSmallTextHighlight"
-      | "backgroundUnsafeForSmallTextPress";
+      | 'textBase'
+      | 'textSubdued'
+      | 'textBrightAccent'
+      | 'textNegative'
+      | 'textWarning'
+      | 'textPositive'
+      | 'textAnnouncement'
+      | 'essentialBase'
+      | 'essentialSubdued'
+      | 'essentialBrightAccent'
+      | 'essentialNegative'
+      | 'essentialWarning'
+      | 'essentialPositive'
+      | 'essentialAnnouncement'
+      | 'decorativeBase'
+      | 'decorativeSubdued'
+      | 'backgroundBase'
+      | 'backgroundHighlight'
+      | 'backgroundPress'
+      | 'backgroundElevatedBase'
+      | 'backgroundElevatedHighlight'
+      | 'backgroundElevatedPress'
+      | 'backgroundTintedBase'
+      | 'backgroundTintedHighlight'
+      | 'backgroundTintedPress'
+      | 'backgroundUnsafeForSmallTextBase'
+      | 'backgroundUnsafeForSmallTextHighlight'
+      | 'backgroundUnsafeForSmallTextPress';
     type ColorSet =
-      | "base"
-      | "brightAccent"
-      | "negative"
-      | "warning"
-      | "positive"
-      | "announcement"
-      | "invertedDark"
-      | "invertedLight"
-      | "mutedAccent"
-      | "overMedia";
+      | 'base'
+      | 'brightAccent'
+      | 'negative'
+      | 'warning'
+      | 'positive'
+      | 'announcement'
+      | 'invertedDark'
+      | 'invertedLight'
+      | 'mutedAccent'
+      | 'overMedia';
     type ColorSetBackgroundColors = {
       base: string;
       highlight: string;
@@ -225,7 +225,7 @@ declare global {
       uri: string;
       url: string;
       metadata: {
-        "player.arch": string;
+        'player.arch': string;
       };
     };
     type PlayerIndex = {
@@ -256,36 +256,36 @@ declare global {
       entity_uri: string;
       iteration: string;
       title: string;
-      "collection.is_banned": string;
-      "artist_uri:1": string;
-      "collection.in_collection": string;
+      'collection.is_banned': string;
+      'artist_uri:1': string;
+      'collection.in_collection': string;
       image_small_url: string;
-      "collection.can_ban": string;
+      'collection.can_ban': string;
       is_explicit: string;
       album_disc_number: string;
       album_disc_count: string;
       track_player: string;
       album_title: string;
-      "canvas.artist.avatar": string;
-      "canvas.artist.name": string;
-      "canvas.artist.uri": string;
-      "canvas.canvasUri": string;
-      "canvas.entityUri": string;
-      "canvas.explicit": string;
-      "canvas.fileId": string;
-      "canvas.id": string;
-      "canvas.type": string;
-      "canvas.uploadedBy": string;
-      "canvas.url": string;
-      "collection.can_add": string;
+      'canvas.artist.avatar': string;
+      'canvas.artist.name': string;
+      'canvas.artist.uri': string;
+      'canvas.canvasUri': string;
+      'canvas.entityUri': string;
+      'canvas.explicit': string;
+      'canvas.fileId': string;
+      'canvas.id': string;
+      'canvas.type': string;
+      'canvas.uploadedBy': string;
+      'canvas.url': string;
+      'collection.can_add': string;
       image_large_url: string;
-      "actions.skipping_prev_past_track": string;
+      'actions.skipping_prev_past_track': string;
       page_instance_id: string;
       image_xlarge_url: string;
       marked_for_download: string;
-      "actions.skipping_next_past_track": string;
+      'actions.skipping_next_past_track': string;
       context_uri: string;
-      "artist_name:1": string;
+      'artist_name:1': string;
       has_lyrics: string;
       interaction_id: string;
       image_url: string;
@@ -371,19 +371,19 @@ declare global {
         callback: (event?: Event) => void,
       ): void;
       function addEventListener(
-        type: "songchange",
+        type: 'songchange',
         callback: (event?: Event & { data: PlayerState }) => void,
       ): void;
       function addEventListener(
-        type: "onplaypause",
+        type: 'onplaypause',
         callback: (event?: Event & { data: PlayerState }) => void,
       ): void;
       function addEventListener(
-        type: "onprogress",
+        type: 'onprogress',
         callback: (event?: Event & { data: number }) => void,
       ): void;
       function addEventListener(
-        type: "appchange",
+        type: 'appchange',
         callback: (
           event?: Event & {
             data: {
@@ -574,13 +574,7 @@ declare global {
      */
     namespace CosmosAsync {
       type Method =
-        | "DELETE"
-        | "GET"
-        | "HEAD"
-        | "PATCH"
-        | "POST"
-        | "PUT"
-        | "SUB";
+        'DELETE' | 'GET' | 'HEAD' | 'PATCH' | 'POST' | 'PUT' | 'SUB';
       interface Error {
         code: number;
         error: string;
@@ -603,40 +597,40 @@ declare global {
         url: string,
         body?: Body,
         headers?: Headers,
-      ): Promise<Response["body"]>;
+      ): Promise<Response['body']>;
       function post(
         url: string,
         body?: Body,
         headers?: Headers,
-      ): Promise<Response["body"]>;
+      ): Promise<Response['body']>;
       function put(
         url: string,
         body?: Body,
         headers?: Headers,
-      ): Promise<Response["body"]>;
+      ): Promise<Response['body']>;
       function del(
         url: string,
         body?: Body,
         headers?: Headers,
-      ): Promise<Response["body"]>;
+      ): Promise<Response['body']>;
       function patch(
         url: string,
         body?: Body,
         headers?: Headers,
-      ): Promise<Response["body"]>;
+      ): Promise<Response['body']>;
       function sub(
         url: string,
-        callback: (b: Response["body"]) => void,
+        callback: (b: Response['body']) => void,
         onError?: (e: Error) => void,
         body?: Body,
         headers?: Headers,
-      ): Promise<Response["body"]>;
+      ): Promise<Response['body']>;
       function postSub(
         url: string,
         body: Body | null,
-        callback: (b: Response["body"]) => void,
+        callback: (b: Response['body']) => void,
         onError?: (e: Error) => void,
-      ): Promise<Response["body"]>;
+      ): Promise<Response['body']>;
       function request(
         method: Method,
         url: string,
@@ -678,110 +672,110 @@ declare global {
      */
     namespace Keyboard {
       type ValidKey =
-        | "BACKSPACE"
-        | "TAB"
-        | "ENTER"
-        | "SHIFT"
-        | "CTRL"
-        | "ALT"
-        | "CAPS"
-        | "ESCAPE"
-        | "SPACE"
-        | "PAGE_UP"
-        | "PAGE_DOWN"
-        | "END"
-        | "HOME"
-        | "ARROW_LEFT"
-        | "ARROW_UP"
-        | "ARROW_RIGHT"
-        | "ARROW_DOWN"
-        | "INSERT"
-        | "DELETE"
-        | "A"
-        | "B"
-        | "C"
-        | "D"
-        | "E"
-        | "F"
-        | "G"
-        | "H"
-        | "I"
-        | "J"
-        | "K"
-        | "L"
-        | "M"
-        | "N"
-        | "O"
-        | "P"
-        | "Q"
-        | "R"
-        | "S"
-        | "T"
-        | "U"
-        | "V"
-        | "W"
-        | "X"
-        | "Y"
-        | "Z"
-        | "WINDOW_LEFT"
-        | "WINDOW_RIGHT"
-        | "SELECT"
-        | "NUMPAD_0"
-        | "NUMPAD_1"
-        | "NUMPAD_2"
-        | "NUMPAD_3"
-        | "NUMPAD_4"
-        | "NUMPAD_5"
-        | "NUMPAD_6"
-        | "NUMPAD_7"
-        | "NUMPAD_8"
-        | "NUMPAD_9"
-        | "MULTIPLY"
-        | "ADD"
-        | "SUBTRACT"
-        | "DECIMAL_POINT"
-        | "DIVIDE"
-        | "F1"
-        | "F2"
-        | "F3"
-        | "F4"
-        | "F5"
-        | "F6"
-        | "F7"
-        | "F8"
-        | "F9"
-        | "F10"
-        | "F11"
-        | "F12"
-        | ";"
-        | "="
-        | " | "
-        | "-"
-        | "."
-        | "/"
-        | "`"
-        | "["
-        | "\\"
-        | "]"
+        | 'BACKSPACE'
+        | 'TAB'
+        | 'ENTER'
+        | 'SHIFT'
+        | 'CTRL'
+        | 'ALT'
+        | 'CAPS'
+        | 'ESCAPE'
+        | 'SPACE'
+        | 'PAGE_UP'
+        | 'PAGE_DOWN'
+        | 'END'
+        | 'HOME'
+        | 'ARROW_LEFT'
+        | 'ARROW_UP'
+        | 'ARROW_RIGHT'
+        | 'ARROW_DOWN'
+        | 'INSERT'
+        | 'DELETE'
+        | 'A'
+        | 'B'
+        | 'C'
+        | 'D'
+        | 'E'
+        | 'F'
+        | 'G'
+        | 'H'
+        | 'I'
+        | 'J'
+        | 'K'
+        | 'L'
+        | 'M'
+        | 'N'
+        | 'O'
+        | 'P'
+        | 'Q'
+        | 'R'
+        | 'S'
+        | 'T'
+        | 'U'
+        | 'V'
+        | 'W'
+        | 'X'
+        | 'Y'
+        | 'Z'
+        | 'WINDOW_LEFT'
+        | 'WINDOW_RIGHT'
+        | 'SELECT'
+        | 'NUMPAD_0'
+        | 'NUMPAD_1'
+        | 'NUMPAD_2'
+        | 'NUMPAD_3'
+        | 'NUMPAD_4'
+        | 'NUMPAD_5'
+        | 'NUMPAD_6'
+        | 'NUMPAD_7'
+        | 'NUMPAD_8'
+        | 'NUMPAD_9'
+        | 'MULTIPLY'
+        | 'ADD'
+        | 'SUBTRACT'
+        | 'DECIMAL_POINT'
+        | 'DIVIDE'
+        | 'F1'
+        | 'F2'
+        | 'F3'
+        | 'F4'
+        | 'F5'
+        | 'F6'
+        | 'F7'
+        | 'F8'
+        | 'F9'
+        | 'F10'
+        | 'F11'
+        | 'F12'
+        | ';'
+        | '='
+        | ' | '
+        | '-'
+        | '.'
+        | '/'
+        | '`'
+        | '['
+        | '\\'
+        | ']'
         | '"'
-        | "~"
-        | "!"
-        | "@"
-        | "#"
-        | "$"
-        | "%"
-        | "^"
-        | "&"
-        | "*"
-        | "("
-        | ")"
-        | "_"
-        | "+"
-        | ":"
-        | "<"
-        | ">"
-        | "?"
-        | "|";
+        | '~'
+        | '!'
+        | '@'
+        | '#'
+        | '$'
+        | '%'
+        | '^'
+        | '&'
+        | '*'
+        | '('
+        | ')'
+        | '_'
+        | '+'
+        | ':'
+        | '<'
+        | '>'
+        | '?'
+        | '|';
       type KeysDefine =
         | string
         | {
@@ -1489,28 +1483,28 @@ declare global {
         /**
          * Determins what will trigger the context menu. For example, a click, or a right-click
          */
-        trigger?: "click" | "right-click";
+        trigger?: 'click' | 'right-click';
         /**
          * Determins is the context menu should open or toggle when triggered
          */
-        action?: "toggle" | "open";
+        action?: 'toggle' | 'open';
         /**
          * The preferred placement of the context menu when it opens.
          * Relative to trigger element.
          */
         placement?:
-          | "top"
-          | "top-start"
-          | "top-end"
-          | "right"
-          | "right-start"
-          | "right-end"
-          | "bottom"
-          | "bottom-start"
-          | "bottom-end"
-          | "left"
-          | "left-start"
-          | "left-end";
+          | 'top'
+          | 'top-start'
+          | 'top-end'
+          | 'right'
+          | 'right-start'
+          | 'right-end'
+          | 'bottom'
+          | 'bottom-start'
+          | 'bottom-end'
+          | 'left'
+          | 'left-start'
+          | 'left-end';
         /**
          * The x and y offset distances at which the context menu should open.
          * Relative to trigger element and `position`.
@@ -1569,7 +1563,7 @@ declare global {
         /**
          * Indicate that a divider line should be added `before` or `after` this `MenuItem`
          */
-        divider?: "before" | "after" | "both";
+        divider?: 'before' | 'after' | 'both';
         /**
          * React component icon that will be rendered at the end of the `MenuItem`
          * @deprecated Since Spotify `1.2.8`. Use `leadingIcon` or `trailingIcon` instead
@@ -1617,18 +1611,18 @@ declare global {
          * @default 'top'
          */
         placement?:
-          | "top"
-          | "top-start"
-          | "top-end"
-          | "right"
-          | "right-start"
-          | "right-end"
-          | "bottom"
-          | "bottom-start"
-          | "bottom-end"
-          | "left"
-          | "left-start"
-          | "left-end";
+          | 'top'
+          | 'top-start'
+          | 'top-end'
+          | 'right'
+          | 'right-start'
+          | 'right-end'
+          | 'bottom'
+          | 'bottom-start'
+          | 'bottom-end'
+          | 'left'
+          | 'left-start'
+          | 'left-end';
         /**
          * Class name to apply to the tooltip
          */
@@ -1700,7 +1694,7 @@ declare global {
         /**
          * Font weight
          */
-        weight?: "book" | "bold" | "black";
+        weight?: 'book' | 'bold' | 'black';
       };
       type ConfirmDialogProps = {
         /**
@@ -1827,13 +1821,13 @@ declare global {
          * Size for the button.
          * @default "md"
          */
-        buttonSize?: "sm" | "md" | "lg";
+        buttonSize?: 'sm' | 'md' | 'lg';
         /**
          * Size for the button.
          * @deprecated Use `buttonSize` prop instead, as it will take precedence.
          * @default "medium"
          */
-        size?: "small" | "medium" | "large";
+        size?: 'small' | 'medium' | 'large';
         /**
          * Unused by Spotify. Usage unknown.
          */
@@ -1857,11 +1851,11 @@ declare global {
         /**
          * Label of the element for screen readers.
          */
-        "aria-label"?: string;
+        'aria-label'?: string;
         /**
          * ID of an element that describes the button for screen readers.
          */
-        "aria-labelledby"?: string;
+        'aria-labelledby'?: string;
         /**
          * Unsafely set the color set for the button.
          * Values from the colorSet will be pasted into the CSS.
@@ -2118,97 +2112,97 @@ declare global {
        * This list is dynamic and may change in the future.
        */
       type Query =
-        | "decorateItemsForEnhance"
-        | "imageURLAndSize"
-        | "imageSources"
-        | "audioItems"
-        | "creator"
-        | "extractedColors"
-        | "extractedColorsAndImageSources"
-        | "fetchExtractedColorAndImageForAlbumEntity"
-        | "fetchExtractedColorAndImageForArtistEntity"
-        | "fetchExtractedColorAndImageForEpisodeEntity"
-        | "fetchExtractedColorAndImageForPlaylistEntity"
-        | "fetchExtractedColorAndImageForPodcastEntity"
-        | "fetchExtractedColorAndImageForTrackEntity"
-        | "fetchExtractedColorForAlbumEntity"
-        | "fetchExtractedColorForArtistEntity"
-        | "fetchExtractedColorForEpisodeEntity"
-        | "fetchExtractedColorForPlaylistEntity"
-        | "fetchExtractedColorForPodcastEntity"
-        | "fetchExtractedColorForTrackEntity"
-        | "getAlbumNameAndTracks"
-        | "getEpisodeName"
-        | "getTrackName"
-        | "queryAlbumTrackUris"
-        | "queryTrackArtists"
-        | "decorateContextEpisodesOrChapters"
-        | "decorateContextTracks"
-        | "fetchTracksForRadioStation"
-        | "decoratePlaylists"
-        | "playlistUser"
-        | "FetchPlaylistMetadata"
-        | "playlistContentsItemTrackArtist"
-        | "playlistContentsItemTrackAlbum"
-        | "playlistContentsItemTrack"
-        | "playlistContentsItemLocalTrack"
-        | "playlistContentsItemEpisodeShow"
-        | "playlistContentsItemEpisode"
-        | "playlistContentsItemResponse"
-        | "playlistContentsItem"
-        | "FetchPlaylistContents"
-        | "episodeTrailerUri"
-        | "podcastEpisode"
-        | "podcastMetadataV2"
-        | "minimalAudiobook"
-        | "audiobookChapter"
-        | "audiobookMetadataV2"
-        | "fetchExtractedColors"
-        | "queryFullscreenMode"
-        | "queryNpvEpisode"
-        | "queryNpvArtist"
-        | "albumTrack"
-        | "getAlbum"
-        | "queryAlbumTracks"
-        | "queryArtistOverview"
-        | "queryArtistAppearsOn"
-        | "discographyAlbum"
-        | "albumMetadataReleases"
-        | "albumMetadata"
-        | "queryArtistDiscographyAlbums"
-        | "queryArtistDiscographySingles"
-        | "queryArtistDiscographyCompilations"
-        | "queryArtistDiscographyAll"
-        | "queryArtistDiscographyOverview"
-        | "artistPlaylist"
-        | "queryArtistPlaylists"
-        | "queryArtistDiscoveredOn"
-        | "queryArtistFeaturing"
-        | "queryArtistRelated"
-        | "queryArtistMinimal"
-        | "searchModalResults"
-        | "queryWhatsNewFeed"
-        | "whatsNewFeedNewItems"
-        | "SetItemsStateInWhatsNewFeed"
-        | "browseImageURLAndSize"
-        | "browseImageSources"
-        | "browseAlbum"
-        | "browseArtist"
-        | "browseEpisode"
-        | "browseChapter"
-        | "browsePlaylist"
-        | "browsePodcast"
-        | "browseAudiobook"
-        | "browseTrack"
-        | "browseUser"
-        | "browseMerch"
-        | "browseArtistConcerts"
-        | "browseContent"
-        | "browseSectionContainer"
-        | "browseClientFeature"
-        | "browseItem"
-        | "browseAll"
-        | "browsePage";
+        | 'decorateItemsForEnhance'
+        | 'imageURLAndSize'
+        | 'imageSources'
+        | 'audioItems'
+        | 'creator'
+        | 'extractedColors'
+        | 'extractedColorsAndImageSources'
+        | 'fetchExtractedColorAndImageForAlbumEntity'
+        | 'fetchExtractedColorAndImageForArtistEntity'
+        | 'fetchExtractedColorAndImageForEpisodeEntity'
+        | 'fetchExtractedColorAndImageForPlaylistEntity'
+        | 'fetchExtractedColorAndImageForPodcastEntity'
+        | 'fetchExtractedColorAndImageForTrackEntity'
+        | 'fetchExtractedColorForAlbumEntity'
+        | 'fetchExtractedColorForArtistEntity'
+        | 'fetchExtractedColorForEpisodeEntity'
+        | 'fetchExtractedColorForPlaylistEntity'
+        | 'fetchExtractedColorForPodcastEntity'
+        | 'fetchExtractedColorForTrackEntity'
+        | 'getAlbumNameAndTracks'
+        | 'getEpisodeName'
+        | 'getTrackName'
+        | 'queryAlbumTrackUris'
+        | 'queryTrackArtists'
+        | 'decorateContextEpisodesOrChapters'
+        | 'decorateContextTracks'
+        | 'fetchTracksForRadioStation'
+        | 'decoratePlaylists'
+        | 'playlistUser'
+        | 'FetchPlaylistMetadata'
+        | 'playlistContentsItemTrackArtist'
+        | 'playlistContentsItemTrackAlbum'
+        | 'playlistContentsItemTrack'
+        | 'playlistContentsItemLocalTrack'
+        | 'playlistContentsItemEpisodeShow'
+        | 'playlistContentsItemEpisode'
+        | 'playlistContentsItemResponse'
+        | 'playlistContentsItem'
+        | 'FetchPlaylistContents'
+        | 'episodeTrailerUri'
+        | 'podcastEpisode'
+        | 'podcastMetadataV2'
+        | 'minimalAudiobook'
+        | 'audiobookChapter'
+        | 'audiobookMetadataV2'
+        | 'fetchExtractedColors'
+        | 'queryFullscreenMode'
+        | 'queryNpvEpisode'
+        | 'queryNpvArtist'
+        | 'albumTrack'
+        | 'getAlbum'
+        | 'queryAlbumTracks'
+        | 'queryArtistOverview'
+        | 'queryArtistAppearsOn'
+        | 'discographyAlbum'
+        | 'albumMetadataReleases'
+        | 'albumMetadata'
+        | 'queryArtistDiscographyAlbums'
+        | 'queryArtistDiscographySingles'
+        | 'queryArtistDiscographyCompilations'
+        | 'queryArtistDiscographyAll'
+        | 'queryArtistDiscographyOverview'
+        | 'artistPlaylist'
+        | 'queryArtistPlaylists'
+        | 'queryArtistDiscoveredOn'
+        | 'queryArtistFeaturing'
+        | 'queryArtistRelated'
+        | 'queryArtistMinimal'
+        | 'searchModalResults'
+        | 'queryWhatsNewFeed'
+        | 'whatsNewFeedNewItems'
+        | 'SetItemsStateInWhatsNewFeed'
+        | 'browseImageURLAndSize'
+        | 'browseImageSources'
+        | 'browseAlbum'
+        | 'browseArtist'
+        | 'browseEpisode'
+        | 'browseChapter'
+        | 'browsePlaylist'
+        | 'browsePodcast'
+        | 'browseAudiobook'
+        | 'browseTrack'
+        | 'browseUser'
+        | 'browseMerch'
+        | 'browseArtistConcerts'
+        | 'browseContent'
+        | 'browseSectionContainer'
+        | 'browseClientFeature'
+        | 'browseItem'
+        | 'browseAll'
+        | 'browsePage';
       /**
        * Collection of GraphQL definitions.
        */
@@ -2288,7 +2282,7 @@ declare global {
       function useExtractedColor(
         uri: string,
         fallbackColor?: string,
-        variant?: "colorRaw" | "colorLight" | "colorDark",
+        variant?: 'colorRaw' | 'colorLight' | 'colorDark',
       ): string;
     }
 
@@ -2345,7 +2339,7 @@ declare global {
       g: number;
       b: number;
     }
-    type CSSColors = "HEX" | "HEXA" | "HSL" | "HSLA" | "RGB" | "RGBA";
+    type CSSColors = 'HEX' | 'HEXA' | 'HSL' | 'HSLA' | 'RGB' | 'RGBA';
     /**
      * Spotify's internal color class
      */

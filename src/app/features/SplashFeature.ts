@@ -1,5 +1,5 @@
-import { getReact, useEffect, useMemo, useRef, useState } from "../react";
-import { getUiHealth, subscribeUiHealth, UiHealthState } from "../../ui/health";
+import { getReact, useEffect, useMemo, useRef, useState } from '../react';
+import { getUiHealth, subscribeUiHealth, UiHealthState } from '../../ui/health';
 
 const NORMAL_MIN_MS = 900;
 const NORMAL_MAX_MS = 1800;
@@ -20,14 +20,14 @@ export function SplashFeature() {
   effect(() => subscribeUiHealth(setHealth), []);
 
   effect(() => {
-    if (health.status === "waiting" || health.status === "reloading") {
+    if (health.status === 'waiting' || health.status === 'reloading') {
       setVisible(true);
       return;
     }
 
     const elapsed = Date.now() - mountedAt.current;
     const duration =
-      health.status === "ready"
+      health.status === 'ready'
         ? Math.max(0, NORMAL_MIN_MS - elapsed)
         : Math.max(0, NORMAL_MAX_MS - elapsed);
 
@@ -39,7 +39,7 @@ export function SplashFeature() {
   }, [health.status]);
 
   effect(() => {
-    if (health.status !== "waiting" && health.status !== "reloading") return;
+    if (health.status !== 'waiting' && health.status !== 'reloading') return;
 
     const intervalId = window.setInterval(() => {
       setNow(Date.now());
@@ -49,71 +49,71 @@ export function SplashFeature() {
   }, [health.status]);
 
   const message = memo(() => {
-    if (health.status === "waiting" && health.brokenSince) {
+    if (health.status === 'waiting' && health.brokenSince) {
       return `Waiting for Spotify UI... (${formatSeconds(now - health.brokenSince)})`;
     }
 
-    if (health.status === "reloading") {
-      return "Spotify UI is stuck. Reloading...";
+    if (health.status === 'reloading') {
+      return 'Spotify UI is stuck. Reloading...';
     }
 
-    return "Welcome back. Lighting up Spotify...";
+    return 'Welcome back. Lighting up Spotify...';
   }, [health.brokenSince, health.status, now]);
 
   const showHelpHint =
-    health.status === "reloading" ||
-    (health.status === "waiting" &&
+    health.status === 'reloading' ||
+    (health.status === 'waiting' &&
       health.brokenSince !== null &&
       now - health.brokenSince >= HELP_HINT_DELAY_MS);
 
   return React.createElement(
-    "div",
+    'div',
     {
-      className: `luminous-splash${visible ? "" : " luminous-splash--hidden"}`,
-      "aria-hidden": visible ? "false" : "true",
+      className: `luminous-splash${visible ? '' : ' luminous-splash--hidden'}`,
+      'aria-hidden': visible ? 'false' : 'true',
     },
     React.createElement(
-      "div",
-      { className: "luminous-splash__panel" },
+      'div',
+      { className: 'luminous-splash__panel' },
       React.createElement(
-        "div",
-        { className: "luminous-splash__mark" },
-        React.createElement("svg", {
-          className: "luminous-splash__luminous-icon",
-          viewBox: "0 0 16 16",
-          "aria-hidden": "true",
-          focusable: "false",
+        'div',
+        { className: 'luminous-splash__mark' },
+        React.createElement('svg', {
+          className: 'luminous-splash__luminous-icon',
+          viewBox: '0 0 16 16',
+          'aria-hidden': 'true',
+          focusable: 'false',
           dangerouslySetInnerHTML: {
             __html: Spicetify.SVGIcons.brightness,
           },
         }),
       ),
       React.createElement(
-        "div",
-        { className: "luminous-splash__copy" },
-        React.createElement("span", null, "Luminous"),
-        React.createElement("small", null, message),
+        'div',
+        { className: 'luminous-splash__copy' },
+        React.createElement('span', null, 'Luminous'),
+        React.createElement('small', null, message),
       ),
       React.createElement(
-        "div",
-        { className: "luminous-splash__loader" },
-        React.createElement("span"),
+        'div',
+        { className: 'luminous-splash__loader' },
+        React.createElement('span'),
       ),
       showHelpHint &&
         React.createElement(
-          "div",
-          { className: "luminous-splash__hint" },
+          'div',
+          { className: 'luminous-splash__hint' },
           React.createElement(
-            "span",
+            'span',
             null,
-            "Still stuck? Spotify may have updated or Spicetify may be out of sync.",
+            'Still stuck? Spotify may have updated or Spicetify may be out of sync.',
           ),
           React.createElement(
-            "span",
+            'span',
             null,
-            "Try running ",
-            React.createElement("code", null, "spicetify restore"),
-            " in a terminal.",
+            'Try running ',
+            React.createElement('code', null, 'spicetify restore'),
+            ' in a terminal.',
           ),
         ),
     ),

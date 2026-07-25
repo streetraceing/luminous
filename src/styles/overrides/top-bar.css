@@ -27,8 +27,8 @@
 
 .Root__globalNav
   :is(
-    button[data-testid="top-bar-back-button"],
-    button[data-testid="top-bar-forward-button"],
+    button[data-testid='top-bar-back-button'],
+    button[data-testid='top-bar-forward-button'],
     .main-actionButtons-spacer.main-actionButtons button,
     .main-globalNav-historyButtons button,
     .main-globalNav-navLink,
@@ -42,8 +42,8 @@
 
 .Root__globalNav
   :is(
-    button[data-testid="top-bar-back-button"],
-    button[data-testid="top-bar-forward-button"],
+    button[data-testid='top-bar-back-button'],
+    button[data-testid='top-bar-forward-button'],
     .main-actionButtons-spacer.main-actionButtons button,
     .main-globalNav-historyButtonsContainer button,
     .main-globalNav-iconButton,
@@ -59,8 +59,8 @@
 
 .Root__globalNav
   :is(
-    button[data-testid="top-bar-back-button"],
-    button[data-testid="top-bar-forward-button"],
+    button[data-testid='top-bar-back-button'],
+    button[data-testid='top-bar-forward-button'],
     .main-actionButtons-spacer.main-actionButtons button,
     .main-globalNav-historyButtons button,
     .main-globalNav-navLink,

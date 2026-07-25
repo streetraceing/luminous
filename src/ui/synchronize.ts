@@ -2,9 +2,9 @@ import {
   PlaylistBackgroundSyncOptions,
   SyncController,
   HomeHeaderHeightSyncOptions,
-} from "../types/runtime/dynamic.types";
-import { Logger } from "../api/logger";
-import { setUiHealth } from "./health";
+} from '../types/runtime/dynamic.types';
+import { Logger } from '../api/logger';
+import { setUiHealth } from './health';
 
 export class Synchronize {
   static playlistBackground(
@@ -29,21 +29,21 @@ export class Synchronize {
       if (!root) return;
 
       const source = root.querySelector(
-        ".before-scroll-node > div > :first-child",
+        '.before-scroll-node > div > :first-child',
       ) as HTMLElement | null;
 
       const target =
         (root.querySelector(
-          "section > .main-entityHeader-container, section > div > .main-entityHeader-container",
+          'section > .main-entityHeader-container, section > div > .main-entityHeader-container',
         ) as HTMLElement | null) ||
         (root.querySelector(
-          "main > div > .main-entityHeader-container",
+          'main > div > .main-entityHeader-container',
         ) as HTMLElement | null);
 
       if (!source || !target) return;
 
       const bg = getComputedStyle(source).backgroundImage;
-      if (!bg || bg === "none") return;
+      if (!bg || bg === 'none') return;
 
       const sameBg = bg === lastBg;
       const sameTarget = target === lastTarget;
@@ -57,16 +57,16 @@ export class Synchronize {
         linear-gradient(rgba(0,0,0,.25), rgba(0,0,0,.75)),
         ${bg}
       `;
-      target.style.backgroundSize = "100% 101%, cover";
-      target.style.backgroundPosition = "center";
-      target.style.backgroundRepeat = "no-repeat";
+      target.style.backgroundSize = '100% 101%, cover';
+      target.style.backgroundPosition = 'center';
+      target.style.backgroundRepeat = 'no-repeat';
 
       options?.onBackgroundChange?.(bg, source, target);
     }
 
     function attach() {
       root = document.querySelector(
-        ".main-view-container",
+        '.main-view-container',
       ) as HTMLElement | null;
 
       if (!root) {
@@ -80,7 +80,7 @@ export class Synchronize {
         subtree: true,
         childList: true,
         attributes: true,
-        attributeFilter: ["style", "class"],
+        attributeFilter: ['style', 'class'],
       });
 
       sync();
@@ -136,10 +136,10 @@ export class Synchronize {
       if (!root) return;
 
       const header = root.querySelector(
-        ".main-home-homeHeader",
+        '.main-home-homeHeader',
       ) as HTMLElement | null;
       const chips = root.querySelector(
-        ".main-home-filterChipsContainer",
+        '.main-home-filterChipsContainer',
       ) as HTMLElement | null;
       const firstSection = root.querySelector(
         'section[data-testid="home-page"]:has(.view-homeShortcutsGrid-shortcuts) .main-home-content section:first-child',
@@ -159,7 +159,7 @@ export class Synchronize {
     }
 
     function attach() {
-      root = document.querySelector("#main-view") as HTMLElement | null;
+      root = document.querySelector('#main-view') as HTMLElement | null;
 
       if (!root) {
         requestAnimationFrame(attach);
@@ -172,7 +172,7 @@ export class Synchronize {
         subtree: true,
         childList: true,
         attributes: true,
-        attributeFilter: ["style", "class"],
+        attributeFilter: ['style', 'class'],
       });
 
       sync();
@@ -208,8 +208,8 @@ export class Synchronize {
 
     function hasSpotifyUi(): boolean {
       return !!(
-        document.querySelector(".Root__main-view") ||
-        document.querySelector(".main-view-container") ||
+        document.querySelector('.Root__main-view') ||
+        document.querySelector('.main-view-container') ||
         document.querySelector('[data-testid="main-view"]')
       );
     }
@@ -237,10 +237,10 @@ export class Synchronize {
     }
 
     function check() {
-      const main = document.querySelector("#main");
+      const main = document.querySelector('#main');
 
       if (!main) {
-        setUiHealth({ status: "booting", brokenSince: null });
+        setUiHealth({ status: 'booting', brokenSince: null });
         return;
       }
 
@@ -250,7 +250,7 @@ export class Synchronize {
       if (uiMounted) {
         brokenSince = null;
         recovered = false;
-        setUiHealth({ status: "ready", brokenSince: null });
+        setUiHealth({ status: 'ready', brokenSince: null });
 
         stopPolling();
 
@@ -260,9 +260,9 @@ export class Synchronize {
       // first broken detection
       if (brokenSince === null) {
         brokenSince = Date.now();
-        setUiHealth({ status: "waiting", brokenSince });
+        setUiHealth({ status: 'waiting', brokenSince });
 
-        Logger.log("INFO", "Main", "Waiting for Spotify UI mount...");
+        Logger.log('INFO', 'Main', 'Waiting for Spotify UI mount...');
 
         startPolling();
 
@@ -280,9 +280,9 @@ export class Synchronize {
       }
 
       recovered = true;
-      setUiHealth({ status: "reloading", brokenSince });
+      setUiHealth({ status: 'reloading', brokenSince });
 
-      Logger.log("WARN", "Main", "Spotify UI appears broken, reloading...");
+      Logger.log('WARN', 'Main', 'Spotify UI appears broken, reloading...');
 
       window.location.reload();
     }
@@ -314,7 +314,7 @@ export class Synchronize {
 
         brokenSince = null;
         recovered = false;
-        setUiHealth({ status: "ready", brokenSince: null });
+        setUiHealth({ status: 'ready', brokenSince: null });
       },
     };
   }
@@ -324,15 +324,15 @@ export class Synchronize {
     function cleanupAttributes() {
       const html = document.documentElement;
 
-      html.removeAttribute("data-transition");
+      html.removeAttribute('data-transition');
 
       [
-        "data-right-sidebar-open-preenter",
+        'data-right-sidebar-open-preenter',
         // "data-right-sidebar-open-duringenter",
         // "data-right-sidebar-open-postenter",
-        "data-right-sidebar-open-preexit",
-        "data-right-sidebar-open-duringexit",
-        "data-right-sidebar-open-postexit",
+        'data-right-sidebar-open-preexit',
+        'data-right-sidebar-open-duringexit',
+        'data-right-sidebar-open-postexit',
       ].forEach((attr) => {
         html.removeAttribute(attr);
       });
@@ -348,15 +348,15 @@ export class Synchronize {
       observer.observe(html, {
         attributes: true,
         attributeFilter: [
-          "data-transition",
+          'data-transition',
 
-          "data-right-sidebar-open-preenter",
-          "data-right-sidebar-open-duringenter",
-          "data-right-sidebar-open-postenter",
+          'data-right-sidebar-open-preenter',
+          'data-right-sidebar-open-duringenter',
+          'data-right-sidebar-open-postenter',
 
-          "data-right-sidebar-open-preexit",
-          "data-right-sidebar-open-duringexit",
-          "data-right-sidebar-open-postexit",
+          'data-right-sidebar-open-preexit',
+          'data-right-sidebar-open-duringexit',
+          'data-right-sidebar-open-postexit',
         ],
       });
 

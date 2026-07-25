@@ -2,10 +2,10 @@ import {
   SettingDefinition,
   SettingListener,
   SettingValue,
-} from "../types/runtime/settings.types";
+} from '../types/runtime/settings.types';
 
 export class Settings {
-  private static STORAGE_KEY = "luminous-settings";
+  private static STORAGE_KEY = 'luminous-settings';
 
   private static registry = new Map<string, SettingDefinition>();
   private static values = new Map<string, SettingValue>();

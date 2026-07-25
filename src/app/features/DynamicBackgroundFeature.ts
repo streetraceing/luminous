@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "../react";
-import { CanvasPayload } from "../../types/runtime/canvas.types";
-import { SongPayload } from "../../types/runtime/song.types";
+import { useEffect, useMemo, useState } from '../react';
+import { CanvasPayload } from '../../types/runtime/canvas.types';
+import { SongPayload } from '../../types/runtime/song.types';
 
 export function DynamicBackgroundFeature() {
   const effect = useEffect();
@@ -14,14 +14,14 @@ export function DynamicBackgroundFeature() {
     Luminous.Canvas.getVideo(),
   );
   const [enabled, setEnabled] = state(
-    () => Luminous.Settings.get("dynamicBackground") !== false,
+    () => Luminous.Settings.get('dynamicBackground') !== false,
   );
 
   const renderKey = memo(() => {
-    if (!enabled) return "disabled";
+    if (!enabled) return 'disabled';
     if (canvas) return `canvas:${canvas.currentSrc}`;
     if (song?.image) return `image:${song.image}`;
-    return "empty";
+    return 'empty';
   }, [canvas, enabled, song?.image]);
 
   effect(() => {
@@ -38,14 +38,14 @@ export function DynamicBackgroundFeature() {
       setCanvas(null);
     };
 
-    Luminous.Song.addEventListener("ready", handleSong);
-    Luminous.Song.addEventListener("change", handleSong);
-    Luminous.Canvas.addEventListener("mount", handleCanvas);
-    Luminous.Canvas.addEventListener("change", handleCanvas);
-    Luminous.Canvas.addEventListener("unmount", handleCanvasUnmount);
+    Luminous.Song.addEventListener('ready', handleSong);
+    Luminous.Song.addEventListener('change', handleSong);
+    Luminous.Canvas.addEventListener('mount', handleCanvas);
+    Luminous.Canvas.addEventListener('change', handleCanvas);
+    Luminous.Canvas.addEventListener('unmount', handleCanvasUnmount);
 
     const unsubscribeSetting = Luminous.Settings.subscribe<boolean>(
-      "dynamicBackground",
+      'dynamicBackground',
       (value) => setEnabled(value !== false),
       { immediate: true },
     );
@@ -56,11 +56,11 @@ export function DynamicBackgroundFeature() {
     }
 
     return () => {
-      Luminous.Song.removeEventListener("ready", handleSong);
-      Luminous.Song.removeEventListener("change", handleSong);
-      Luminous.Canvas.removeEventListener("mount", handleCanvas);
-      Luminous.Canvas.removeEventListener("change", handleCanvas);
-      Luminous.Canvas.removeEventListener("unmount", handleCanvasUnmount);
+      Luminous.Song.removeEventListener('ready', handleSong);
+      Luminous.Song.removeEventListener('change', handleSong);
+      Luminous.Canvas.removeEventListener('mount', handleCanvas);
+      Luminous.Canvas.removeEventListener('change', handleCanvas);
+      Luminous.Canvas.removeEventListener('unmount', handleCanvasUnmount);
       unsubscribeSetting();
     };
   }, []);

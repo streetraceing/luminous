@@ -3,13 +3,13 @@ import {
   CanvasListener,
   CanvasMode,
   CanvasPayload,
-} from "../types/runtime/canvas.types";
+} from '../types/runtime/canvas.types';
 
 export class Canvas {
-  private static readonly ROOT_SELECTOR = ".Root__top-container";
-  private static readonly NPV_VIDEO_SELECTOR = ".canvasVideoContainerNPV video";
+  private static readonly ROOT_SELECTOR = '.Root__top-container';
+  private static readonly NPV_VIDEO_SELECTOR = '.canvasVideoContainerNPV video';
   private static readonly CINEMA_VIDEO_SELECTOR =
-    ".Root__top-container:has(#VideoPlayerCinema_ReactPortal) video";
+    '.Root__top-container:has(#VideoPlayerCinema_ReactPortal) video';
 
   private static listeners = new Map<CanvasEvent, Set<CanvasListener>>();
   private static observer: MutationObserver | null = null;
@@ -30,7 +30,7 @@ export class Canvas {
     this.getListeners(event).add(listener);
 
     if (
-      (event === "mount" || event === "change") &&
+      (event === 'mount' || event === 'change') &&
       this.currentVideo &&
       this.currentMode
     ) {
@@ -106,7 +106,7 @@ export class Canvas {
     ) as HTMLVideoElement | null;
 
     if (npv) {
-      return this.createPayload(npv, "npv");
+      return this.createPayload(npv, 'npv');
     }
 
     const cinema = document.querySelector(
@@ -114,7 +114,7 @@ export class Canvas {
     ) as HTMLVideoElement | null;
 
     if (cinema) {
-      return this.createPayload(cinema, "cinema");
+      return this.createPayload(cinema, 'cinema');
     }
 
     return this.createPayload(null, null);
@@ -135,8 +135,8 @@ export class Canvas {
 
       const payload = this.createPayload(null, prevMode);
 
-      Luminous.Logger.info("Canvas", "Unmounted", payload);
-      this.emit("unmount", payload);
+      Luminous.Logger.info('Canvas', 'Unmounted', payload);
+      this.emit('unmount', payload);
       return;
     }
 
@@ -146,8 +146,8 @@ export class Canvas {
 
       const payload = this.createPayload(video, mode);
 
-      Luminous.Logger.info("Canvas", "Mounted", payload);
-      this.emit("mount", payload);
+      Luminous.Logger.info('Canvas', 'Mounted', payload);
+      this.emit('mount', payload);
       return;
     }
 
@@ -157,8 +157,8 @@ export class Canvas {
 
       const payload = this.createPayload(video, mode);
 
-      Luminous.Logger.info("Canvas", "Changed", payload);
-      this.emit("change", payload);
+      Luminous.Logger.info('Canvas', 'Changed', payload);
+      this.emit('change', payload);
     }
   }
 

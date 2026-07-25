@@ -1,4 +1,4 @@
-export type UiHealthStatus = "booting" | "ready" | "waiting" | "reloading";
+export type UiHealthStatus = 'booting' | 'ready' | 'waiting' | 'reloading';
 
 export type UiHealthState = {
   status: UiHealthStatus;
@@ -8,7 +8,7 @@ export type UiHealthState = {
 type UiHealthListener = (state: UiHealthState) => void;
 
 let state: UiHealthState = {
-  status: "booting",
+  status: 'booting',
   brokenSince: null,
 };
 
@@ -21,10 +21,7 @@ export function getUiHealth(): UiHealthState {
 export function setUiHealth(nextState: Partial<UiHealthState>) {
   const next = { ...state, ...nextState };
 
-  if (
-    next.status === state.status &&
-    next.brokenSince === state.brokenSince
-  ) {
+  if (next.status === state.status && next.brokenSince === state.brokenSince) {
     return;
   }
 

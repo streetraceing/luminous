@@ -1,6 +1,6 @@
-export type BackgroundType = "none" | "image" | "canvas";
+export type BackgroundType = 'none' | 'image' | 'canvas';
 
-export type BackgroundEvent = "change";
+export type BackgroundEvent = 'change';
 
 export type BackgroundPayload = {
   type: BackgroundType;
@@ -28,7 +28,7 @@ export class Background {
   private static activeVideo = 0;
   private static videoRenderId = 0;
 
-  private static currentType: BackgroundType = "none";
+  private static currentType: BackgroundType = 'none';
 
   private static listeners = new Map<
     BackgroundEvent,
@@ -40,11 +40,11 @@ export class Background {
   }
 
   static get(): HTMLVideoElement | HTMLImageElement | null {
-    if (this.currentType === "canvas" && this.videoLayers) {
+    if (this.currentType === 'canvas' && this.videoLayers) {
       return this.videoLayers[this.activeVideo];
     }
 
-    if (this.currentType === "image" && this.imageLayers) {
+    if (this.currentType === 'image' && this.imageLayers) {
       return this.imageLayers[this.activeImage];
     }
 
@@ -80,31 +80,31 @@ export class Background {
 
   private static baseStyle(): Partial<CSSStyleDeclaration> {
     return {
-      position: "absolute",
-      inset: "0",
-      width: "120%",
-      height: "120%",
-      objectFit: "cover",
+      position: 'absolute',
+      inset: '0',
+      width: '120%',
+      height: '120%',
+      objectFit: 'cover',
       filter: `blur(var(--luminous-background-blur)) brightness(var(--luminous-background-brightness))`,
-      transform: "scale(1.2) translateZ(0)",
-      pointerEvents: "none",
+      transform: 'scale(1.2) translateZ(0)',
+      pointerEvents: 'none',
       transition: `opacity ${this.TRANSITION_MS}ms linear`,
-      opacity: "0",
-      willChange: "opacity, transform",
+      opacity: '0',
+      willChange: 'opacity, transform',
     };
   }
 
   private static createImageLayer(): HTMLImageElement {
-    const img = document.createElement("img");
+    const img = document.createElement('img');
     Object.assign(img.style, this.baseStyle());
 
-    Luminous.Logger.info("Background", "Created image layer", img);
+    Luminous.Logger.info('Background', 'Created image layer', img);
 
     return img;
   }
 
   private static createVideoLayer(): HTMLVideoElement {
-    const video = document.createElement("video");
+    const video = document.createElement('video');
     Object.assign(video.style, this.baseStyle());
 
     video.muted = true;
@@ -112,7 +112,7 @@ export class Background {
     video.autoplay = true;
     video.loop = true;
 
-    Luminous.Logger.info("Background", "Created video layer", video);
+    Luminous.Logger.info('Background', 'Created video layer', video);
 
     return video;
   }
@@ -120,26 +120,26 @@ export class Background {
   private static ensureBackground() {
     if (this.root) return;
 
-    this.root = document.createElement("div");
-    this.root.id = "luminous-dynamic-background";
+    this.root = document.createElement('div');
+    this.root.id = 'luminous-dynamic-background';
 
     Object.assign(this.root.style, {
-      position: "fixed",
-      inset: "0",
-      zIndex: "0",
-      overflow: "hidden",
-      pointerEvents: "none",
+      position: 'fixed',
+      inset: '0',
+      zIndex: '0',
+      overflow: 'hidden',
+      pointerEvents: 'none',
     });
 
-    this.base = document.createElement("div");
-    this.base.className = "luminous-base";
+    this.base = document.createElement('div');
+    this.base.className = 'luminous-base';
 
     Object.assign(this.base.style, {
-      position: "absolute",
-      inset: "0",
-      background: "var(--spice-sidebar)",
+      position: 'absolute',
+      inset: '0',
+      background: 'var(--spice-sidebar)',
       transition: `opacity ${this.TRANSITION_MS}ms linear`,
-      opacity: "1",
+      opacity: '1',
     });
 
     this.root.appendChild(this.base);
@@ -164,7 +164,7 @@ export class Background {
     this.ensureBackground();
 
     const logDefaultLayer = () =>
-      Luminous.Logger.info("Background", "Rendering default layer");
+      Luminous.Logger.info('Background', 'Rendering default layer');
 
     if (!options || (!options.image && !options.canvas)) {
       this.clear();
@@ -176,8 +176,8 @@ export class Background {
     if (options.canvas) {
       this.renderCanvas(options.canvas);
       Luminous.Logger.info(
-        "Background",
-        "Rendering canvas layer",
+        'Background',
+        'Rendering canvas layer',
         options.canvas,
       );
 
@@ -187,8 +187,8 @@ export class Background {
     if (options.image) {
       this.renderImage(options.image);
       Luminous.Logger.info(
-        "Background",
-        "Rendering image layer",
+        'Background',
+        'Rendering image layer',
         options.image,
       );
 
@@ -210,13 +210,13 @@ export class Background {
   private static renderImage(src: string | null) {
     this.ensureBackground();
     if (!this.imageLayers) {
-      Luminous.Logger.warn("Background", "No image layers for render");
+      Luminous.Logger.warn('Background', 'No image layers for render');
       return;
     }
 
     if (!src) {
-      Luminous.Logger.warn("Background", "No image src for render");
-      this.transitionTo("none");
+      Luminous.Logger.warn('Background', 'No image src for render');
+      this.transitionTo('none');
 
       return;
     }
@@ -227,7 +227,7 @@ export class Background {
     const next = this.imageLayers[nextIndex];
 
     if (current.src === src) {
-      this.transitionTo("image", current);
+      this.transitionTo('image', current);
       return;
     }
 
@@ -242,7 +242,7 @@ export class Background {
         if (renderId !== this.imageRenderId) return;
 
         this.activeImage = nextIndex;
-        this.transitionTo("image", next);
+        this.transitionTo('image', next);
       });
     };
 
@@ -256,10 +256,10 @@ export class Background {
     preload.onerror = () => {
       if (renderId !== this.imageRenderId) return;
 
-      Luminous.Logger.warn("Background", "Failed to load image", src);
+      Luminous.Logger.warn('Background', 'Failed to load image', src);
 
       if (!current.src) {
-        this.transitionTo("none");
+        this.transitionTo('none');
       }
     };
 
@@ -283,13 +283,13 @@ export class Background {
   private static renderCanvas(sourceVideo: HTMLVideoElement) {
     this.ensureBackground();
     if (!this.videoLayers) {
-      Luminous.Logger.warn("Background", "No video layers for render");
+      Luminous.Logger.warn('Background', 'No video layers for render');
       return;
     }
 
     const stream = (sourceVideo as any).captureStream?.();
     if (!stream) {
-      Luminous.Logger.warn("Background", "No canvas stream for render");
+      Luminous.Logger.warn('Background', 'No canvas stream for render');
       return;
     }
 
@@ -297,7 +297,7 @@ export class Background {
     const next = this.videoLayers[nextIndex];
     const renderId = ++this.videoRenderId;
 
-    next.style.opacity = "0";
+    next.style.opacity = '0';
     next.srcObject = stream;
 
     next.onplaying = () => {
@@ -309,7 +309,7 @@ export class Background {
         if (renderId !== this.videoRenderId) return;
 
         this.activeVideo = nextIndex;
-        this.transitionTo("canvas", next);
+        this.transitionTo('canvas', next);
       });
     };
 
@@ -326,7 +326,7 @@ export class Background {
       });
     }
 
-    this.transitionTo("none");
+    this.transitionTo('none');
   }
 
   private static transitionTo(
@@ -337,23 +337,23 @@ export class Background {
 
     this.currentType = type;
 
-    this.base && (this.base.style.opacity = type === "none" ? "1" : "0");
+    this.base && (this.base.style.opacity = type === 'none' ? '1' : '0');
 
     this.imageLayers.forEach((el) => {
-      el.style.opacity = type === "image" && el === activeElement ? "1" : "0";
+      el.style.opacity = type === 'image' && el === activeElement ? '1' : '0';
     });
 
     this.videoLayers.forEach((el) => {
-      el.style.opacity = type === "canvas" && el === activeElement ? "1" : "0";
+      el.style.opacity = type === 'canvas' && el === activeElement ? '1' : '0';
     });
 
-    this.emit("change");
+    this.emit('change');
   }
 
   private static resetVideo(video: HTMLVideoElement) {
     video.pause();
     video.srcObject = null;
-    video.removeAttribute("src");
+    video.removeAttribute('src');
     video.load();
   }
 }

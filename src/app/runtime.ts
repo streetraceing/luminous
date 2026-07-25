@@ -1,7 +1,7 @@
-import { App } from "./App";
-import { getReact } from "./react";
+import { App } from './App';
+import { getReact } from './react';
 
-const ROOT_ID = "luminous-react-root";
+const ROOT_ID = 'luminous-react-root';
 const REACT_READY_TIMEOUT = 15000;
 
 let root: { render: (element: unknown) => void; unmount?: () => void } | null =
@@ -11,7 +11,7 @@ export function mountLuminousApp() {
   waitForReactRuntime()
     .then(renderApp)
     .catch((error) => {
-      Luminous.Logger.error("Main", error);
+      Luminous.Logger.error('Main', error);
     });
 }
 
@@ -42,7 +42,7 @@ function waitForReactRuntime(): Promise<void> {
       }
 
       if (Date.now() - start > REACT_READY_TIMEOUT) {
-        reject(new Error("Spicetify React runtime not available"));
+        reject(new Error('Spicetify React runtime not available'));
         return;
       }
 
@@ -71,9 +71,9 @@ function ensureRoot(): HTMLDivElement {
   let container = document.getElementById(ROOT_ID) as HTMLDivElement | null;
 
   if (!container) {
-    container = document.createElement("div");
+    container = document.createElement('div');
     container.id = ROOT_ID;
-    container.style.display = "contents";
+    container.style.display = 'contents';
     document.body.appendChild(container);
   }
 

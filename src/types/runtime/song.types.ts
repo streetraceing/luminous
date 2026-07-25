@@ -1,4 +1,4 @@
-export type SongEvent = "ready" | "change";
+export type SongEvent = 'ready' | 'change';
 
 export type SongPayload = {
   track: Spicetify.PlayerTrack;

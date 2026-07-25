@@ -10,7 +10,8 @@
   border-radius: 8px;
 }
 
-html.hideDynamicBackground :is(.Root__now-playing-bar, .Root__now-playing-bar > aside) {
+html.hideDynamicBackground
+  :is(.Root__now-playing-bar, .Root__now-playing-bar > aside) {
   background: transparent;
 }
 
@@ -23,7 +24,7 @@ html.hideDynamicBackground :is(.Root__now-playing-bar, .Root__now-playing-bar > 
     html[data-cinema-npv-duringexit]
   )
   .Root__now-playing-bar
-  :is(button[data-testid="pip-toggle-button"]) {
+  :is(button[data-testid='pip-toggle-button']) {
   opacity: var(--encore-opacity-disabled);
   color: var(--text-subdued);
   pointer-events: none;

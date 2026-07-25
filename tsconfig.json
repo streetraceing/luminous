@@ -10,5 +10,11 @@
     "types": ["node", "react", "react-dom"],
     "typeRoots": ["./node_modules/@types", "./src/types"]
   },
-  "include": ["src", "src/types", "vite", "src/types/spicetify.d.ts", "src/types/vite.d.ts"]
+  "include": [
+    "src",
+    "src/types",
+    "vite",
+    "src/types/spicetify.d.ts",
+    "src/types/vite.d.ts"
+  ]
 }

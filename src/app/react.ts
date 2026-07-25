@@ -1,4 +1,4 @@
-import type * as ReactRuntime from "react";
+import type * as ReactRuntime from 'react';
 
 export type ReactRef<T> = ReactRuntime.MutableRefObject<T>;
 

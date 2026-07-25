@@ -1,11 +1,11 @@
-import packageJson from "./package.json";
+import packageJson from './package.json';
 
-import { defineConfig } from "vite";
-import getBuildTime from "./vite/getBuildTime";
-import spicetifySync from "./vite/spicetifySyncPlugin";
+import { defineConfig } from 'vite';
+import getBuildTime from './vite/getBuildTime';
+import spicetifySync from './vite/spicetifySyncPlugin';
 
 export default defineConfig(({ mode }) => {
-  const syncMode = mode === "delete" ? "delete" : "copy";
+  const syncMode = mode === 'delete' ? 'delete' : 'copy';
 
   return {
     define: {
@@ -15,21 +15,21 @@ export default defineConfig(({ mode }) => {
     },
 
     build: {
-      outDir: "dist",
+      outDir: 'dist',
       emptyOutDir: true,
       cssCodeSplit: false,
       rollupOptions: {
-        input: "src/index.ts",
+        input: 'src/index.ts',
         output: {
-          entryFileNames: "theme.js",
-          assetFileNames: "user.css",
+          entryFileNames: 'theme.js',
+          assetFileNames: 'user.css',
         },
       },
     },
 
     plugins: [
       spicetifySync({
-        themeName: "Luminous",
+        themeName: 'Luminous',
         mode: syncMode,
       }),
     ],

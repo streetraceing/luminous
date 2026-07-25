@@ -1,4 +1,4 @@
-export type CanvasEvent = "mount" | "unmount" | "change";
+export type CanvasEvent = 'mount' | 'unmount' | 'change';
 
 export type CanvasPayload = {
   video: HTMLVideoElement | null;
@@ -7,4 +7,4 @@ export type CanvasPayload = {
 
 export type CanvasListener = (payload: CanvasPayload) => void;
 
-export type CanvasMode = "npv" | "cinema" | null;
+export type CanvasMode = 'npv' | 'cinema' | null;

@@ -1,9 +1,9 @@
-import { Canvas } from "../../api/canvas";
-import { Logger } from "../../api/logger";
-import { Native } from "../../api/native";
-import { Settings } from "../../api/settings";
-import { Song } from "../../api/song";
-import { Background } from "../../render/background";
+import { Canvas } from '../../api/canvas';
+import { Logger } from '../../api/logger';
+import { Native } from '../../api/native';
+import { Settings } from '../../api/settings';
+import { Song } from '../../api/song';
+import { Background } from '../../render/background';
 
 declare global {
   const Luminous: Readonly<{
