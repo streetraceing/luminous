@@ -1,24 +1,48 @@
-body:before,
-body:after {
+body:has(.Root__top-container #main-view):not(:has(.luminous-splash)):before {
   z-index: 9999;
   pointer-events: none;
   content: '';
+  animation: 1ms linear 3s forwards luminous-bootstrap-splash-failsafe;
   position: fixed;
 }
-body:before {
-  background: color-mix(in srgb, var(--luminous-ui-base) 96%, #000);
+body:has(.Root__top-container #main-view):not(:has(.luminous-splash)):after {
+  z-index: 9999;
+  pointer-events: none;
+  content: '';
+  animation: 1ms linear 3s forwards luminous-bootstrap-splash-failsafe;
+  position: fixed;
+}
+body:has(.Root__top-container #main-view):not(:has(.luminous-splash)):before {
+  background: var(--spice-main, #121212);
+  background: color-mix(
+    in srgb,
+    var(--luminous-ui-base, var(--spice-main, #121212)) 96%,
+    #000
+  );
   inset: 0;
 }
-body:has(.luminous-splash):before {
-  display: none;
-}
-body:has(.luminous-splash):after {
-  display: none;
+body:has(.Root__top-container #main-view):not(:has(.luminous-splash)):after {
+  border: 3px solid color-mix(in srgb, var(--spice-text, #fff) 18%, transparent);
+  border-top-color: var(--spice-button-active, #1ed760);
+  border-radius: 50%;
+  width: 42px;
+  height: 42px;
+  margin: -21px 0 0 -21px;
+  animation:
+    0.8s linear infinite luminous-bootstrap-splash-loader,
+    1ms linear 3s forwards luminous-bootstrap-splash-failsafe;
+  top: 50%;
+  left: 50%;
 }
 .luminous-splash {
   z-index: 10000;
-  color: var(--spice-text);
-  background: color-mix(in srgb, var(--luminous-ui-base) 96%, #000);
+  color: var(--spice-text, #fff);
+  background: var(--spice-main, #121212);
+  background: color-mix(
+    in srgb,
+    var(--luminous-ui-base, var(--spice-main, #121212)) 96%,
+    #000
+  );
   opacity: 1;
   pointer-events: auto;
   visibility: visible;
@@ -36,10 +60,11 @@ body:has(.luminous-splash):after {
   visibility: hidden;
 }
 .luminous-splash__panel {
-  background: linear-gradient(#ffffff14, #fff0), var(--luminous-ui-background);
+  background:
+    linear-gradient(#ffffff14, #fff0), var(--luminous-ui-background, #121212e6);
   width: min(360px, 100vw - 48px);
-  -webkit-backdrop-filter: blur(calc(var(--luminous-ui-blur) + 10px));
-  backdrop-filter: blur(calc(var(--luminous-ui-blur) + 10px));
+  -webkit-backdrop-filter: blur(calc(var(--luminous-ui-blur, 16px) + 10px));
+  backdrop-filter: blur(calc(var(--luminous-ui-blur, 16px) + 10px));
   border: 1px solid #ffffff24;
   border-radius: 8px;
   grid-template-columns: auto 1fr;
@@ -53,7 +78,7 @@ body:has(.luminous-splash):after {
 }
 .luminous-splash__mark {
   color: #000;
-  background: var(--spice-button-active);
+  background: var(--spice-button-active, #1ed760);
   border-radius: 8px;
   place-items: center;
   width: 44px;
@@ -85,7 +110,7 @@ body:has(.luminous-splash):after {
   font-weight: 850;
 }
 .luminous-splash__copy small {
-  color: var(--spice-subtext);
+  color: var(--spice-subtext, #b3b3b3);
   font-size: 12px;
   font-weight: 650;
 }
@@ -98,7 +123,7 @@ body:has(.luminous-splash):after {
   overflow: hidden;
 }
 .luminous-splash__loader span {
-  background: var(--spice-button-active);
+  background: var(--spice-button-active, #1ed760);
   border-radius: inherit;
   width: 42%;
   height: 100%;
@@ -106,31 +131,26 @@ body:has(.luminous-splash):after {
   display: block;
 }
 .luminous-splash__hint {
-  color: var(--spice-subtext);
+  color: var(--spice-subtext, #b3b3b3);
   background: #ffffff0e;
   border: 1px solid #ffffff14;
   border-radius: 8px;
   grid-column: 1/-1;
-  gap: 5px;
   margin-top: 14px;
   padding: 10px 12px;
   font-size: 12px;
   line-height: 1.4;
-  display: grid;
 }
-.luminous-splash__hint code {
-  color: var(--spice-text);
-  background: #ffffff14;
-  border-radius: 5px;
-  padding: 2px 5px;
-  font-family:
-    ui-monospace,
-    SFMono-Regular,
-    Consolas,
-    Liberation Mono,
-    monospace;
-  font-size: 11px;
-  font-weight: 750;
+@keyframes luminous-bootstrap-splash-loader {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes luminous-bootstrap-splash-failsafe {
+  to {
+    opacity: 0;
+    visibility: hidden;
+  }
 }
 @keyframes luminous-splash-loader {
   0% {
@@ -138,6 +158,14 @@ body:has(.luminous-splash):after {
   }
   to {
     transform: translate(250%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .luminous-splash__loader span {
+    animation-duration: 1.8s;
+  }
+  body:has(.Root__top-container #main-view):not(:has(.luminous-splash)):after {
+    animation-duration: 1.8s;
   }
 }
 .luminous-theme-menu {
@@ -599,6 +627,19 @@ html.hideDynamicBackground
 }
 #main-view:has(.main-shelf-shelf) main div:last-child {
   background: 0 0;
+}
+#main-view .main-entityHeader-container.luminous-playlist-background {
+  background-position: 50%;
+  background-repeat: no-repeat;
+  background-size:
+    100% 101%,
+    cover;
+  background-image:
+    linear-gradient(#00000040, #000000bf),
+    var(--luminous-playlist-background-image) !important;
+}
+#main-view .main-home-homeHeader.luminous-home-header-height {
+  height: var(--luminous-home-header-height);
 }
 .Root__right-sidebar > div:first-child {
   background: var(--luminous-ui-background);
