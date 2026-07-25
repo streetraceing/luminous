@@ -7,6 +7,7 @@ import {
 export class Song {
   private static readonly PLAYER_TIMEOUT_MESSAGE =
     'Spicetify Player not available';
+  private static readonly INITIAL_TRACK_SYNC_INTERVAL = 100;
 
   private static current: Spicetify.PlayerTrack | null = null;
   private static listeners = new Map<SongEvent, Set<SongListener>>();
@@ -14,6 +15,7 @@ export class Song {
   private static ready = false;
   private static eventsBound = false;
   private static initPromise: Promise<void> | null = null;
+  private static initialTrackTimer: number | null = null;
 
   private static readyPromise: Promise<void>;
   private static readyResolve: () => void;
@@ -38,7 +40,10 @@ export class Song {
   private static async initialize(timeout: number): Promise<void> {
     await this.waitForPlayer(timeout);
     this.bindEvents();
-    this.handleTrack(Spicetify.Player.data?.item ?? null);
+
+    if (!this.syncCurrentTrack()) {
+      this.startInitialTrackSync(timeout);
+    }
   }
 
   private static waitForPlayer(timeout: number): Promise<void> {
@@ -70,9 +75,37 @@ export class Song {
     if (this.eventsBound) return;
 
     this.eventsBound = true;
-    Spicetify.Player.addEventListener('songchange', () => {
-      this.handleTrack(Spicetify.Player.data?.item ?? null);
+    Spicetify.Player.addEventListener('songchange', (event) => {
+      this.handleTrack(
+        event?.data?.item ?? Spicetify.Player.data?.item ?? null,
+      );
     });
+  }
+
+  private static syncCurrentTrack(): boolean {
+    const track = Spicetify.Player.data?.item ?? null;
+    this.handleTrack(track);
+    return track !== null;
+  }
+
+  private static startInitialTrackSync(timeout: number) {
+    if (this.initialTrackTimer !== null || this.ready) return;
+
+    const deadline = Date.now() + timeout;
+
+    const sync = () => {
+      this.initialTrackTimer = null;
+
+      if (this.ready || this.syncCurrentTrack()) return;
+      if (Date.now() >= deadline) return;
+
+      this.initialTrackTimer = window.setTimeout(
+        sync,
+        this.INITIAL_TRACK_SYNC_INTERVAL,
+      );
+    };
+
+    sync();
   }
 
   static addEventListener(event: SongEvent, listener: SongListener) {
@@ -137,6 +170,11 @@ export class Song {
 
   private static handleTrack(track: Spicetify.PlayerTrack | null) {
     if (!track || this.current?.uri === track.uri) return;
+
+    if (this.initialTrackTimer !== null) {
+      window.clearTimeout(this.initialTrackTimer);
+      this.initialTrackTimer = null;
+    }
 
     this.current = track;
 
