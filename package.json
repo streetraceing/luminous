@@ -1,6 +1,7 @@
 {
   "name": "luminous",
   "version": "2.0.11",
+  "type": "module",
   "author": {
     "name": "streetraceing",
     "url": "https://github.com/streetraceing/"
@@ -10,12 +11,16 @@
     "release": "npm run build && tsx vite/releaseScript.ts",
     "watch": "spicetify watch -s",
     "apply": "npm run build -- --mode sync && spicetify config current_theme Luminous && spicetify apply",
-    "revert": "spicetify config current_theme marketplace && spicetify apply && npm run build -- --mode delete"
+    "revert": "spicetify config current_theme marketplace && spicetify apply && npm run build -- --mode delete",
+    "package:archive": "tsx scripts/package-archive" 
   },
   "devDependencies": {
+    "@types/archiver": "^8.0.0",
     "@types/node": "^25.9.3",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
+    "archiver": "^8.0.0",
+    "globby": "^16.2.2",
     "tsx": "^4.22.4",
     "typescript": "^6.0.3",
     "vite": "^8.0.16"
