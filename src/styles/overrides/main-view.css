@@ -174,3 +174,18 @@
 #main-view:has(.main-shelf-shelf) main div:last-child {
   background: transparent;
 }
+
+#main-view .main-entityHeader-container.luminous-playlist-background {
+  background-image:
+    linear-gradient(rgba(0, 0, 0, 0.25), rgba(0, 0, 0, 0.75)),
+    var(--luminous-playlist-background-image) !important;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size:
+    100% 101%,
+    cover;
+}
+
+#main-view .main-home-homeHeader.luminous-home-header-height {
+  height: var(--luminous-home-header-height);
+}

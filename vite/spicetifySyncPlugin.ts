@@ -1,7 +1,7 @@
 import type { Plugin, ResolvedConfig } from 'vite';
-import fs from 'fs';
-import path from 'path';
-import { execSync } from 'child_process';
+import fs from 'node:fs';
+import path from 'node:path';
+import { execFileSync } from 'node:child_process';
 
 interface SpicetifySyncOptions {
   /**
@@ -29,7 +29,15 @@ export default function spicetifySync(options: SpicetifySyncOptions): Plugin {
     if (cachedRoot) return cachedRoot;
 
     try {
-      cachedRoot = execSync('spicetify path').toString().trim();
+      const resolvedRoot = execFileSync('spicetify', ['path'], {
+        encoding: 'utf8',
+      }).trim();
+
+      if (!resolvedRoot) {
+        throw new Error('Spicetify returned an empty path');
+      }
+
+      cachedRoot = resolvedRoot;
     } catch {
       throw new Error(
         '[spicetify-sync] Failed to resolve spicetify path. Install Spicetify or pass spicetifyRoot manually.',
@@ -67,15 +75,21 @@ export default function spicetifySync(options: SpicetifySyncOptions): Plugin {
     }
 
     const themeRoot = getThemeRoot();
-    fs.mkdirSync(themeRoot, { recursive: true });
+    const stagingRoot = path.join(
+      path.dirname(themeRoot),
+      `.${path.basename(themeRoot)}.sync-tmp`,
+    );
 
-    for (const file of fs.readdirSync(dist)) {
-      const from = path.join(dist, file);
-      const to = path.join(themeRoot, file);
+    fs.mkdirSync(path.dirname(themeRoot), { recursive: true });
+    fs.rmSync(stagingRoot, { recursive: true, force: true });
 
-      if (fs.statSync(from).isFile()) {
-        copyFileSafe(from, to);
-      }
+    try {
+      fs.cpSync(dist, stagingRoot, { recursive: true });
+      fs.rmSync(themeRoot, { recursive: true, force: true });
+      fs.renameSync(stagingRoot, themeRoot);
+    } catch (error) {
+      fs.rmSync(stagingRoot, { recursive: true, force: true });
+      throw error;
     }
 
     log(`copied dist -> ${themeRoot}`);
@@ -93,6 +107,12 @@ export default function spicetifySync(options: SpicetifySyncOptions): Plugin {
 
   function deleteTheme() {
     const themeRoot = getThemeRoot();
+    const stagingRoot = path.join(
+      path.dirname(themeRoot),
+      `.${path.basename(themeRoot)}.sync-tmp`,
+    );
+
+    fs.rmSync(stagingRoot, { recursive: true, force: true });
 
     if (!fs.existsSync(themeRoot)) {
       log('theme not found, skipping delete');

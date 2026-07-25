@@ -64,13 +64,14 @@ export function ThemeMenuFeature() {
 
   effect(() => {
     let disposed = false;
-    let rafId: number | null = null;
+    let retryTimer: number | null = null;
 
     const createButton = () => {
+      retryTimer = null;
       if (disposed) return;
 
       if (!Spicetify.Topbar?.Button) {
-        rafId = requestAnimationFrame(createButton);
+        retryTimer = window.setTimeout(createButton, 250);
         return;
       }
 
@@ -91,8 +92,8 @@ export function ThemeMenuFeature() {
     return () => {
       disposed = true;
 
-      if (rafId !== null) {
-        cancelAnimationFrame(rafId);
+      if (retryTimer !== null) {
+        window.clearTimeout(retryTimer);
       }
 
       buttonRef.current?.element.remove();

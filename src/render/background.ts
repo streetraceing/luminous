@@ -10,9 +10,13 @@ export type BackgroundPayload = {
 export type BackgroundListener = (payload: BackgroundPayload) => void;
 
 type BackgroundElement = HTMLVideoElement | HTMLImageElement;
+type CapturableVideo = HTMLVideoElement & {
+  captureStream?: () => MediaStream;
+};
 
 export class Background {
   private static readonly TRANSITION_MS = 250;
+  private static readonly MAX_PRELOADED_IMAGES = 24;
 
   private static root: HTMLDivElement | null = null;
   private static base: HTMLDivElement | null = null;
@@ -27,6 +31,8 @@ export class Background {
     null;
   private static activeVideo = 0;
   private static videoRenderId = 0;
+  private static currentCanvasSource: HTMLVideoElement | null = null;
+  private static videoCleanupTimer: number | null = null;
 
   private static currentType: BackgroundType = 'none';
 
@@ -75,7 +81,13 @@ export class Background {
       element: this.get(),
     };
 
-    this.listeners.get(event)?.forEach((listener) => listener(payload));
+    this.listeners.get(event)?.forEach((listener) => {
+      try {
+        listener(payload);
+      } catch (error) {
+        Luminous.Logger.error('Background', 'Listener failed', error);
+      }
+    });
   }
 
   private static baseStyle(): Partial<CSSStyleDeclaration> {
@@ -95,12 +107,14 @@ export class Background {
   }
 
   private static createImageLayer(): HTMLImageElement {
-    const img = document.createElement('img');
-    Object.assign(img.style, this.baseStyle());
+    const image = document.createElement('img');
+    Object.assign(image.style, this.baseStyle());
+    image.alt = '';
+    image.decoding = 'async';
 
-    Luminous.Logger.info('Background', 'Created image layer', img);
+    Luminous.Logger.info('Background', 'Created image layer', image);
 
-    return img;
+    return image;
   }
 
   private static createVideoLayer(): HTMLVideoElement {
@@ -118,10 +132,18 @@ export class Background {
   }
 
   private static ensureBackground() {
-    if (this.root) return;
+    if (this.root?.isConnected) return;
 
+    if (this.videoCleanupTimer !== null) {
+      window.clearTimeout(this.videoCleanupTimer);
+      this.videoCleanupTimer = null;
+    }
+
+    this.videoLayers?.forEach((video) => this.resetVideo(video));
+    this.root?.remove();
     this.root = document.createElement('div');
     this.root.id = 'luminous-dynamic-background';
+    this.root.setAttribute('aria-hidden', 'true');
 
     Object.assign(this.root.style, {
       position: 'fixed',
@@ -142,19 +164,20 @@ export class Background {
       opacity: '1',
     });
 
-    this.root.appendChild(this.base);
+    const imageA = this.createImageLayer();
+    const imageB = this.createImageLayer();
+    const videoA = this.createVideoLayer();
+    const videoB = this.createVideoLayer();
+
+    this.root.append(this.base, imageA, imageB, videoA, videoB);
+    this.imageLayers = [imageA, imageB];
+    this.videoLayers = [videoA, videoB];
+    this.activeImage = 0;
+    this.activeVideo = 0;
+    this.currentType = 'none';
+    this.currentCanvasSource = null;
 
     document.body.prepend(this.root);
-
-    const imgA = this.createImageLayer();
-    const imgB = this.createImageLayer();
-    this.root.append(imgA, imgB);
-    this.imageLayers = [imgA, imgB];
-
-    const vidA = this.createVideoLayer();
-    const vidB = this.createVideoLayer();
-    this.root.append(vidA, vidB);
-    this.videoLayers = [vidA, vidB];
   }
 
   static render(options?: {
@@ -163,52 +186,38 @@ export class Background {
   }) {
     this.ensureBackground();
 
-    const logDefaultLayer = () =>
-      Luminous.Logger.info('Background', 'Rendering default layer');
-
     if (!options || (!options.image && !options.canvas)) {
       this.clear();
-      logDefaultLayer();
-
+      Luminous.Logger.info('Background', 'Rendering default layer');
       return;
     }
 
-    if (options.canvas) {
-      this.renderCanvas(options.canvas);
-      Luminous.Logger.info(
-        'Background',
-        'Rendering canvas layer',
-        options.canvas,
-      );
-
+    if (options.canvas && this.renderCanvas(options.canvas, options.image)) {
       return;
     }
 
     if (options.image) {
       this.renderImage(options.image);
-      Luminous.Logger.info(
-        'Background',
-        'Rendering image layer',
-        options.image,
-      );
-
       return;
     }
 
     this.clear();
-    logDefaultLayer();
   }
 
   static preloadImage(src: string | null | undefined) {
     if (!src || this.preloadedImages.has(src)) return;
 
     const image = new Image();
+    image.decoding = 'async';
     image.src = src;
     this.preloadedImages.set(src, image);
+    this.trimPreloadedImages();
   }
 
   private static renderImage(src: string | null) {
     this.ensureBackground();
+    this.videoRenderId++;
+    this.currentCanvasSource = null;
     if (!this.imageLayers) {
       Luminous.Logger.warn('Background', 'No image layers for render');
       return;
@@ -216,8 +225,7 @@ export class Background {
 
     if (!src) {
       Luminous.Logger.warn('Background', 'No image src for render');
-      this.transitionTo('none');
-
+      this.clear();
       return;
     }
 
@@ -226,7 +234,7 @@ export class Background {
     const current = this.imageLayers[this.activeImage];
     const next = this.imageLayers[nextIndex];
 
-    if (current.src === src) {
+    if (current.src === src && current.complete && current.naturalWidth > 0) {
       this.transitionTo('image', current);
       return;
     }
@@ -243,6 +251,7 @@ export class Background {
 
         this.activeImage = nextIndex;
         this.transitionTo('image', next);
+        Luminous.Logger.info('Background', 'Rendering image layer', src);
       });
     };
 
@@ -251,81 +260,173 @@ export class Background {
       return;
     }
 
-    preload.onload = showImage;
+    preload.addEventListener('load', showImage, { once: true });
+    preload.addEventListener(
+      'error',
+      () => {
+        if (renderId !== this.imageRenderId) return;
 
-    preload.onerror = () => {
-      if (renderId !== this.imageRenderId) return;
+        Luminous.Logger.warn('Background', 'Failed to load image', src);
 
-      Luminous.Logger.warn('Background', 'Failed to load image', src);
+        if (
+          this.currentType === 'image' &&
+          current.complete &&
+          current.naturalWidth > 0
+        ) {
+          this.transitionTo('image', current);
+          return;
+        }
 
-      if (!current.src) {
-        this.transitionTo('none');
-      }
-    };
-
-    if (!preload.src) {
-      preload.src = src;
-    }
+        this.clear();
+      },
+      { once: true },
+    );
   }
 
   private static getPreloadedImage(src: string): HTMLImageElement {
     let image = this.preloadedImages.get(src);
 
+    if (image?.complete && image.naturalWidth === 0) {
+      this.preloadedImages.delete(src);
+      image = undefined;
+    }
+
     if (!image) {
       image = new Image();
+      image.decoding = 'async';
       image.src = src;
       this.preloadedImages.set(src, image);
+      this.trimPreloadedImages();
     }
 
     return image;
   }
 
-  private static renderCanvas(sourceVideo: HTMLVideoElement) {
+  private static trimPreloadedImages() {
+    while (this.preloadedImages.size > this.MAX_PRELOADED_IMAGES) {
+      const oldestKey = this.preloadedImages.keys().next().value as
+        string | undefined;
+
+      if (!oldestKey) return;
+      this.preloadedImages.delete(oldestKey);
+    }
+  }
+
+  private static renderCanvas(
+    sourceVideo: HTMLVideoElement,
+    fallbackImage?: string | null,
+  ): boolean {
     this.ensureBackground();
     if (!this.videoLayers) {
       Luminous.Logger.warn('Background', 'No video layers for render');
-      return;
+      return false;
     }
 
-    const stream = (sourceVideo as any).captureStream?.();
+    if (
+      this.currentType === 'canvas' &&
+      this.currentCanvasSource === sourceVideo &&
+      this.get()?.isConnected
+    ) {
+      return true;
+    }
+
+    this.imageRenderId++;
+
+    const captureStream = (sourceVideo as CapturableVideo).captureStream;
+    let stream: MediaStream | undefined;
+
+    try {
+      stream = captureStream?.call(sourceVideo);
+    } catch (error) {
+      Luminous.Logger.warn(
+        'Background',
+        'Failed to capture Canvas stream',
+        error,
+      );
+      return false;
+    }
+
     if (!stream) {
-      Luminous.Logger.warn('Background', 'No canvas stream for render');
-      return;
+      Luminous.Logger.warn('Background', 'Canvas capture is not available');
+      return false;
     }
 
     const nextIndex = this.activeVideo === 0 ? 1 : 0;
     const next = this.videoLayers[nextIndex];
     const renderId = ++this.videoRenderId;
 
+    this.resetVideo(next);
     next.style.opacity = '0';
     next.srcObject = stream;
 
     next.onplaying = () => {
-      if (renderId !== this.videoRenderId) return;
+      if (renderId !== this.videoRenderId) {
+        this.resetVideo(next);
+        return;
+      }
 
       next.onplaying = null;
 
       requestAnimationFrame(() => {
-        if (renderId !== this.videoRenderId) return;
+        if (renderId !== this.videoRenderId) {
+          this.resetVideo(next);
+          return;
+        }
 
         this.activeVideo = nextIndex;
+        this.currentCanvasSource = sourceVideo;
         this.transitionTo('canvas', next);
+        Luminous.Logger.info(
+          'Background',
+          'Rendering canvas layer',
+          sourceVideo,
+        );
       });
     };
 
-    next.play().catch(() => {});
+    void next.play().catch((error) => {
+      this.resetVideo(next);
+      if (renderId !== this.videoRenderId) return;
+
+      Luminous.Logger.warn('Background', 'Failed to play canvas stream', error);
+
+      if (fallbackImage) {
+        this.renderImage(fallbackImage);
+      } else {
+        this.clear();
+      }
+    });
+
+    return true;
   }
 
-  private static clear() {
+  static destroy() {
     this.imageRenderId++;
     this.videoRenderId++;
+    this.currentCanvasSource = null;
 
-    if (this.videoLayers) {
-      this.videoLayers.forEach((el) => {
-        this.resetVideo(el);
-      });
+    if (this.videoCleanupTimer !== null) {
+      window.clearTimeout(this.videoCleanupTimer);
+      this.videoCleanupTimer = null;
     }
 
+    this.videoLayers?.forEach((video) => this.resetVideo(video));
+    this.root?.remove();
+
+    this.root = null;
+    this.base = null;
+    this.imageLayers = null;
+    this.videoLayers = null;
+    this.activeImage = 0;
+    this.activeVideo = 0;
+    this.currentType = 'none';
+    this.emit('change');
+  }
+
+  static clear() {
+    this.imageRenderId++;
+    this.videoRenderId++;
+    this.currentCanvasSource = null;
     this.transitionTo('none');
   }
 
@@ -337,21 +438,51 @@ export class Background {
 
     this.currentType = type;
 
-    this.base && (this.base.style.opacity = type === 'none' ? '1' : '0');
+    if (this.base) {
+      this.base.style.opacity = type === 'none' ? '1' : '0';
+    }
 
-    this.imageLayers.forEach((el) => {
-      el.style.opacity = type === 'image' && el === activeElement ? '1' : '0';
+    this.imageLayers.forEach((element) => {
+      element.style.opacity =
+        type === 'image' && element === activeElement ? '1' : '0';
     });
 
-    this.videoLayers.forEach((el) => {
-      el.style.opacity = type === 'canvas' && el === activeElement ? '1' : '0';
+    this.videoLayers.forEach((element) => {
+      element.style.opacity =
+        type === 'canvas' && element === activeElement ? '1' : '0';
     });
 
+    this.scheduleVideoCleanup(
+      type === 'canvas' ? (activeElement as HTMLVideoElement) : null,
+    );
     this.emit('change');
   }
 
+  private static scheduleVideoCleanup(activeVideo: HTMLVideoElement | null) {
+    if (this.videoCleanupTimer !== null) {
+      window.clearTimeout(this.videoCleanupTimer);
+    }
+
+    this.videoCleanupTimer = window.setTimeout(() => {
+      this.videoCleanupTimer = null;
+
+      this.videoLayers?.forEach((video) => {
+        if (video !== activeVideo) {
+          this.resetVideo(video);
+        }
+      });
+    }, this.TRANSITION_MS);
+  }
+
   private static resetVideo(video: HTMLVideoElement) {
+    video.onplaying = null;
     video.pause();
+
+    const stream = video.srcObject;
+    if (stream instanceof MediaStream) {
+      stream.getTracks().forEach((track) => track.stop());
+    }
+
     video.srcObject = null;
     video.removeAttribute('src');
     video.load();

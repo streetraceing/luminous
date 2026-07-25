@@ -36,7 +36,12 @@ function waitForReactRuntime(): Promise<void> {
     const start = Date.now();
 
     const check = () => {
-      if (Spicetify.React && Spicetify.ReactDOM) {
+      if (
+        typeof Spicetify !== 'undefined' &&
+        Spicetify.React &&
+        Spicetify.ReactDOM &&
+        document.body
+      ) {
         resolve();
         return;
       }

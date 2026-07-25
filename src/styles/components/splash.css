@@ -1,19 +1,34 @@
-/* body::before,
-body::after {
+body:has(.Root__top-container #main-view):not(:has(.luminous-splash))::before,
+body:has(.Root__top-container #main-view):not(:has(.luminous-splash))::after {
   position: fixed;
   z-index: 9999;
   pointer-events: none;
-  content: "";
+  content: '';
+  animation: luminous-bootstrap-splash-failsafe 1ms linear 3s forwards;
 }
 
-body::before {
+body:has(.Root__top-container #main-view):not(:has(.luminous-splash))::before {
   inset: 0;
-  background: color-mix(in srgb, var(--luminous-ui-base) 96%, #000);
+  background: var(--spice-main, #121212);
+  background: color-mix(
+    in srgb,
+    var(--luminous-ui-base, var(--spice-main, #121212)) 96%,
+    #000
+  );
 }
 
-body:has(.luminous-splash)::before,
-body:has(.luminous-splash)::after {
-  display: none;
+body:has(.Root__top-container #main-view):not(:has(.luminous-splash))::after {
+  top: 50%;
+  left: 50%;
+  width: 42px;
+  height: 42px;
+  margin: -21px 0 0 -21px;
+  border: 3px solid color-mix(in srgb, var(--spice-text, #fff) 18%, transparent);
+  border-top-color: var(--spice-button-active, #1ed760);
+  border-radius: 50%;
+  animation:
+    luminous-bootstrap-splash-loader 800ms linear infinite,
+    luminous-bootstrap-splash-failsafe 1ms linear 3s forwards;
 }
 
 .luminous-splash {
@@ -21,8 +36,13 @@ body:has(.luminous-splash)::after {
   inset: 0;
   z-index: 10000;
   display: grid;
-  color: var(--spice-text);
-  background: color-mix(in srgb, var(--luminous-ui-base) 96%, #000);
+  color: var(--spice-text, #fff);
+  background: var(--spice-main, #121212);
+  background: color-mix(
+    in srgb,
+    var(--luminous-ui-base, var(--spice-main, #121212)) 96%,
+    #000
+  );
   place-items: center;
   opacity: 1;
   pointer-events: auto;
@@ -47,13 +67,13 @@ body:has(.luminous-splash)::after {
   column-gap: 14px;
   background:
     linear-gradient(rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0)),
-    var(--luminous-ui-background);
+    var(--luminous-ui-background, rgba(18, 18, 18, 0.9));
   border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 8px;
   box-shadow:
     0 28px 80px rgba(0, 0, 0, 0.42),
     inset 0 1px 0 rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(calc(var(--luminous-ui-blur) + 10px));
+  backdrop-filter: blur(calc(var(--luminous-ui-blur, 16px) + 10px));
 }
 
 .luminous-splash__mark {
@@ -61,7 +81,7 @@ body:has(.luminous-splash)::after {
   width: 44px;
   height: 44px;
   color: #000;
-  background: var(--spice-button-active);
+  background: var(--spice-button-active, #1ed760);
   border-radius: 8px;
   place-items: center;
 }
@@ -94,7 +114,7 @@ body:has(.luminous-splash)::after {
 }
 
 .luminous-splash__copy small {
-  color: var(--spice-subtext);
+  color: var(--spice-subtext, #b3b3b3);
   font-size: 12px;
   font-weight: 650;
 }
@@ -112,18 +132,16 @@ body:has(.luminous-splash)::after {
   display: block;
   width: 42%;
   height: 100%;
-  background: var(--spice-button-active);
+  background: var(--spice-button-active, #1ed760);
   border-radius: inherit;
   animation: luminous-splash-loader 900ms ease-in-out infinite;
 }
 
 .luminous-splash__hint {
-  display: grid;
   grid-column: 1 / -1;
-  gap: 5px;
   margin-top: 14px;
   padding: 10px 12px;
-  color: var(--spice-subtext);
+  color: var(--spice-subtext, #b3b3b3);
   background: rgba(255, 255, 255, 0.055);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 8px;
@@ -131,19 +149,17 @@ body:has(.luminous-splash)::after {
   line-height: 1.4;
 }
 
-.luminous-splash__hint code {
-  color: var(--spice-text);
-  background: rgba(255, 255, 255, 0.08);
-  border-radius: 5px;
-  padding: 2px 5px;
-  font-family:
-    ui-monospace,
-    SFMono-Regular,
-    Consolas,
-    "Liberation Mono",
-    monospace;
-  font-size: 11px;
-  font-weight: 750;
+@keyframes luminous-bootstrap-splash-loader {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes luminous-bootstrap-splash-failsafe {
+  to {
+    opacity: 0;
+    visibility: hidden;
+  }
 }
 
 @keyframes luminous-splash-loader {
@@ -155,4 +171,10 @@ body:has(.luminous-splash)::after {
     transform: translateX(250%);
   }
 }
- */
+
+@media (prefers-reduced-motion: reduce) {
+  body:has(.Root__top-container #main-view):not(:has(.luminous-splash))::after,
+  .luminous-splash__loader span {
+    animation-duration: 1.8s;
+  }
+}

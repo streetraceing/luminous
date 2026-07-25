@@ -1,4 +1,6 @@
-export type UiHealthStatus = 'booting' | 'ready' | 'waiting' | 'reloading';
+import { Logger } from '../api/logger';
+
+export type UiHealthStatus = 'booting' | 'ready' | 'waiting';
 
 export type UiHealthState = {
   status: UiHealthStatus;
@@ -26,14 +28,22 @@ export function setUiHealth(nextState: Partial<UiHealthState>) {
   }
 
   state = next;
-  listeners.forEach((listener) => listener(state));
+  listeners.forEach((listener) => notifyListener(listener));
 }
 
 export function subscribeUiHealth(listener: UiHealthListener): () => void {
   listeners.add(listener);
-  listener(state);
+  notifyListener(listener);
 
   return () => {
     listeners.delete(listener);
   };
+}
+
+function notifyListener(listener: UiHealthListener) {
+  try {
+    listener(state);
+  } catch (error) {
+    Logger.error('Main', 'UI health listener failed', error);
+  }
 }

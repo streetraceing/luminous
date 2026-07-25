@@ -6,17 +6,16 @@ import {
 } from '../types/runtime/canvas.types';
 
 export class Canvas {
-  private static readonly ROOT_SELECTOR = '.Root__top-container';
   private static readonly NPV_VIDEO_SELECTOR = '.canvasVideoContainerNPV video';
   private static readonly CINEMA_VIDEO_SELECTOR =
     '.Root__top-container:has(#VideoPlayerCinema_ReactPortal) video';
 
   private static listeners = new Map<CanvasEvent, Set<CanvasListener>>();
   private static observer: MutationObserver | null = null;
+  private static checkFrame: number | null = null;
 
   private static currentVideo: HTMLVideoElement | null = null;
   private static currentMode: CanvasMode = null;
-
   private static initialized = false;
 
   private static createPayload(
@@ -34,7 +33,10 @@ export class Canvas {
       this.currentVideo &&
       this.currentMode
     ) {
-      listener(this.createPayload(this.currentVideo, this.currentMode));
+      this.callListener(
+        listener,
+        this.createPayload(this.currentVideo, this.currentMode),
+      );
     }
 
     if (!this.initialized) {
@@ -58,45 +60,20 @@ export class Canvas {
     if (this.initialized) return;
 
     this.initialized = true;
-
-    this.waitForRoot().then((root) => {
-      this.observer = new MutationObserver(() => this.check());
-
-      this.observer.observe(root, {
-        childList: true,
-        subtree: true,
-      });
-
-      this.check();
+    this.observer = new MutationObserver(() => this.scheduleCheck());
+    this.observer.observe(document.documentElement, {
+      childList: true,
+      subtree: true,
     });
+    this.check();
   }
 
-  private static waitForRoot(): Promise<HTMLElement> {
-    return new Promise((resolve) => {
-      const existing = document.querySelector(
-        this.ROOT_SELECTOR,
-      ) as HTMLElement | null;
+  private static scheduleCheck() {
+    if (this.checkFrame !== null) return;
 
-      if (existing) {
-        resolve(existing);
-        return;
-      }
-
-      const obs = new MutationObserver(() => {
-        const el = document.querySelector(
-          this.ROOT_SELECTOR,
-        ) as HTMLElement | null;
-
-        if (el) {
-          obs.disconnect();
-          resolve(el);
-        }
-      });
-
-      obs.observe(document.body, {
-        childList: true,
-        subtree: true,
-      });
+    this.checkFrame = requestAnimationFrame(() => {
+      this.checkFrame = null;
+      this.check();
     });
   }
 
@@ -123,49 +100,48 @@ export class Canvas {
   private static check() {
     const { video, mode } = this.detect();
 
-    const prevVideo = this.currentVideo;
-    const prevMode = this.currentMode;
+    const previousVideo = this.currentVideo;
+    const previousMode = this.currentMode;
 
-    const videoChanged = prevVideo !== video;
-    const modeChanged = prevMode !== mode;
+    if (previousVideo === video && previousMode === mode) return;
 
-    if (prevVideo && !video) {
-      this.currentVideo = null;
-      this.currentMode = null;
+    this.currentVideo = video;
+    this.currentMode = mode;
 
-      const payload = this.createPayload(null, prevMode);
-
+    if (previousVideo && !video) {
+      const payload = this.createPayload(null, previousMode);
       Luminous.Logger.info('Canvas', 'Unmounted', payload);
       this.emit('unmount', payload);
       return;
     }
 
-    if (!prevVideo && video) {
-      this.currentVideo = video;
-      this.currentMode = mode;
-
+    if (!previousVideo && video) {
       const payload = this.createPayload(video, mode);
-
       Luminous.Logger.info('Canvas', 'Mounted', payload);
       this.emit('mount', payload);
       return;
     }
 
-    if (videoChanged || modeChanged) {
-      this.currentVideo = video;
-      this.currentMode = mode;
-
-      const payload = this.createPayload(video, mode);
-
-      Luminous.Logger.info('Canvas', 'Changed', payload);
-      this.emit('change', payload);
-    }
+    const payload = this.createPayload(video, mode);
+    Luminous.Logger.info('Canvas', 'Changed', payload);
+    this.emit('change', payload);
   }
 
   private static emit(event: CanvasEvent, payload: CanvasPayload) {
     this.getListeners(event).forEach((listener) => {
-      listener(payload);
+      this.callListener(listener, payload);
     });
+  }
+
+  private static callListener(
+    listener: CanvasListener,
+    payload: CanvasPayload,
+  ) {
+    try {
+      listener(payload);
+    } catch (error) {
+      Luminous.Logger.error('Canvas', 'Listener failed', error);
+    }
   }
 
   private static getListeners(event: CanvasEvent): Set<CanvasListener> {

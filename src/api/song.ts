@@ -11,52 +11,51 @@ export class Song {
   private static current: Spicetify.PlayerTrack | null = null;
   private static listeners = new Map<SongEvent, Set<SongListener>>();
 
-  private static initialized = false;
   private static ready = false;
+  private static eventsBound = false;
+  private static initPromise: Promise<void> | null = null;
 
   private static readyPromise: Promise<void>;
   private static readyResolve: () => void;
-  private static readyReject: (reason?: unknown) => void;
 
   static {
-    this.readyPromise = new Promise<void>((resolve, reject) => {
+    this.readyPromise = new Promise<void>((resolve) => {
       this.readyResolve = resolve;
-      this.readyReject = reject;
     });
   }
 
-  static async init(timeout = 15000) {
-    if (this.initialized) return this.readyPromise;
+  static init(timeout = 15000): Promise<void> {
+    if (this.eventsBound) return Promise.resolve();
+    if (this.initPromise) return this.initPromise;
 
-    this.initialized = true;
+    this.initPromise = this.initialize(timeout).finally(() => {
+      this.initPromise = null;
+    });
 
-    try {
-      await this.waitForPlayer(timeout);
-      this.bindEvents();
-
-      this.handleTrack(Spicetify.Player.data?.item ?? null);
-    } catch (e) {
-      this.readyReject(e);
-      throw e;
-    }
-
-    return this.readyPromise;
+    return this.initPromise;
   }
 
-  private static waitForPlayer(timeout: number) {
-    return new Promise<void>((resolve, reject) => {
+  private static async initialize(timeout: number): Promise<void> {
+    await this.waitForPlayer(timeout);
+    this.bindEvents();
+    this.handleTrack(Spicetify.Player.data?.item ?? null);
+  }
+
+  private static waitForPlayer(timeout: number): Promise<void> {
+    return new Promise((resolve, reject) => {
       const start = Date.now();
 
       const check = () => {
-        if (typeof Spicetify !== 'undefined' && Spicetify.Player?.data) {
+        if (
+          typeof Spicetify !== 'undefined' &&
+          typeof Spicetify.Player?.addEventListener === 'function'
+        ) {
           resolve();
           return;
         }
 
         if (Date.now() - start > timeout) {
-          const error = new Error(this.PLAYER_TIMEOUT_MESSAGE);
-          Luminous.Logger.error('Song', error.message);
-          reject(error);
+          reject(new Error(this.PLAYER_TIMEOUT_MESSAGE));
           return;
         }
 
@@ -68,6 +67,9 @@ export class Song {
   }
 
   private static bindEvents() {
+    if (this.eventsBound) return;
+
+    this.eventsBound = true;
     Spicetify.Player.addEventListener('songchange', () => {
       this.handleTrack(Spicetify.Player.data?.item ?? null);
     });
@@ -76,12 +78,18 @@ export class Song {
   static addEventListener(event: SongEvent, listener: SongListener) {
     this.getListeners(event).add(listener);
 
+    if (!this.eventsBound && !this.initPromise) {
+      void this.init().catch((error) => {
+        Luminous.Logger.error('Song', 'Initialization retry failed', error);
+      });
+    }
+
     if (event === 'ready' && this.ready && this.current) {
-      listener(this.createPayload(this.current));
+      this.callListener(listener, this.createPayload(this.current));
     }
 
     if (event === 'change' && this.current) {
-      listener(this.createPayload(this.current));
+      this.callListener(listener, this.createPayload(this.current));
     }
   }
 
@@ -89,30 +97,48 @@ export class Song {
     this.listeners.get(event)?.delete(listener);
   }
 
-  static async get(): Promise<SongPayload | null> {
-    if (!this.ready) {
+  static async get(timeout = 15000): Promise<SongPayload | null> {
+    const startedAt = Date.now();
+
+    if (!this.eventsBound) {
       try {
-        await this.readyPromise;
+        await this.init(timeout);
       } catch {
         return null;
       }
     }
 
+    if (!this.ready) {
+      const remaining = Math.max(0, timeout - (Date.now() - startedAt));
+      const becameReady = await this.waitForReady(remaining);
+      if (!becameReady) return null;
+    }
+
     return this.current ? this.createPayload(this.current) : null;
+  }
+
+  private static waitForReady(timeout: number): Promise<boolean> {
+    if (this.ready) return Promise.resolve(true);
+    if (timeout <= 0) return Promise.resolve(false);
+
+    return new Promise((resolve) => {
+      const timeoutId = window.setTimeout(() => resolve(false), timeout);
+
+      void this.readyPromise.then(() => {
+        window.clearTimeout(timeoutId);
+        resolve(true);
+      });
+    });
   }
 
   static getSync(): SongPayload | null {
     return this.current ? this.createPayload(this.current) : null;
   }
 
-  private static setCurrent(track: Spicetify.PlayerTrack) {
-    this.current = track;
-  }
-
   private static handleTrack(track: Spicetify.PlayerTrack | null) {
     if (!track || this.current?.uri === track.uri) return;
 
-    this.setCurrent(track);
+    this.current = track;
 
     if (!this.ready) {
       this.ready = true;
@@ -127,7 +153,7 @@ export class Song {
   }
 
   private static createPayload(track: Spicetify.PlayerTrack): SongPayload {
-    const artists = track.artists?.map((a) => a.name) ?? [];
+    const artists = track.artists?.map((artist) => artist.name) ?? [];
 
     const image =
       track.images?.[0]?.url ??
@@ -151,8 +177,16 @@ export class Song {
     if (!this.current) return;
 
     const payload = this.createPayload(this.current);
-    for (const listener of this.getListeners(event)) {
+    this.getListeners(event).forEach((listener) => {
+      this.callListener(listener, payload);
+    });
+  }
+
+  private static callListener(listener: SongListener, payload: SongPayload) {
+    try {
       listener(payload);
+    } catch (error) {
+      Luminous.Logger.error('Song', 'Listener failed', error);
     }
   }
 

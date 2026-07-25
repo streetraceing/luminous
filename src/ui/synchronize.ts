@@ -6,21 +6,63 @@ import {
 import { Logger } from '../api/logger';
 import { setUiHealth } from './health';
 
+const PLAYLIST_BACKGROUND_CLASS = 'luminous-playlist-background';
+const PLAYLIST_BACKGROUND_VAR = '--luminous-playlist-background-image';
+const HOME_HEADER_HEIGHT_CLASS = 'luminous-home-header-height';
+const HOME_HEADER_HEIGHT_VAR = '--luminous-home-header-height';
+
 export class Synchronize {
   static playlistBackground(
     options?: PlaylistBackgroundSyncOptions,
   ): SyncController {
     let root: HTMLElement | null = null;
-    let observer: MutationObserver | null = null;
+    let rootObserver: MutationObserver | null = null;
+    let contentObserver: MutationObserver | null = null;
     let rafId: number | null = null;
-    let lastBg: string | null = null;
+    let disposed = false;
+    let lastBackground: string | null = null;
     let lastTarget: HTMLElement | null = null;
 
+    function cleanupTarget() {
+      if (!lastTarget) return;
+
+      lastTarget.classList.remove(PLAYLIST_BACKGROUND_CLASS);
+      lastTarget.style.removeProperty(PLAYLIST_BACKGROUND_VAR);
+      lastTarget = null;
+      lastBackground = null;
+    }
+
+    function attachRoot() {
+      if (disposed) return;
+
+      const nextRoot = document.querySelector(
+        '.main-view-container',
+      ) as HTMLElement | null;
+
+      if (nextRoot === root && root?.isConnected) return;
+
+      contentObserver?.disconnect();
+      contentObserver = null;
+      cleanupTarget();
+      root = nextRoot;
+
+      if (!root) return;
+
+      contentObserver = new MutationObserver(scheduleSync);
+      contentObserver.observe(root, {
+        subtree: true,
+        childList: true,
+        attributes: true,
+        attributeFilter: ['style', 'class'],
+      });
+    }
+
     function scheduleSync() {
-      if (rafId !== null) return;
+      if (disposed || rafId !== null) return;
 
       rafId = requestAnimationFrame(() => {
         rafId = null;
+        attachRoot();
         sync();
       });
     }
@@ -40,94 +82,114 @@ export class Synchronize {
           'main > div > .main-entityHeader-container',
         ) as HTMLElement | null);
 
-      if (!source || !target) return;
-
-      const bg = getComputedStyle(source).backgroundImage;
-      if (!bg || bg === 'none') return;
-
-      const sameBg = bg === lastBg;
-      const sameTarget = target === lastTarget;
-
-      if (sameBg && sameTarget) return;
-
-      lastBg = bg;
-      lastTarget = target;
-
-      target.style.backgroundImage = `
-        linear-gradient(rgba(0,0,0,.25), rgba(0,0,0,.75)),
-        ${bg}
-      `;
-      target.style.backgroundSize = '100% 101%, cover';
-      target.style.backgroundPosition = 'center';
-      target.style.backgroundRepeat = 'no-repeat';
-
-      options?.onBackgroundChange?.(bg, source, target);
-    }
-
-    function attach() {
-      root = document.querySelector(
-        '.main-view-container',
-      ) as HTMLElement | null;
-
-      if (!root) {
-        requestAnimationFrame(attach);
+      if (!source || !target) {
+        cleanupTarget();
         return;
       }
 
-      observer = new MutationObserver(scheduleSync);
+      const background = getComputedStyle(source).backgroundImage;
+      if (!background || background === 'none') {
+        cleanupTarget();
+        return;
+      }
 
-      observer.observe(root, {
-        subtree: true,
-        childList: true,
-        attributes: true,
-        attributeFilter: ['style', 'class'],
-      });
+      if (target !== lastTarget) {
+        cleanupTarget();
+        lastTarget = target;
+      }
 
-      sync();
+      if (background === lastBackground) return;
+
+      lastBackground = background;
+      target.classList.add(PLAYLIST_BACKGROUND_CLASS);
+      target.style.setProperty(PLAYLIST_BACKGROUND_VAR, background);
+      options?.onBackgroundChange?.(background, source, target);
     }
 
-    attach();
+    rootObserver = new MutationObserver(scheduleSync);
+    rootObserver.observe(document.documentElement, {
+      subtree: true,
+      childList: true,
+    });
+    scheduleSync();
 
     return {
       disconnect() {
-        observer?.disconnect();
-        observer = null;
+        disposed = true;
+        rootObserver?.disconnect();
+        contentObserver?.disconnect();
+        rootObserver = null;
+        contentObserver = null;
 
         if (rafId !== null) {
           cancelAnimationFrame(rafId);
           rafId = null;
         }
 
+        cleanupTarget();
         root = null;
-        lastBg = null;
-        lastTarget = null;
       },
     };
   }
+
   static homeHeaderHeight(
     options?: HomeHeaderHeightSyncOptions,
   ): SyncController {
     let root: HTMLElement | null = null;
-    let observer: MutationObserver | null = null;
+    let rootObserver: MutationObserver | null = null;
+    let contentObserver: MutationObserver | null = null;
     let rafId: number | null = null;
-
+    let disposed = false;
     let lastHeight: number | null = null;
+    let lastHeader: HTMLElement | null = null;
 
-    function outerHeight(el: HTMLElement): number {
-      const style = getComputedStyle(el);
+    function cleanupHeader() {
+      if (!lastHeader) return;
 
-      return (
-        el.offsetHeight +
-        parseFloat(style.marginTop) +
-        parseFloat(style.marginBottom)
-      );
+      lastHeader.classList.remove(HOME_HEADER_HEIGHT_CLASS);
+      lastHeader.style.removeProperty(HOME_HEADER_HEIGHT_VAR);
+      lastHeader = null;
+      lastHeight = null;
+    }
+
+    function outerHeight(element: HTMLElement): number {
+      const style = getComputedStyle(element);
+      const marginTop = Number.parseFloat(style.marginTop) || 0;
+      const marginBottom = Number.parseFloat(style.marginBottom) || 0;
+
+      return element.offsetHeight + marginTop + marginBottom;
+    }
+
+    function attachRoot() {
+      if (disposed) return;
+
+      const nextRoot = document.querySelector(
+        '#main-view',
+      ) as HTMLElement | null;
+      if (nextRoot === root && root?.isConnected) return;
+
+      contentObserver?.disconnect();
+      contentObserver = null;
+      cleanupHeader();
+      root = nextRoot;
+
+      if (!root) return;
+
+      contentObserver = new MutationObserver(scheduleSync);
+      contentObserver.observe(root, {
+        subtree: true,
+        childList: true,
+        attributes: true,
+        attributeFilter: ['style', 'class'],
+      });
     }
 
     function scheduleSync() {
-      if (rafId !== null) return;
+      if (disposed || rafId !== null) return;
 
       rafId = requestAnimationFrame(() => {
         rafId = null;
+        attachRoot();
         sync();
       });
     }
@@ -145,66 +207,63 @@ export class Synchronize {
         'section[data-testid="home-page"]:has(.view-homeShortcutsGrid-shortcuts) .main-home-content section:first-child',
       ) as HTMLElement | null;
 
-      if (!header || !chips || !firstSection) return;
+      if (!header || !chips || !firstSection) {
+        cleanupHeader();
+        return;
+      }
 
       const height = outerHeight(chips) + outerHeight(firstSection);
+
+      if (header !== lastHeader) {
+        cleanupHeader();
+        lastHeader = header;
+      }
 
       if (height === lastHeight) return;
 
       lastHeight = height;
-
-      header.style.height = `${height}px`;
-
+      header.classList.add(HOME_HEADER_HEIGHT_CLASS);
+      header.style.setProperty(HOME_HEADER_HEIGHT_VAR, `${height}px`);
       options?.onHeightChange?.(height, chips, firstSection, header);
     }
 
-    function attach() {
-      root = document.querySelector('#main-view') as HTMLElement | null;
-
-      if (!root) {
-        requestAnimationFrame(attach);
-        return;
-      }
-
-      observer = new MutationObserver(scheduleSync);
-
-      observer.observe(root, {
-        subtree: true,
-        childList: true,
-        attributes: true,
-        attributeFilter: ['style', 'class'],
-      });
-
-      sync();
-    }
-
-    attach();
+    rootObserver = new MutationObserver(scheduleSync);
+    rootObserver.observe(document.documentElement, {
+      subtree: true,
+      childList: true,
+    });
+    window.addEventListener('resize', scheduleSync);
+    scheduleSync();
 
     return {
       disconnect() {
-        observer?.disconnect();
-        observer = null;
+        disposed = true;
+        rootObserver?.disconnect();
+        contentObserver?.disconnect();
+        window.removeEventListener('resize', scheduleSync);
+        rootObserver = null;
+        contentObserver = null;
 
         if (rafId !== null) {
           cancelAnimationFrame(rafId);
           rafId = null;
         }
 
+        cleanupHeader();
         root = null;
-        lastHeight = null;
       },
     };
   }
-  static brokenUiWatcher(): SyncController {
+
+  static uiMountWatcher(): SyncController {
     let observer: MutationObserver | null = null;
     let rafId: number | null = null;
-    let intervalId: number | null = null;
+    let disposed = false;
+    let waitingSince: number | null = null;
 
-    let brokenSince: number | null = null;
-    let recovered = false;
-
-    const BROKEN_TIMEOUT = 4000;
-    const CHECK_INTERVAL = 1000;
+    function hasSpotifyShell(): boolean {
+      return document.querySelector('.Root__top-container #main-view') !== null;
+    }
 
     function hasSpotifyUi(): boolean {
       return !!(
@@ -215,7 +274,7 @@ export class Synchronize {
     }
 
     function scheduleCheck() {
-      if (rafId !== null) return;
+      if (disposed || rafId !== null) return;
 
       rafId = requestAnimationFrame(() => {
         rafId = null;
@@ -223,101 +282,51 @@ export class Synchronize {
       });
     }
 
-    function startPolling() {
-      if (intervalId !== null) return;
-
-      intervalId = window.setInterval(check, CHECK_INTERVAL);
-    }
-
-    function stopPolling() {
-      if (intervalId === null) return;
-
-      clearInterval(intervalId);
-      intervalId = null;
-    }
-
     function check() {
-      const main = document.querySelector('#main');
-
-      if (!main) {
+      if (!hasSpotifyShell()) {
+        waitingSince = null;
         setUiHealth({ status: 'booting', brokenSince: null });
         return;
       }
 
-      const uiMounted = hasSpotifyUi();
-
-      // UI recovered
-      if (uiMounted) {
-        brokenSince = null;
-        recovered = false;
+      if (hasSpotifyUi()) {
+        waitingSince = null;
         setUiHealth({ status: 'ready', brokenSince: null });
-
-        stopPolling();
-
         return;
       }
 
-      // first broken detection
-      if (brokenSince === null) {
-        brokenSince = Date.now();
-        setUiHealth({ status: 'waiting', brokenSince });
-
-        Logger.log('INFO', 'Main', 'Waiting for Spotify UI mount...');
-
-        startPolling();
-
-        return;
+      if (waitingSince === null) {
+        waitingSince = Date.now();
+        Logger.info('Main', 'Waiting for Spotify UI mount...');
       }
 
-      const brokenTime = Date.now() - brokenSince;
-
-      if (brokenTime < BROKEN_TIMEOUT) {
-        return;
-      }
-
-      if (recovered) {
-        return;
-      }
-
-      recovered = true;
-      setUiHealth({ status: 'reloading', brokenSince });
-
-      Logger.log('WARN', 'Main', 'Spotify UI appears broken, reloading...');
-
-      window.location.reload();
+      setUiHealth({ status: 'waiting', brokenSince: waitingSince });
     }
 
-    function attach() {
-      observer = new MutationObserver(scheduleCheck);
-
-      observer.observe(document.body, {
-        subtree: true,
-        childList: true,
-      });
-
-      scheduleCheck();
-    }
-
-    attach();
+    observer = new MutationObserver(scheduleCheck);
+    observer.observe(document.documentElement, {
+      subtree: true,
+      childList: true,
+    });
+    scheduleCheck();
 
     return {
       disconnect() {
+        disposed = true;
         observer?.disconnect();
         observer = null;
-
-        stopPolling();
 
         if (rafId !== null) {
           cancelAnimationFrame(rafId);
           rafId = null;
         }
 
-        brokenSince = null;
-        recovered = false;
-        setUiHealth({ status: 'ready', brokenSince: null });
+        waitingSince = null;
+        setUiHealth({ status: 'booting', brokenSince: null });
       },
     };
   }
+
   static observeCinema(): SyncController {
     let observer: MutationObserver | null = null;
 
@@ -328,42 +337,28 @@ export class Synchronize {
 
       [
         'data-right-sidebar-open-preenter',
-        // "data-right-sidebar-open-duringenter",
-        // "data-right-sidebar-open-postenter",
         'data-right-sidebar-open-preexit',
         'data-right-sidebar-open-duringexit',
         'data-right-sidebar-open-postexit',
-      ].forEach((attr) => {
-        html.removeAttribute(attr);
+      ].forEach((attribute) => {
+        html.removeAttribute(attribute);
       });
     }
 
-    function attach() {
-      const html = document.documentElement;
-
-      observer = new MutationObserver(() => {
-        cleanupAttributes();
-      });
-
-      observer.observe(html, {
-        attributes: true,
-        attributeFilter: [
-          'data-transition',
-
-          'data-right-sidebar-open-preenter',
-          'data-right-sidebar-open-duringenter',
-          'data-right-sidebar-open-postenter',
-
-          'data-right-sidebar-open-preexit',
-          'data-right-sidebar-open-duringexit',
-          'data-right-sidebar-open-postexit',
-        ],
-      });
-
-      cleanupAttributes();
-    }
-
-    attach();
+    observer = new MutationObserver(cleanupAttributes);
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: [
+        'data-transition',
+        'data-right-sidebar-open-preenter',
+        'data-right-sidebar-open-duringenter',
+        'data-right-sidebar-open-postenter',
+        'data-right-sidebar-open-preexit',
+        'data-right-sidebar-open-duringexit',
+        'data-right-sidebar-open-postexit',
+      ],
+    });
+    cleanupAttributes();
 
     return {
       disconnect() {

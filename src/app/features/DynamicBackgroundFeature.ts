@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from '../react';
 import { CanvasPayload } from '../../types/runtime/canvas.types';
 import { SongPayload } from '../../types/runtime/song.types';
+import { getUiHealth, subscribeUiHealth } from '../../ui/health';
 
 export function DynamicBackgroundFeature() {
   const effect = useEffect();
@@ -16,13 +17,19 @@ export function DynamicBackgroundFeature() {
   const [enabled, setEnabled] = state(
     () => Luminous.Settings.get('dynamicBackground') !== false,
   );
+  const [appActive, setAppActive] = state(
+    () => getUiHealth().status !== 'booting',
+  );
 
   const renderKey = memo(() => {
+    if (!appActive) return 'inactive';
     if (!enabled) return 'disabled';
-    if (canvas) return `canvas:${canvas.currentSrc}`;
+    if (canvas) {
+      return `canvas:${canvas.currentSrc}:${song?.image ?? ''}`;
+    }
     if (song?.image) return `image:${song.image}`;
     return 'empty';
-  }, [canvas, enabled, song?.image]);
+  }, [appActive, canvas, enabled, song?.image]);
 
   effect(() => {
     const handleSong = (nextSong: SongPayload) => {
@@ -44,6 +51,10 @@ export function DynamicBackgroundFeature() {
     Luminous.Canvas.addEventListener('change', handleCanvas);
     Luminous.Canvas.addEventListener('unmount', handleCanvasUnmount);
 
+    const unsubscribeHealth = subscribeUiHealth((health) => {
+      setAppActive(health.status !== 'booting');
+    });
+
     const unsubscribeSetting = Luminous.Settings.subscribe<boolean>(
       'dynamicBackground',
       (value) => setEnabled(value !== false),
@@ -61,15 +72,25 @@ export function DynamicBackgroundFeature() {
       Luminous.Canvas.removeEventListener('mount', handleCanvas);
       Luminous.Canvas.removeEventListener('change', handleCanvas);
       Luminous.Canvas.removeEventListener('unmount', handleCanvasUnmount);
+      unsubscribeHealth();
       unsubscribeSetting();
+      Luminous.Background.destroy();
     };
   }, []);
 
   effect(() => {
-    if (!enabled) return;
+    if (!appActive) {
+      Luminous.Background.destroy();
+      return;
+    }
+
+    if (!enabled) {
+      Luminous.Background.clear();
+      return;
+    }
 
     if (canvas) {
-      Luminous.Background.render({ canvas });
+      Luminous.Background.render({ canvas, image: song?.image });
       return;
     }
 
@@ -79,7 +100,7 @@ export function DynamicBackgroundFeature() {
     }
 
     Luminous.Background.render();
-  }, [canvas, enabled, renderKey, song?.image]);
+  }, [renderKey]);
 
   return null;
 }

@@ -10,7 +10,7 @@ export function App() {
   return React.createElement(
     React.Fragment,
     null,
-    // React.createElement(SplashFeature),
+    React.createElement(SplashFeature),
     React.createElement(SynchronizeFeature),
     React.createElement(DynamicBackgroundFeature),
     React.createElement(ThemeMenuFeature),
