@@ -1,0 +1,30 @@
+{
+  "$schema": "https://streetraceing.github.io/package/schema.json",
+  "type": "zip",
+  "root": ".",
+  "output": ".",
+  "name": "{folder}.zip",
+  "strategy": "git",
+  "gitignore": true,
+  "npmignore": false,
+  "include": [
+    "**/*"
+  ],
+  "ignore": [
+    "assets/**"
+  ],
+  "dot": true,
+  "followSymlinks": false,
+  "includeEmptyDirectories": false,
+  "manifest": true,
+  "shiftFile": ".packageshift",
+  "compressionLevel": 9,
+  "deterministic": true,
+  "preserveMode": true,
+  "preserveMtime": false,
+  "sensitiveFiles": "warn",
+  "backupOnApply": true,
+  "conflictStrategy": "abort",
+  "renameDetection": true,
+  "renameThreshold": 0.8
+}

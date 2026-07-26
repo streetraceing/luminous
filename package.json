@@ -16,7 +16,6 @@
     "watch": "spicetify watch -s",
     "apply": "npm run build -- --mode sync && spicetify config current_theme Luminous && spicetify apply",
     "revert": "spicetify config current_theme marketplace && spicetify apply && npm run build -- --mode delete",
-    "package:archive": "tsx scripts/package-archive",
     "prettier:write": "prettier . --write",
     "prepare": "husky",
     "npm:patch": "npm version patch",
@@ -24,12 +23,9 @@
     "npm:major": "npm version major"
   },
   "devDependencies": {
-    "@types/archiver": "^8.0.0",
     "@types/node": "^26.1.1",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
-    "archiver": "^8.0.0",
-    "globby": "^16.2.2",
     "husky": "^9.1.7",
     "lint-staged": "^17.2.0",
     "prettier": "3.9.6",

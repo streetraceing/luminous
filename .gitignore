@@ -1,3 +1,6 @@
 /node_modules
 /dist
 /.release-tmp
+*.tgz
+*.zip
+.package-backups/
