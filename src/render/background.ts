@@ -137,11 +137,7 @@ export class Background {
   private static ensureBackground() {
     if (this.root?.isConnected) return;
 
-    if (this.videoCleanupTimer !== null) {
-      window.clearTimeout(this.videoCleanupTimer);
-      this.videoCleanupTimer = null;
-    }
-
+    this.cancelVideoCleanup();
     this.videoLayers?.forEach((video) => this.resetVideo(video));
     this.root?.remove();
     this.root = document.createElement('div');
@@ -322,6 +318,7 @@ export class Background {
     fallbackImage?: string | null,
   ): boolean {
     this.ensureBackground();
+
     if (!this.videoLayers) {
       Luminous.Logger.warn('Background', 'No video layers for render');
       return false;
@@ -346,8 +343,6 @@ export class Background {
       return true;
     }
 
-    this.imageRenderId++;
-
     const captureStream = (sourceVideo as CapturableVideo).captureStream;
     let stream: MediaStream | undefined;
 
@@ -367,6 +362,9 @@ export class Background {
       return false;
     }
 
+    this.cancelVideoCleanup();
+    this.imageRenderId++;
+
     const nextIndex = this.activeVideo === 0 ? 1 : 0;
     const next = this.videoLayers[nextIndex];
     const renderId = ++this.videoRenderId;
@@ -379,40 +377,43 @@ export class Background {
     this.pendingCanvasVideo = next;
     this.pendingCanvasFallback = fallbackImage ?? null;
 
-    next.onplaying = () => {
-      if (!this.isPendingCanvas(renderId, next)) return;
-
-      next.onplaying = null;
-
-      requestAnimationFrame(() => {
+    void next
+      .play()
+      .then(() => {
         if (!this.isPendingCanvas(renderId, next)) return;
 
+        requestAnimationFrame(() => {
+          if (!this.isPendingCanvas(renderId, next)) return;
+
+          this.clearPendingCanvas();
+          this.activeVideo = nextIndex;
+          this.currentCanvasSource = sourceVideo;
+          this.transitionTo('canvas', next);
+          Luminous.Logger.info(
+            'Background',
+            'Rendering canvas layer',
+            sourceVideo,
+          );
+        });
+      })
+      .catch((error) => {
+        if (!this.isPendingCanvas(renderId, next)) return;
+
+        const currentFallback = this.pendingCanvasFallback;
         this.clearPendingCanvas();
-        this.activeVideo = nextIndex;
-        this.currentCanvasSource = sourceVideo;
-        this.transitionTo('canvas', next);
-        Luminous.Logger.info(
+        this.resetVideo(next);
+        Luminous.Logger.warn(
           'Background',
-          'Rendering canvas layer',
-          sourceVideo,
+          'Failed to play canvas stream',
+          error,
         );
+
+        if (currentFallback) {
+          this.renderImage(currentFallback);
+        } else {
+          this.clear();
+        }
       });
-    };
-
-    void next.play().catch((error) => {
-      if (!this.isPendingCanvas(renderId, next)) return;
-
-      const currentFallback = this.pendingCanvasFallback;
-      this.clearPendingCanvas();
-      this.resetVideo(next);
-      Luminous.Logger.warn('Background', 'Failed to play canvas stream', error);
-
-      if (currentFallback) {
-        this.renderImage(currentFallback);
-      } else {
-        this.clear();
-      }
-    });
 
     return true;
   }
@@ -423,11 +424,7 @@ export class Background {
     this.currentCanvasSource = null;
     this.clearPendingCanvas();
 
-    if (this.videoCleanupTimer !== null) {
-      window.clearTimeout(this.videoCleanupTimer);
-      this.videoCleanupTimer = null;
-    }
-
+    this.cancelVideoCleanup();
     this.videoLayers?.forEach((video) => this.resetVideo(video));
     this.root?.remove();
 
@@ -471,9 +468,7 @@ export class Background {
         type === 'canvas' && element === activeElement ? '1' : '0';
     });
 
-    this.scheduleVideoCleanup(
-      type === 'canvas' ? (activeElement as HTMLVideoElement) : null,
-    );
+    this.scheduleVideoCleanup();
     this.emit('change');
   }
 
@@ -490,20 +485,31 @@ export class Background {
     this.pendingCanvasFallback = null;
   }
 
-  private static scheduleVideoCleanup(activeVideo: HTMLVideoElement | null) {
-    if (this.videoCleanupTimer !== null) {
-      window.clearTimeout(this.videoCleanupTimer);
-    }
+  private static scheduleVideoCleanup() {
+    this.cancelVideoCleanup();
 
     this.videoCleanupTimer = window.setTimeout(() => {
       this.videoCleanupTimer = null;
 
+      const activeVideo =
+        this.currentType === 'canvas' && this.videoLayers
+          ? this.videoLayers[this.activeVideo]
+          : null;
+      const pendingVideo = this.pendingCanvasVideo;
+
       this.videoLayers?.forEach((video) => {
-        if (video !== activeVideo) {
+        if (video !== activeVideo && video !== pendingVideo) {
           this.resetVideo(video);
         }
       });
     }, this.TRANSITION_MS);
+  }
+
+  private static cancelVideoCleanup() {
+    if (this.videoCleanupTimer === null) return;
+
+    window.clearTimeout(this.videoCleanupTimer);
+    this.videoCleanupTimer = null;
   }
 
   private static resetVideo(video: HTMLVideoElement) {
