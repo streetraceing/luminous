@@ -18,7 +18,10 @@
     "revert": "spicetify config current_theme marketplace && spicetify apply && npm run build -- --mode delete",
     "package:archive": "tsx scripts/package-archive",
     "prettier:write": "prettier . --write",
-    "prepare": "husky"
+    "prepare": "husky",
+    "npm:patch": "npm version patch",
+    "npm:minor": "npm version minor",
+    "npm:major": "npm version major"
   },
   "devDependencies": {
     "@types/archiver": "^8.0.0",
