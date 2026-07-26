@@ -32,6 +32,9 @@ export class Background {
   private static activeVideo = 0;
   private static videoRenderId = 0;
   private static currentCanvasSource: HTMLVideoElement | null = null;
+  private static pendingCanvasSource: HTMLVideoElement | null = null;
+  private static pendingCanvasVideo: HTMLVideoElement | null = null;
+  private static pendingCanvasFallback: string | null = null;
   private static videoCleanupTimer: number | null = null;
 
   private static currentType: BackgroundType = 'none';
@@ -176,6 +179,7 @@ export class Background {
     this.activeVideo = 0;
     this.currentType = 'none';
     this.currentCanvasSource = null;
+    this.clearPendingCanvas();
 
     document.body.prepend(this.root);
   }
@@ -218,6 +222,7 @@ export class Background {
     this.ensureBackground();
     this.videoRenderId++;
     this.currentCanvasSource = null;
+    this.clearPendingCanvas();
     if (!this.imageLayers) {
       Luminous.Logger.warn('Background', 'No image layers for render');
       return;
@@ -330,6 +335,17 @@ export class Background {
       return true;
     }
 
+    if (
+      this.pendingCanvasSource === sourceVideo &&
+      this.pendingCanvasVideo?.isConnected
+    ) {
+      if (fallbackImage !== undefined) {
+        this.pendingCanvasFallback = fallbackImage;
+      }
+
+      return true;
+    }
+
     this.imageRenderId++;
 
     const captureStream = (sourceVideo as CapturableVideo).captureStream;
@@ -359,20 +375,19 @@ export class Background {
     next.style.opacity = '0';
     next.srcObject = stream;
 
+    this.pendingCanvasSource = sourceVideo;
+    this.pendingCanvasVideo = next;
+    this.pendingCanvasFallback = fallbackImage ?? null;
+
     next.onplaying = () => {
-      if (renderId !== this.videoRenderId) {
-        this.resetVideo(next);
-        return;
-      }
+      if (!this.isPendingCanvas(renderId, next)) return;
 
       next.onplaying = null;
 
       requestAnimationFrame(() => {
-        if (renderId !== this.videoRenderId) {
-          this.resetVideo(next);
-          return;
-        }
+        if (!this.isPendingCanvas(renderId, next)) return;
 
+        this.clearPendingCanvas();
         this.activeVideo = nextIndex;
         this.currentCanvasSource = sourceVideo;
         this.transitionTo('canvas', next);
@@ -385,13 +400,15 @@ export class Background {
     };
 
     void next.play().catch((error) => {
-      this.resetVideo(next);
-      if (renderId !== this.videoRenderId) return;
+      if (!this.isPendingCanvas(renderId, next)) return;
 
+      const currentFallback = this.pendingCanvasFallback;
+      this.clearPendingCanvas();
+      this.resetVideo(next);
       Luminous.Logger.warn('Background', 'Failed to play canvas stream', error);
 
-      if (fallbackImage) {
-        this.renderImage(fallbackImage);
+      if (currentFallback) {
+        this.renderImage(currentFallback);
       } else {
         this.clear();
       }
@@ -404,6 +421,7 @@ export class Background {
     this.imageRenderId++;
     this.videoRenderId++;
     this.currentCanvasSource = null;
+    this.clearPendingCanvas();
 
     if (this.videoCleanupTimer !== null) {
       window.clearTimeout(this.videoCleanupTimer);
@@ -427,6 +445,7 @@ export class Background {
     this.imageRenderId++;
     this.videoRenderId++;
     this.currentCanvasSource = null;
+    this.clearPendingCanvas();
     this.transitionTo('none');
   }
 
@@ -456,6 +475,19 @@ export class Background {
       type === 'canvas' ? (activeElement as HTMLVideoElement) : null,
     );
     this.emit('change');
+  }
+
+  private static isPendingCanvas(
+    renderId: number,
+    video: HTMLVideoElement,
+  ): boolean {
+    return renderId === this.videoRenderId && this.pendingCanvasVideo === video;
+  }
+
+  private static clearPendingCanvas() {
+    this.pendingCanvasSource = null;
+    this.pendingCanvasVideo = null;
+    this.pendingCanvasFallback = null;
   }
 
   private static scheduleVideoCleanup(activeVideo: HTMLVideoElement | null) {
