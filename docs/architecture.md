@@ -34,7 +34,7 @@ Settings dialog --> Settings API --> CSS variables and root classes
 
 The renderer maintains two image and two video elements. New content is prepared in the inactive layer, then faded in once it is usable. The former video layer is released after the transition, stopping its media tracks so it does not continue consuming resources.
 
-Images are decoded asynchronously and kept in a small, capped preload cache. This prevents visible flashes during song changes while keeping the cache bounded.
+Spotify image URIs such as `spotify:image:<id>` are normalised to Spotify's image CDN before rendering. Images are decoded asynchronously and kept in a small, capped preload cache. This prevents visible flashes during song changes while keeping the cache bounded.
 
 For Canvas and visible long-form NPV videos, the renderer requests `captureStream()` from Spotify's existing video element. The source video is never moved or modified. If the browser does not provide a stream or playback fails, Luminous displays the track image instead.
 

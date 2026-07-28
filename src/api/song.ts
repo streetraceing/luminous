@@ -193,11 +193,12 @@ export class Song {
   private static createPayload(track: Spicetify.PlayerTrack): SongPayload {
     const artists = track.artists?.map((artist) => artist.name) ?? [];
 
-    const image =
+    const image = normalizeImageUrl(
       track.images?.[0]?.url ??
-      track.album?.images?.[0]?.url ??
-      track.metadata?.image_url ??
-      null;
+        track.album?.images?.[0]?.url ??
+        track.metadata?.image_url ??
+        null,
+    );
 
     return {
       track,
@@ -238,4 +239,16 @@ export class Song {
 
     return listeners;
   }
+}
+
+function normalizeImageUrl(image: string | null | undefined): string | null {
+  if (!image) return null;
+
+  const spotifyImagePrefix = 'spotify:image:';
+  if (image.startsWith(spotifyImagePrefix)) {
+    const imageId = image.slice(spotifyImagePrefix.length);
+    return imageId ? `https://i.scdn.co/image/${imageId}` : null;
+  }
+
+  return image;
 }
