@@ -1,18 +1,40 @@
-.luminous-theme-menu {
+.luminous-theme-modal-backdrop {
   position: fixed;
-  z-index: 9999;
-  width: min(360px, calc(100vw - 24px));
-  padding: 12px;
+  z-index: 100000;
+  inset: 0;
+  display: grid;
+  padding: clamp(16px, 5vw, 72px);
+  background: rgba(0, 0, 0, 0.5);
+  background: color-mix(in srgb, #000 48%, transparent);
+  backdrop-filter: blur(18px) saturate(1.2);
+  isolation: isolate;
+  overscroll-behavior: contain;
+  place-items: center;
+  animation: luminous-theme-modal-backdrop-in 180ms ease-out;
+}
+
+.luminous-theme-menu {
+  width: min(100%, 620px);
+  max-height: min(720px, calc(100dvh - 32px));
+  padding: clamp(16px, 2.4vw, 28px);
   color: var(--spice-text);
   background:
-    linear-gradient(rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0)),
-    color-mix(in srgb, var(--luminous-ui-base) 92%, transparent);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 8px;
+    radial-gradient(
+      circle at 0 0,
+      color-mix(in srgb, var(--spice-button-active) 22%, transparent),
+      transparent 42%
+    ),
+    linear-gradient(rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.015)),
+    color-mix(in srgb, var(--luminous-ui-base) 94%, transparent);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 24px;
   box-shadow:
-    0 22px 60px rgba(0, 0, 0, 0.42),
-    inset 0 1px 0 rgba(255, 255, 255, 0.09);
-  backdrop-filter: blur(calc(var(--luminous-ui-blur) + 8px));
+    0 32px 96px rgba(0, 0, 0, 0.52),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14);
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  animation: luminous-theme-modal-panel-in 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 .luminous-theme-menu__header {
@@ -20,27 +42,28 @@
   grid-template-columns: auto 1fr auto auto;
   align-items: center;
   gap: 10px;
-  min-height: 38px;
-  padding: 2px 2px 12px;
+  min-height: 48px;
+  padding: 2px 2px 20px;
 }
 
 .luminous-theme-menu__mark {
   display: grid;
-  width: 34px;
-  height: 34px;
+  width: 44px;
+  height: 44px;
   color: #000;
   background: var(--spice-button-active);
-  border-radius: 8px;
-  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.22);
-  font-size: 15px;
+  border-radius: 14px;
+  box-shadow: 0 10px 28px
+    color-mix(in srgb, var(--spice-button-active) 32%, transparent);
+  font-size: 18px;
   font-weight: 900;
   place-items: center;
 }
 
 .luminous-theme-menu__luminous-icon {
   display: grid;
-  width: 20px;
-  height: 20px;
+  width: 24px;
+  height: 24px;
   place-items: center;
   fill: currentColor;
 }
@@ -59,7 +82,7 @@
 }
 
 .luminous-theme-menu__title span {
-  font-size: 14px;
+  font-size: 17px;
   font-weight: 800;
 }
 
@@ -72,7 +95,7 @@
 }
 
 .luminous-theme-menu__title small {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   white-space: nowrap;
 }
@@ -86,17 +109,17 @@
 }
 
 .luminous-theme-menu__reset-button {
-  height: 30px;
-  min-width: 66px;
+  height: 34px;
+  min-width: 72px;
   padding: 0 12px;
   border-radius: 999px;
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .luminous-theme-menu__icon-button {
   display: grid;
-  width: 30px;
-  height: 30px;
+  width: 34px;
+  height: 34px;
   padding: 0;
   border-radius: 50%;
   font-size: 13px;
@@ -116,19 +139,27 @@
   background: rgba(255, 255, 255, 0.12);
 }
 
+.luminous-theme-menu__reset-button:focus-visible,
+.luminous-theme-menu__icon-button:focus-visible,
+.luminous-theme-menu__switch input:focus-visible + span,
+.luminous-theme-menu__range input:focus-visible {
+  outline: 2px solid var(--spice-button-active);
+  outline-offset: 3px;
+}
+
 .luminous-theme-menu__section {
   display: grid;
-  gap: 4px;
-  padding: 7px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.075);
-  border-radius: 8px;
+  gap: 6px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.055);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 18px;
 }
 
 .luminous-theme-menu__section-header {
-  padding: 4px 8px 6px;
+  padding: 5px 8px 9px;
   color: var(--spice-subtext);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 800;
   text-transform: uppercase;
 }
@@ -136,9 +167,9 @@
 .luminous-theme-menu__row {
   display: grid;
   gap: 10px;
-  padding: 10px;
-  border-radius: 7px;
-  font-size: 13px;
+  padding: 12px;
+  border-radius: 12px;
+  font-size: 14px;
 }
 
 .luminous-theme-menu__row:hover {
@@ -156,7 +187,7 @@
 }
 
 .luminous-theme-menu__copy small {
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .luminous-theme-menu__toggle {
@@ -167,8 +198,8 @@
 .luminous-theme-menu__switch {
   position: relative;
   display: inline-grid;
-  width: 42px;
-  height: 24px;
+  width: 46px;
+  height: 26px;
   align-items: center;
 }
 
@@ -194,8 +225,8 @@
   position: absolute;
   top: 3px;
   left: 3px;
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   background: var(--spice-text);
   border-radius: 50%;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.34);
@@ -209,7 +240,7 @@
 }
 
 .luminous-theme-menu__switch input:checked + span::after {
-  transform: translateX(18px);
+  transform: translateX(20px);
 }
 
 .luminous-theme-menu__range-header {
@@ -241,4 +272,76 @@
   height: 18px;
   accent-color: var(--spice-button-active);
   cursor: pointer;
+}
+
+.luminous-theme-menu__footer {
+  margin: 18px 8px 0;
+  color: var(--spice-subtext);
+  font-size: 12px;
+  text-align: center;
+}
+
+.luminous-theme-menu-button--active {
+  color: var(--spice-button-active);
+}
+
+@keyframes luminous-theme-modal-backdrop-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes luminous-theme-modal-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.98);
+  }
+}
+
+@media (max-width: 560px) {
+  .luminous-theme-modal-backdrop {
+    padding: 12px;
+  }
+
+  .luminous-theme-menu {
+    max-height: calc(100dvh - 24px);
+    border-radius: 20px;
+  }
+
+  .luminous-theme-menu__header {
+    grid-template-areas:
+      'mark title close'
+      'mark reset close';
+    grid-template-columns: auto 1fr auto;
+    row-gap: 12px;
+  }
+
+  .luminous-theme-menu__mark {
+    grid-area: mark;
+  }
+
+  .luminous-theme-menu__title {
+    grid-area: title;
+  }
+
+  .luminous-theme-menu__reset-button {
+    grid-area: reset;
+    justify-self: start;
+  }
+
+  .luminous-theme-menu__icon-button {
+    grid-area: close;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .luminous-theme-modal-backdrop,
+  .luminous-theme-menu {
+    animation: none;
+  }
+
+  .luminous-theme-menu__switch span,
+  .luminous-theme-menu__switch span::after {
+    transition: none;
+  }
 }

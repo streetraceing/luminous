@@ -4,7 +4,9 @@ Luminous keeps its visual controls inside Spotify so that changes are immediate 
 
 ## Open the settings panel
 
-Select the brightness icon in Spotify's top bar. The Luminous panel contains a dynamic-background switch, three visual sliders, and a **Reset** button.
+Select the brightness icon in Spotify's top bar. Luminous opens a focused, full-screen settings dialog with a blurred backdrop, so the controls remain easy to use without losing the context of the current artwork. Select the backdrop, use the close button, or press <kbd>Esc</kbd> to close it.
+
+The dialog moves keyboard focus into its controls while open and restores focus to the top-bar button when it closes.
 
 ## Settings
 

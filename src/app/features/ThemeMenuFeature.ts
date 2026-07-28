@@ -1,7 +1,16 @@
-import { getReact, ReactRef, useEffect, useRef, useState } from '../react';
+import { getReact, useEffect, useRef, useState } from '../react';
 
 const BUTTON_LABEL = 'Luminous settings';
 const BUTTON_ICON: Spicetify.Icon = 'brightness';
+const MODAL_ID = 'luminous-theme-modal';
+const MODAL_TITLE_ID = 'luminous-theme-modal-title';
+const MODAL_DESCRIPTION_ID = 'luminous-theme-modal-description';
+const FOCUSABLE_SELECTOR = [
+  'button:not([disabled])',
+  'input:not([disabled])',
+  '[href]',
+  '[tabindex]:not([tabindex="-1"])',
+].join(',');
 
 type NumericSetting = {
   key: string;
@@ -59,21 +68,39 @@ export function ThemeMenuFeature() {
   const state = useState();
 
   const buttonRef = ref<Spicetify.Topbar.Button | null>(null);
-  const menuRef = ref<HTMLDivElement | null>(null);
+  const previouslyOpen = ref(false);
   const [open, setOpen] = state(false);
 
   effect(() => {
     let disposed = false;
     let retryTimer: number | null = null;
+    let recoveryTimer: number | null = null;
 
-    const createButton = () => {
+    const scheduleRetry = () => {
+      if (disposed || retryTimer !== null) return;
+
+      retryTimer = window.setTimeout(() => {
+        retryTimer = null;
+        ensureButton();
+      }, 250);
+    };
+
+    const ensureButton = () => {
       retryTimer = null;
       if (disposed) return;
 
+      if (buttonRef.current?.element.isConnected) return;
+
       if (!Spicetify.Topbar?.Button) {
-        retryTimer = window.setTimeout(createButton, 250);
+        scheduleRetry();
         return;
       }
+
+      buttonRef.current?.element.remove();
+      buttonRef.current = null;
+      document
+        .querySelectorAll('.luminous-theme-menu-button')
+        .forEach((element) => element.remove());
 
       const button = new Spicetify.Topbar.Button(
         BUTTON_LABEL,
@@ -84,10 +111,18 @@ export function ThemeMenuFeature() {
       );
 
       button.element.classList.add('luminous-theme-menu-button');
+      button.element.setAttribute('aria-haspopup', 'dialog');
+      button.element.setAttribute('aria-expanded', String(open));
+      button.element.setAttribute('aria-controls', MODAL_ID);
+      button.element.classList.toggle(
+        'luminous-theme-menu-button--active',
+        open,
+      );
       buttonRef.current = button;
     };
 
-    createButton();
+    ensureButton();
+    recoveryTimer = window.setInterval(ensureButton, 1000);
 
     return () => {
       disposed = true;
@@ -96,85 +131,103 @@ export function ThemeMenuFeature() {
         window.clearTimeout(retryTimer);
       }
 
+      if (recoveryTimer !== null) {
+        window.clearInterval(recoveryTimer);
+      }
+
       buttonRef.current?.element.remove();
       buttonRef.current = null;
     };
   }, []);
 
   effect(() => {
-    if (!open) return;
+    const button = buttonRef.current?.element;
 
-    const handleOutsideInteraction = (event: PointerEvent | MouseEvent) => {
-      const path = event.composedPath();
-      const button = buttonRef.current?.element;
-      const menu = menuRef.current;
+    if (button) {
+      button.setAttribute('aria-expanded', String(open));
+      button.classList.toggle('luminous-theme-menu-button--active', open);
+    }
 
-      if ((button && path.includes(button)) || (menu && path.includes(menu))) {
-        return;
-      }
+    if (!open && previouslyOpen.current && button?.isConnected) {
+      button.focus();
+    }
 
-      setOpen(false);
-    };
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setOpen(false);
-      }
-    };
-
-    document.addEventListener('pointerdown', handleOutsideInteraction, true);
-    document.addEventListener('click', handleOutsideInteraction, true);
-    document.addEventListener('keydown', handleKeyDown, true);
-
-    return () => {
-      document.removeEventListener(
-        'pointerdown',
-        handleOutsideInteraction,
-        true,
-      );
-      document.removeEventListener('click', handleOutsideInteraction, true);
-      document.removeEventListener('keydown', handleKeyDown, true);
-    };
+    previouslyOpen.current = open;
   }, [open]);
 
   if (!open) return null;
 
-  return React.createElement(ThemeMenuPopover, {
-    anchor: buttonRef.current?.element ?? null,
-    menuRef,
+  return React.createElement(ThemeSettingsModal, {
     onClose: () => setOpen(false),
   });
 }
 
-function ThemeMenuPopover({
-  anchor,
-  menuRef,
-  onClose,
-}: {
-  anchor: HTMLElement | null;
-  menuRef: ReactRef<HTMLDivElement | null>;
-  onClose: () => void;
-}) {
+function ThemeSettingsModal({ onClose }: { onClose: () => void }) {
   const React = getReact();
   const effect = useEffect();
+  const ref = useRef();
   const state = useState();
-  const [position, setPosition] = state(() => getMenuPosition(anchor));
+  const dialogRef = ref<HTMLDivElement | null>(null);
+  const closeButtonRef = ref<HTMLButtonElement | null>(null);
   const [dynamicBackground, setDynamicBackground] = state(
     () => Luminous.Settings.get('dynamicBackground') !== false,
   );
 
   effect(() => {
-    const syncPosition = () => setPosition(getMenuPosition(anchor));
+    const previousOverflow = document.body.style.overflow;
+    const focusFrame = requestAnimationFrame(() => {
+      closeButtonRef.current?.focus();
+    });
 
-    syncPosition();
-    window.addEventListener('resize', syncPosition);
-    window.addEventListener('scroll', syncPosition, true);
+    document.body.style.overflow = 'hidden';
 
     return () => {
-      window.removeEventListener('resize', syncPosition);
-      window.removeEventListener('scroll', syncPosition, true);
+      cancelAnimationFrame(focusFrame);
+      document.body.style.overflow = previousOverflow;
     };
-  }, [anchor]);
+  }, []);
+
+  effect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        onClose();
+        return;
+      }
+
+      if (event.key !== 'Tab') return;
+
+      const focusable = Array.from(
+        dialogRef.current?.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR) ??
+          [],
+      );
+
+      if (!focusable.length) {
+        event.preventDefault();
+        return;
+      }
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+        return;
+      }
+
+      if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown, true);
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown, true);
+    };
+  }, [onClose]);
 
   effect(() => {
     return Luminous.Settings.subscribe<boolean>(
@@ -187,82 +240,101 @@ function ThemeMenuPopover({
   return React.createElement(
     'div',
     {
-      ref: menuRef,
-      className: 'luminous-theme-menu',
-      style: {
-        top: `${position.top}px`,
-        right: `${position.right}px`,
+      className: 'luminous-theme-modal-backdrop',
+      onMouseDown: (event: MouseEvent) => {
+        if (event.target === event.currentTarget) onClose();
       },
-      role: 'dialog',
-      'aria-label': 'Luminous settings',
     },
     React.createElement(
       'div',
-      { className: 'luminous-theme-menu__header' },
+      {
+        ref: dialogRef,
+        id: MODAL_ID,
+        className: 'luminous-theme-menu',
+        role: 'dialog',
+        'aria-modal': 'true',
+        'aria-labelledby': MODAL_TITLE_ID,
+        'aria-describedby': MODAL_DESCRIPTION_ID,
+      },
       React.createElement(
         'div',
-        { className: 'luminous-theme-menu__mark' },
-        React.createElement('svg', {
-          className: 'luminous-theme-menu__luminous-icon',
-          viewBox: '0 0 16 16',
-          'aria-hidden': 'true',
-          focusable: 'false',
-          dangerouslySetInnerHTML: {
-            __html: Spicetify.SVGIcons['brightness'],
+        { className: 'luminous-theme-menu__header' },
+        React.createElement(
+          'div',
+          { className: 'luminous-theme-menu__mark' },
+          React.createElement('svg', {
+            className: 'luminous-theme-menu__luminous-icon',
+            viewBox: '0 0 16 16',
+            'aria-hidden': 'true',
+            focusable: 'false',
+            dangerouslySetInnerHTML: {
+              __html: Spicetify.SVGIcons?.brightness ?? '',
+            },
+          }),
+        ),
+        React.createElement(
+          'div',
+          { className: 'luminous-theme-menu__title' },
+          React.createElement('span', { id: MODAL_TITLE_ID }, 'Luminous'),
+          React.createElement(
+            'small',
+            { id: MODAL_DESCRIPTION_ID },
+            'Personalise your Spotify experience',
+          ),
+        ),
+        React.createElement(
+          'button',
+          {
+            className: 'luminous-theme-menu__reset-button',
+            type: 'button',
+            onClick: () => Luminous.Settings.resetMany(resettableSettings),
           },
-        }),
-      ),
-      React.createElement(
-        'div',
-        { className: 'luminous-theme-menu__title' },
-        React.createElement('span', null, 'Luminous'),
-        React.createElement('small', null, 'Theme settings'),
-      ),
-      React.createElement(
-        'button',
-        {
-          className: 'luminous-theme-menu__reset-button',
-          type: 'button',
-          onClick: () => Luminous.Settings.resetMany(resettableSettings),
-        },
-        'Reset',
-      ),
-      React.createElement(
-        'button',
-        {
-          className: 'luminous-theme-menu__icon-button',
-          type: 'button',
-          'aria-label': 'Close',
-          onClick: onClose,
-        },
-        React.createElement('svg', {
-          className: 'luminous-theme-menu__close-icon',
-          dangerouslySetInnerHTML: {
-            __html: Spicetify.SVGIcons['x'],
+          'Reset',
+        ),
+        React.createElement(
+          'button',
+          {
+            ref: closeButtonRef,
+            className: 'luminous-theme-menu__icon-button',
+            type: 'button',
+            'aria-label': 'Close settings',
+            onClick: onClose,
           },
-        }),
+          React.createElement('svg', {
+            className: 'luminous-theme-menu__close-icon',
+            'aria-hidden': 'true',
+            dangerouslySetInnerHTML: {
+              __html: Spicetify.SVGIcons?.x ?? '',
+            },
+          }),
+        ),
       ),
-    ),
-    React.createElement(
-      'div',
-      { className: 'luminous-theme-menu__section' },
       React.createElement(
         'div',
-        { className: 'luminous-theme-menu__section-header' },
-        'Appearance',
-      ),
-      React.createElement(ToggleRow, {
-        label: 'Dynamic background',
-        description: 'Use the current cover or Spotify Canvas as backdrop.',
-        checked: dynamicBackground,
-        onChange: (checked: boolean) =>
-          Luminous.Settings.set('dynamicBackground', checked),
-      }),
-      numericSettings.map((setting) =>
-        React.createElement(NumericSettingRow, {
-          key: setting.key,
-          setting,
+        { className: 'luminous-theme-menu__section' },
+        React.createElement(
+          'div',
+          { className: 'luminous-theme-menu__section-header' },
+          'Appearance',
+        ),
+        React.createElement(ToggleRow, {
+          label: 'Dynamic background',
+          description: 'Use the current cover or Spotify Canvas as backdrop.',
+          checked: dynamicBackground,
+          onChange: (checked: boolean) =>
+            Luminous.Settings.set('dynamicBackground', checked),
         }),
+        numericSettings.map((setting) =>
+          React.createElement(NumericSettingRow, {
+            key: setting.key,
+            setting,
+          }),
+        ),
+      ),
+      React.createElement(
+        'p',
+        { className: 'luminous-theme-menu__footer' },
+        'Changes are saved automatically.',
       ),
     ),
   );
@@ -355,18 +427,6 @@ function NumericSettingRow({ setting }: { setting: NumericSetting }) {
       }),
     ),
   );
-}
-
-function getMenuPosition(anchor: HTMLElement | null) {
-  if (!anchor) {
-    return { top: 64, right: 16 };
-  }
-
-  const rect = anchor.getBoundingClientRect();
-  return {
-    top: Math.round(rect.bottom + 8),
-    right: Math.max(12, Math.round(window.innerWidth - rect.right)),
-  };
 }
 
 function readNumericSetting(setting: NumericSetting): number {
