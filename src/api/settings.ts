@@ -6,11 +6,13 @@ import {
 
 export class Settings {
   private static readonly STORAGE_KEY = 'luminous-settings';
+  private static readonly PERSIST_DELAY_MS = 200;
 
   private static registry = new Map<string, SettingDefinition>();
   private static values = new Map<string, SettingValue>();
   private static listeners = new Map<string, Set<SettingListener>>();
   private static savedValues = new Map<string, unknown>();
+  private static persistTimer: number | null = null;
   private static initialized = false;
 
   static init() {
@@ -29,7 +31,8 @@ export class Settings {
       this.apply(key, definition, value);
     });
 
-    this.persist();
+    window.addEventListener('pagehide', () => this.flushPersist());
+    this.persistNow();
   }
 
   static register(key: string, definition: SettingDefinition) {
@@ -44,7 +47,7 @@ export class Settings {
     this.values.set(key, value);
     this.savedValues.set(key, value);
     this.apply(key, definition, value);
-    this.persist();
+    this.schedulePersist();
   }
 
   static get<T extends SettingValue>(key: string): T {
@@ -60,11 +63,14 @@ export class Settings {
     }
 
     const normalized = this.normalizeValue(definition, value);
+
+    if (this.values.get(key) === normalized) return;
+
     this.values.set(key, normalized);
     this.savedValues.set(key, normalized);
     this.apply(key, definition, normalized);
     this.emit(key, normalized);
-    this.persist();
+    this.schedulePersist();
   }
 
   static reset(key: string) {
@@ -86,7 +92,7 @@ export class Settings {
       this.emit(key, value);
     });
 
-    this.persist();
+    this.schedulePersist();
   }
 
   static subscribe<T extends SettingValue>(
@@ -171,7 +177,27 @@ export class Settings {
     }
   }
 
-  private static persist() {
+  private static schedulePersist() {
+    if (this.persistTimer !== null) {
+      window.clearTimeout(this.persistTimer);
+    }
+
+    this.persistTimer = window.setTimeout(() => {
+      this.persistTimer = null;
+      this.persistNow();
+    }, this.PERSIST_DELAY_MS);
+  }
+
+  private static flushPersist() {
+    if (this.persistTimer !== null) {
+      window.clearTimeout(this.persistTimer);
+      this.persistTimer = null;
+    }
+
+    this.persistNow();
+  }
+
+  private static persistNow() {
     const saved: Record<string, SettingValue> = {};
 
     this.savedValues.forEach((value, key) => {

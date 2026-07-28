@@ -373,7 +373,7 @@ function readNumericSetting(setting: NumericSetting): number {
   const current = Luminous.Settings.get(setting.key);
   const parsed = Number(current);
 
-  if (Number.isNaN(parsed)) {
+  if (!Number.isFinite(parsed)) {
     return setting.fallback;
   }
 
