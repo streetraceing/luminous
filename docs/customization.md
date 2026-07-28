@@ -14,6 +14,7 @@ The dialog has **Appearance** and **Motion** tabs. It moves keyboard focus into 
 | --------------------- | --------------------: | ------: | ----------------------------------------------------------------------------- |
 | Dynamic background    |              On / Off |      On | Uses the current cover, Canvas, or visible Spotify NPV video as the backdrop. |
 | Dynamic palette       |              On / Off |      On | Extracts colours from the current cover for a moving background aura.         |
+| Backdrop energy       | Calm / Ambient / Bass | Ambient | Selects the character of the background-only colour effects.                  |
 | Background blur       |               0-48 px |   24 px | Softens the artwork or video behind Spotify.                                  |
 | Background brightness |               30-120% |     75% | Adjusts the intensity of the backdrop.                                        |
 | Surface opacity       |                0-100% |     50% | Controls the transparency of the glass-like UI surfaces.                      |
@@ -30,6 +31,10 @@ When a Spotify Canvas is available, Luminous uses it in preference to the static
 Luminous analyses a small local copy of the current cover artwork and uses the extracted colours only inside the dynamic background. They form a blurred, animated aura over the cover, Canvas, or NPV video; Spotify's main view, navigation, player, and settings controls retain their normal colours.
 
 The aura follows the selected background movement. **Still** keeps it static, while **Drift** and **Float** move its gradients slowly without adding any animation to the interface itself. Set **Palette strength** to `0%` to leave the background media completely uncoloured.
+
+## Backdrop energy
+
+**Calm** uses a wide, dim breathing glow for mellow music. **Ambient** is the default: brighter flowing light pools give artwork and Canvas more depth. **Bass** adds fast expanding rings and flashes drawn from the cover palette, intended for energetic or bass-heavy tracks. These profiles are visual presets: Spotify does not expose a reliable audio-analysis stream to the theme, so Luminous never guesses the beat or touches playback audio.
 
 The result for an old track is discarded as soon as playback changes, so fast track changes cannot apply a stale palette.
 

@@ -122,12 +122,25 @@ const appearanceNumericSettings: NumericSetting[] = [
 const motionChoiceSetting: ChoiceSetting = {
   key: 'backgroundMotion',
   label: 'Background movement',
-  description: 'Choose a subtle movement for the active artwork or Canvas.',
+  description: 'Choose how the artwork, Canvas, and colour aura travel.',
   fallback: 'drift',
   options: [
     { value: 'still', label: 'Still' },
     { value: 'drift', label: 'Drift' },
     { value: 'float', label: 'Float' },
+  ],
+};
+
+const backgroundEnergySetting: ChoiceSetting = {
+  key: 'backgroundEnergy',
+  label: 'Backdrop energy',
+  description:
+    'Use Ambient for richer flow, or Bass for bright pulse waves on active tracks.',
+  fallback: 'ambient',
+  options: [
+    { value: 'calm', label: 'Calm' },
+    { value: 'ambient', label: 'Ambient' },
+    { value: 'bass', label: 'Bass' },
   ],
 };
 
@@ -157,6 +170,7 @@ const resettableSettings = [
   ...appearanceToggles.map((setting) => setting.key),
   ...appearanceNumericSettings.map((setting) => setting.key),
   motionChoiceSetting.key,
+  backgroundEnergySetting.key,
   ...motionNumericSettings.map((setting) => setting.key),
   ...motionToggles.map((setting) => setting.key),
 ];
@@ -525,10 +539,13 @@ function MotionSettings() {
       React.createElement(
         'p',
         null,
-        'Keep the background still or add a measured, low-impact movement.',
+        'Set the motion style and energy of the artwork, colour aura, and pulse effects.',
       ),
     ),
     React.createElement(ChoiceSettingRow, { setting: motionChoiceSetting }),
+    React.createElement(ChoiceSettingRow, {
+      setting: backgroundEnergySetting,
+    }),
     motionNumericSettings.map((setting) =>
       React.createElement(NumericSettingRow, {
         key: setting.key,

@@ -23,6 +23,48 @@ const normalizeNumber = (fallback: number, min: number, max: number) => {
   };
 };
 
+const backgroundEnergyProfiles = ['calm', 'ambient', 'bass'] as const;
+type BackgroundEnergyProfile = (typeof backgroundEnergyProfiles)[number];
+
+const normalizeBackgroundEnergyProfile = (
+  value: unknown,
+): BackgroundEnergyProfile => {
+  return typeof value === 'string' &&
+    backgroundEnergyProfiles.includes(value as BackgroundEnergyProfile)
+    ? (value as BackgroundEnergyProfile)
+    : 'ambient';
+};
+
+const energyProfileFactors: Record<
+  BackgroundEnergyProfile,
+  { duration: number; intensity: number }
+> = {
+  calm: { duration: 18, intensity: 0.42 },
+  ambient: { duration: 9, intensity: 0.72 },
+  bass: { duration: 2.8, intensity: 1 },
+};
+
+const applyBackgroundEnergy = (
+  profile: BackgroundEnergyProfile,
+  strength: number,
+) => {
+  const energy = energyProfileFactors[profile];
+  const auraOpacity = Math.min(86, Math.round(strength * 1.85));
+
+  backgroundEnergyProfiles.forEach((name) => {
+    Luminous.Settings.toggleClass(`luminous-energy-${name}`, name === profile);
+  });
+  Luminous.Settings.setVar(
+    '--luminous-palette-effect-opacity',
+    `${auraOpacity}%`,
+  );
+  Luminous.Settings.setVar(
+    '--luminous-energy-effect-opacity',
+    `${Math.round(auraOpacity * energy.intensity)}%`,
+  );
+  Luminous.Settings.setVar('--luminous-energy-duration', `${energy.duration}s`);
+};
+
 Luminous.Settings.register('backgroundBlur', {
   default: 24,
   normalize: normalizeNumber(24, 0, 48),
@@ -54,9 +96,22 @@ Luminous.Settings.register('paletteStrength', {
   default: 24,
   normalize: normalizeNumber(24, 0, 45),
   apply: (value) => {
-    Luminous.Settings.setVar(
-      '--luminous-palette-effect-opacity',
-      `${Math.round(Number(value) * 1.4)}%`,
+    applyBackgroundEnergy(
+      normalizeBackgroundEnergyProfile(
+        Luminous.Settings.get('backgroundEnergy'),
+      ),
+      Number(value),
+    );
+  },
+});
+
+Luminous.Settings.register('backgroundEnergy', {
+  default: 'ambient',
+  normalize: normalizeBackgroundEnergyProfile,
+  apply: (value) => {
+    applyBackgroundEnergy(
+      normalizeBackgroundEnergyProfile(value),
+      Number(Luminous.Settings.get('paletteStrength') ?? 24),
     );
   },
 });
