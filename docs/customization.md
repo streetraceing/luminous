@@ -13,12 +13,12 @@ The dialog has **Appearance** and **Motion** tabs. It moves keyboard focus into 
 | Setting               |                 Range | Default | Effect                                                                        |
 | --------------------- | --------------------: | ------: | ----------------------------------------------------------------------------- |
 | Dynamic background    |              On / Off |      On | Uses the current cover, Canvas, or visible Spotify NPV video as the backdrop. |
-| Dynamic palette       |              On / Off |      On | Extracts colours from the current cover and subtly tints Luminous surfaces.   |
+| Dynamic palette       |              On / Off |      On | Extracts colours from the current cover for a moving background aura.         |
 | Background blur       |               0-48 px |   24 px | Softens the artwork or video behind Spotify.                                  |
 | Background brightness |               30-120% |     75% | Adjusts the intensity of the backdrop.                                        |
 | Surface opacity       |                0-100% |     50% | Controls the transparency of the glass-like UI surfaces.                      |
 | Surface blur          |               0-32 px |   16 px | Controls blur on navigation and content surfaces.                             |
-| Palette strength      |                 0-45% |     24% | Sets how visible the extracted cover colours are.                             |
+| Palette strength      |                 0-45% |     24% | Sets the visibility of the colour effect behind the background media.         |
 | Background movement   | Still / Drift / Float |   Drift | Adds a low-impact animation to the active background layer.                   |
 | Motion speed          |                8-48 s |    20 s | Sets the duration of one animation cycle.                                     |
 | Reduce motion         |              On / Off |     Off | Stops Luminous animations and background cross-fades.                         |
@@ -27,7 +27,9 @@ When a Spotify Canvas is available, Luminous uses it in preference to the static
 
 ## Dynamic palette
 
-Luminous analyses a small local copy of the current cover artwork and uses the extracted colour as a restrained accent in the main view, navigation edge, player edge, and settings dialog. The feature never blocks playback or background rendering: if the cover cannot be read, the normal Spotify accent remains in use.
+Luminous analyses a small local copy of the current cover artwork and uses the extracted colours only inside the dynamic background. They form a blurred, animated aura over the cover, Canvas, or NPV video; Spotify's main view, navigation, player, and settings controls retain their normal colours.
+
+The aura follows the selected background movement. **Still** keeps it static, while **Drift** and **Float** move its gradients slowly without adding any animation to the interface itself. Set **Palette strength** to `0%` to leave the background media completely uncoloured.
 
 The result for an old track is discarded as soon as playback changes, so fast track changes cannot apply a stale palette.
 

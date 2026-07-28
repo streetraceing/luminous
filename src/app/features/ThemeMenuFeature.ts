@@ -58,7 +58,8 @@ const appearanceToggles: ToggleSetting[] = [
   {
     key: 'dynamicPalette',
     label: 'Dynamic palette',
-    description: 'Tint Luminous with colours extracted from the current cover.',
+    description:
+      'Add an animated colour aura from the current cover to the backdrop.',
     fallback: true,
   },
 ];
@@ -108,7 +109,8 @@ const appearanceNumericSettings: NumericSetting[] = [
   {
     key: 'paletteStrength',
     label: 'Palette strength',
-    description: 'Adjusts how much the cover colours tint the interface.',
+    description:
+      'Controls the intensity of the animated colour effect behind Spotify.',
     min: 0,
     max: 45,
     step: 1,
@@ -569,32 +571,17 @@ function ToggleSettingRow({ setting }: { setting: ToggleSetting }) {
     ),
     React.createElement(
       'span',
-      { className: 'luminous-theme-menu__toggle-control' },
-      setting.key === 'dynamicPalette' &&
-        React.createElement(
-          'span',
-          {
-            className: 'luminous-theme-menu__palette-preview',
-            'aria-hidden': 'true',
-          },
-          React.createElement('i'),
-          React.createElement('i'),
-          React.createElement('i'),
-        ),
-      React.createElement(
-        'span',
-        { className: 'luminous-theme-menu__switch' },
-        React.createElement('input', {
-          type: 'checkbox',
-          checked,
-          onChange: (event: Event) =>
-            Luminous.Settings.set(
-              setting.key,
-              (event.currentTarget as HTMLInputElement).checked,
-            ),
-        }),
-        React.createElement('span'),
-      ),
+      { className: 'luminous-theme-menu__switch' },
+      React.createElement('input', {
+        type: 'checkbox',
+        checked,
+        onChange: (event: Event) =>
+          Luminous.Settings.set(
+            setting.key,
+            (event.currentTarget as HTMLInputElement).checked,
+          ),
+      }),
+      React.createElement('span'),
     ),
   );
 }

@@ -4,14 +4,6 @@
   background: var(--luminous-background);
 }
 
-html.luminous-dynamic-palette .Root__globalNav {
-  background:
-    linear-gradient(var(--luminous-ui-tint), var(--luminous-ui-tint)),
-    var(--luminous-background);
-  box-shadow: inset 0 -1px
-    color-mix(in srgb, var(--luminous-palette-primary) 56%, transparent);
-}
-
 :is(
     html[data-transition],
     html[data-cinema-npv-postenter],

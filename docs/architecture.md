@@ -19,16 +19,16 @@ Settings dialog --> Settings API --> CSS variables and root classes
 
 ## Main modules
 
-| Area                | Location                   | Responsibility                                                                           |
-| ------------------- | -------------------------- | ---------------------------------------------------------------------------------------- |
-| Entry point         | `src/index.ts`             | Loads CSS, exposes the API, registers settings, and mounts the application.              |
-| Application shell   | `src/app/`                 | Mounts small React features using Spotify's own React runtime.                           |
-| Player integration  | `src/api/song.ts`          | Waits for the Spicetify player and emits current-track updates.                          |
-| Canvas integration  | `src/api/canvas.ts`        | Observes the DOM for Spotify Canvas video elements.                                      |
-| Palette integration | `src/api/palette.ts`       | Extracts an accent palette from the active cover and safely applies it as CSS variables. |
-| Background renderer | `src/render/background.ts` | Double-buffers image and video layers and cross-fades between them.                      |
-| Settings            | `src/api/settings.ts`      | Validates, applies, observes, and persists theme options.                                |
-| Styles              | `src/styles/`              | Defines base variables, components, and Spotify layout overrides.                        |
+| Area                | Location                   | Responsibility                                                                                   |
+| ------------------- | -------------------------- | ------------------------------------------------------------------------------------------------ |
+| Entry point         | `src/index.ts`             | Loads CSS, exposes the API, registers settings, and mounts the application.                      |
+| Application shell   | `src/app/`                 | Mounts small React features using Spotify's own React runtime.                                   |
+| Player integration  | `src/api/song.ts`          | Waits for the Spicetify player and emits current-track updates.                                  |
+| Canvas integration  | `src/api/canvas.ts`        | Observes the DOM for Spotify Canvas video elements.                                              |
+| Palette integration | `src/api/palette.ts`       | Extracts a background-only palette from the active cover and safely applies it as CSS variables. |
+| Background renderer | `src/render/background.ts` | Double-buffers image and video layers and cross-fades between them.                              |
+| Settings            | `src/api/settings.ts`      | Validates, applies, observes, and persists theme options.                                        |
+| Styles              | `src/styles/`              | Defines base variables, components, and Spotify layout overrides.                                |
 
 ## Background rendering
 
@@ -42,9 +42,9 @@ For Canvas and visible long-form NPV videos, the renderer requests `captureStrea
 
 `Palette` samples a small local canvas drawn from the cover image, so it does not depend on Spicetify's internal colour-extraction API. The result is cached and each extraction is associated with a request identifier. When the song changes, older requests are invalidated and cannot update the active CSS variables.
 
-The extracted primary colour is used as a subtle tint for the main view and edges of the Spotify navigation and player. If extraction fails or the setting is disabled, Luminous removes the custom variables and returns to Spotify's original accent colour.
+The extracted colours drive a blurred aura in `#luminous-dynamic-background` only. The main view, navigation, player, and settings controls stay on Spotify's normal colour scheme. If extraction fails or the setting is disabled, the aura is removed without affecting the interface.
 
-Background motion is implemented with CSS `translate` animations on the active image or video layer only. Inactive layers do not animate. Users can select **Still**, **Drift**, or **Float**, and the reduced-motion setting disables both custom motion and background cross-fades.
+Background motion is implemented with CSS `translate` animations on the active image or video layer only. The palette aura shares the same motion mode by animating its gradient positions; inactive layers do not animate. Users can select **Still**, **Drift**, or **Float**, and the reduced-motion setting disables both custom motion and background cross-fades.
 
 ## Settings and performance
 

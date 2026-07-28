@@ -54,10 +54,9 @@ Luminous.Settings.register('paletteStrength', {
   default: 24,
   normalize: normalizeNumber(24, 0, 45),
   apply: (value) => {
-    Luminous.Settings.setVar('--luminous-palette-strength', `${value}%`);
     Luminous.Settings.setVar(
-      '--luminous-palette-tint-strength',
-      `${Math.min(58, Number(value) + 14)}%`,
+      '--luminous-palette-effect-opacity',
+      `${Math.round(Number(value) * 1.4)}%`,
     );
   },
 });

@@ -10,9 +10,7 @@
 /* Global */
 
 #main-view {
-  background:
-    linear-gradient(var(--luminous-ui-tint), var(--luminous-ui-tint)),
-    var(--luminous-ui-background);
+  background: var(--luminous-ui-background);
 }
 
 #main-view

@@ -151,6 +151,7 @@ export class Background {
       zIndex: '0',
       overflow: 'hidden',
       pointerEvents: 'none',
+      isolation: 'isolate',
     });
 
     this.base = document.createElement('div');
