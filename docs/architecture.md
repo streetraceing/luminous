@@ -44,7 +44,7 @@ For Canvas, the renderer requests `captureStream()` from Spotify's existing vide
 
 The extracted primary colour is used as a subtle tint for the main view and edges of the Spotify navigation and player. If extraction fails or the setting is disabled, Luminous removes the custom variables and returns to Spotify's original accent colour.
 
-Background motion is implemented with CSS `object-position` animations on the active image or video layer only. Inactive layers do not animate. Users can select **Still**, **Drift**, or **Float**, and the reduced-motion setting disables both custom motion and background cross-fades.
+Background motion is implemented with CSS `translate` animations on the active image or video layer only. Inactive layers do not animate. Users can select **Still**, **Drift**, or **Float**, and the reduced-motion setting disables both custom motion and background cross-fades.
 
 ## Settings and performance
 

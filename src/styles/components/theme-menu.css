@@ -161,8 +161,14 @@
 }
 
 .luminous-theme-menu__panel {
+  box-sizing: border-box;
+  overflow: hidden;
+  transition: height 220ms cubic-bezier(0.2, 0.75, 0.25, 1);
+}
+
+.luminous-theme-menu__panel-content {
   padding: 22px;
-  animation: luminous-theme-tab-in 170ms ease-out;
+  animation: luminous-theme-tab-in 180ms cubic-bezier(0.2, 0.75, 0.25, 1);
 }
 
 .luminous-theme-menu__panel-heading {
@@ -201,6 +207,34 @@
 .luminous-theme-menu__toggle {
   grid-template-columns: 1fr auto;
   align-items: center;
+}
+
+.luminous-theme-menu__toggle-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.luminous-theme-menu__palette-preview {
+  display: inline-flex;
+  overflow: hidden;
+  width: 36px;
+  height: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 999px;
+}
+
+.luminous-theme-menu__palette-preview i {
+  flex: 1;
+  background: var(--luminous-palette-primary);
+}
+
+.luminous-theme-menu__palette-preview i:nth-child(2) {
+  background: var(--luminous-palette-light);
+}
+
+.luminous-theme-menu__palette-preview i:nth-child(3) {
+  background: var(--luminous-palette-dark);
 }
 
 .luminous-theme-menu__switch {
@@ -330,10 +364,6 @@
   font-size: 12px;
 }
 
-.luminous-theme-menu-button--active {
-  color: var(--luminous-accent);
-}
-
 .luminous-theme-menu__reset-button:focus-visible,
 .luminous-theme-menu__icon-button:focus-visible,
 .luminous-theme-menu__tab:focus-visible,
@@ -405,7 +435,7 @@
     padding: 0 16px;
   }
 
-  .luminous-theme-menu__panel {
+  .luminous-theme-menu__panel-content {
     padding: 18px 16px;
   }
 
@@ -425,7 +455,8 @@
 @media (prefers-reduced-motion: reduce) {
   .luminous-theme-modal-backdrop,
   .luminous-theme-menu,
-  .luminous-theme-menu__panel {
+  .luminous-theme-menu__panel,
+  .luminous-theme-menu__panel-content {
     animation: none;
   }
 
@@ -440,7 +471,8 @@ html.luminous-reduce-motion
   :is(
     .luminous-theme-modal-backdrop,
     .luminous-theme-menu,
-    .luminous-theme-menu__panel
+    .luminous-theme-menu__panel,
+    .luminous-theme-menu__panel-content
   ) {
   animation: none;
 }

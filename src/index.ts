@@ -55,6 +55,10 @@ Luminous.Settings.register('paletteStrength', {
   normalize: normalizeNumber(24, 0, 45),
   apply: (value) => {
     Luminous.Settings.setVar('--luminous-palette-strength', `${value}%`);
+    Luminous.Settings.setVar(
+      '--luminous-palette-tint-strength',
+      `${Math.min(58, Number(value) + 14)}%`,
+    );
   },
 });
 
@@ -124,8 +128,8 @@ Luminous.Settings.register('backgroundMotion', {
 });
 
 Luminous.Settings.register('motionDuration', {
-  default: 28,
-  normalize: normalizeNumber(28, 10, 60),
+  default: 20,
+  normalize: normalizeNumber(20, 8, 48),
   apply: (value) => {
     Luminous.Settings.setVar('--luminous-motion-duration', `${value}s`);
   },

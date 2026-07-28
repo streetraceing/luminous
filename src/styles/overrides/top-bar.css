@@ -5,8 +5,11 @@
 }
 
 html.luminous-dynamic-palette .Root__globalNav {
+  background:
+    linear-gradient(var(--luminous-ui-tint), var(--luminous-ui-tint)),
+    var(--luminous-background);
   box-shadow: inset 0 -1px
-    color-mix(in srgb, var(--luminous-palette-primary) 32%, transparent);
+    color-mix(in srgb, var(--luminous-palette-primary) 56%, transparent);
 }
 
 :is(
@@ -53,8 +56,7 @@ html.luminous-dynamic-palette .Root__globalNav {
     .main-globalNav-historyButtonsContainer button,
     .main-globalNav-iconButton,
     .main-globalNav-activityFeedButton,
-    .main-globalNav-friendsActivityButton,
-    .luminous-theme-menu-button
+    .main-globalNav-friendsActivityButton
   ) {
   width: 36px;
   min-width: 36px;

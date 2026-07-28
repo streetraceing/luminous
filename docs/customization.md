@@ -4,9 +4,9 @@ Luminous keeps its visual controls inside Spotify so that changes are immediate 
 
 ## Open the settings dialog
 
-Select the brightness icon in Spotify's top bar. Luminous opens a focused, full-screen dialog with a blurred backdrop. Select the backdrop, use the close button, or press <kbd>Esc</kbd> to close it.
+Open your profile menu from the avatar in Spotify's top bar and select **Luminous Settings**. Luminous opens a focused, full-screen dialog with a blurred backdrop. Select the backdrop, use the close button, or press <kbd>Esc</kbd> to close it.
 
-The dialog has **Appearance** and **Motion** tabs. It moves keyboard focus into its controls while open, supports arrow keys in the tab list, and restores focus to the top-bar button when it closes.
+The dialog has **Appearance** and **Motion** tabs. It moves keyboard focus into its controls while open and supports arrow keys in the tab list.
 
 ## Settings
 
@@ -20,7 +20,7 @@ The dialog has **Appearance** and **Motion** tabs. It moves keyboard focus into 
 | Surface blur          |               0-32 px |   16 px | Controls blur on navigation and content surfaces.                           |
 | Palette strength      |                 0-45% |     24% | Sets how visible the extracted cover colours are.                           |
 | Background movement   | Still / Drift / Float |   Drift | Adds a low-impact animation to the active background layer.                 |
-| Motion speed          |               10-60 s |    28 s | Sets the duration of one animation cycle.                                   |
+| Motion speed          |                8-48 s |    20 s | Sets the duration of one animation cycle.                                   |
 | Reduce motion         |              On / Off |     Off | Stops Luminous animations and background cross-fades.                       |
 
 When a Spotify Canvas is available, Luminous uses it in preference to the static cover image. If Canvas playback cannot be captured, the theme automatically falls back to the album artwork.

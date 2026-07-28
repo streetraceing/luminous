@@ -10,6 +10,7 @@ html:root {
   --luminous-palette-light: var(--spice-text);
   --luminous-palette-dark: var(--spice-main);
   --luminous-palette-strength: 24%;
+  --luminous-palette-tint-strength: 38%;
   --luminous-ui-tint: transparent;
   --luminous-accent: var(--spice-button-active);
   --luminous-ui-background: color-mix(
@@ -17,7 +18,7 @@ html:root {
     var(--luminous-ui-base) var(--luminous-ui-opacity),
     transparent
   );
-  --luminous-motion-duration: 28s;
+  --luminous-motion-duration: 20s;
 }
 
 html.hideDynamicBackground #luminous-dynamic-background {
@@ -27,12 +28,12 @@ html.hideDynamicBackground #luminous-dynamic-background {
 html.luminous-dynamic-palette {
   --luminous-ui-tint: color-mix(
     in srgb,
-    var(--luminous-palette-primary) var(--luminous-palette-strength),
+    var(--luminous-palette-primary) var(--luminous-palette-tint-strength),
     transparent
   );
   --luminous-accent: color-mix(
     in srgb,
-    var(--luminous-palette-primary) 76%,
+    var(--luminous-palette-primary) 92%,
     var(--spice-button-active)
   );
 }
@@ -42,6 +43,7 @@ html:not(.luminous-reduce-motion).luminous-motion-drift
   .luminous-background-layer--active {
   animation: luminous-background-drift var(--luminous-motion-duration)
     ease-in-out infinite alternate;
+  will-change: translate;
 }
 
 html:not(.luminous-reduce-motion).luminous-motion-float
@@ -49,6 +51,7 @@ html:not(.luminous-reduce-motion).luminous-motion-float
   .luminous-background-layer--active {
   animation: luminous-background-float var(--luminous-motion-duration)
     ease-in-out infinite;
+  will-change: translate;
 }
 
 html.luminous-reduce-motion
@@ -60,22 +63,26 @@ html.luminous-reduce-motion
 
 @keyframes luminous-background-drift {
   from {
-    object-position: 46% 48%;
+    translate: -1.6% -1.1%;
   }
 
   to {
-    object-position: 54% 52%;
+    translate: 1.6% 1.1%;
   }
 }
 
 @keyframes luminous-background-float {
   0%,
   100% {
-    object-position: 48% 46%;
+    translate: -0.8% 1.2%;
   }
 
-  50% {
-    object-position: 53% 54%;
+  35% {
+    translate: 1.7% -1.2%;
+  }
+
+  70% {
+    translate: 0.9% 1.5%;
   }
 }
 

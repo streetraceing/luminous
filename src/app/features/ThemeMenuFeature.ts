@@ -1,7 +1,7 @@
 import { getReact, useEffect, useRef, useState } from '../react';
 
-const BUTTON_LABEL = 'Luminous settings';
-const BUTTON_ICON: Spicetify.Icon = 'brightness';
+const MENU_ITEM_LABEL = 'Luminous Settings';
+const MENU_ITEM_ICON: Spicetify.Icon = 'brightness';
 const MODAL_ID = 'luminous-theme-modal';
 const MODAL_TITLE_ID = 'luminous-theme-modal-title';
 const MODAL_DESCRIPTION_ID = 'luminous-theme-modal-description';
@@ -134,11 +134,11 @@ const motionNumericSettings: NumericSetting[] = [
     key: 'motionDuration',
     label: 'Motion speed',
     description: 'Sets the duration of one background movement cycle.',
-    min: 10,
-    max: 60,
+    min: 8,
+    max: 48,
     step: 1,
     unit: 's',
-    fallback: 28,
+    fallback: 20,
   },
 ];
 
@@ -165,86 +165,53 @@ export function ThemeMenuFeature() {
   const ref = useRef();
   const state = useState();
 
-  const buttonRef = ref<Spicetify.Topbar.Button | null>(null);
-  const previouslyOpen = ref(false);
+  const menuItemRef = ref<Spicetify.Menu.Item | null>(null);
   const [open, setOpen] = state(false);
 
   effect(() => {
     let disposed = false;
     let retryTimer: number | null = null;
-    let recoveryTimer: number | null = null;
 
     const scheduleRetry = () => {
       if (disposed || retryTimer !== null) return;
 
       retryTimer = window.setTimeout(() => {
         retryTimer = null;
-        ensureButton();
+        registerMenuItem();
       }, 250);
     };
 
-    const ensureButton = () => {
+    const registerMenuItem = () => {
       retryTimer = null;
-      if (disposed || buttonRef.current?.element.isConnected) return;
+      if (disposed || menuItemRef.current) return;
 
-      if (!Spicetify.Topbar?.Button) {
+      if (!Spicetify.Menu?.Item) {
         scheduleRetry();
         return;
       }
 
-      buttonRef.current?.element.remove();
-      buttonRef.current = null;
-      document
-        .querySelectorAll('.luminous-theme-menu-button')
-        .forEach((element) => element.remove());
-
-      const button = new Spicetify.Topbar.Button(
-        BUTTON_LABEL,
-        BUTTON_ICON,
-        () => setOpen((value) => !value),
+      const menuItem = new Spicetify.Menu.Item(
+        MENU_ITEM_LABEL,
         false,
-        true,
+        () => setOpen(true),
+        MENU_ITEM_ICON,
       );
 
-      button.element.classList.add('luminous-theme-menu-button');
-      button.element.setAttribute('aria-haspopup', 'dialog');
-      button.element.setAttribute('aria-expanded', String(open));
-      button.element.setAttribute('aria-controls', MODAL_ID);
-      button.element.classList.toggle(
-        'luminous-theme-menu-button--active',
-        open,
-      );
-      buttonRef.current = button;
+      menuItem.register();
+      menuItemRef.current = menuItem;
     };
 
-    ensureButton();
-    recoveryTimer = window.setInterval(ensureButton, 1000);
+    registerMenuItem();
 
     return () => {
       disposed = true;
 
       if (retryTimer !== null) window.clearTimeout(retryTimer);
-      if (recoveryTimer !== null) window.clearInterval(recoveryTimer);
 
-      buttonRef.current?.element.remove();
-      buttonRef.current = null;
+      menuItemRef.current?.deregister();
+      menuItemRef.current = null;
     };
   }, []);
-
-  effect(() => {
-    const button = buttonRef.current?.element;
-
-    if (button) {
-      button.setAttribute('aria-expanded', String(open));
-      button.classList.toggle('luminous-theme-menu-button--active', open);
-    }
-
-    if (!open && previouslyOpen.current && button?.isConnected) {
-      button.focus();
-    }
-
-    previouslyOpen.current = open;
-  }, [open]);
 
   if (!open) return null;
 
@@ -264,9 +231,19 @@ function ThemeSettingsModal({ onClose }: { onClose: () => void }) {
     appearance: null,
     motion: null,
   });
+  const panelRef = ref<HTMLDivElement | null>(null);
+  const panelContentRef = ref<HTMLDivElement | null>(null);
   const [activeTab, setActiveTab] = state<ThemeTab>('appearance');
+  const [panelHeight, setPanelHeight] = state<number | null>(null);
 
   const selectTab = (tab: ThemeTab, focus = false) => {
+    if (tab === activeTab) return;
+
+    const currentHeight = panelRef.current?.getBoundingClientRect().height;
+    if (currentHeight) {
+      setPanelHeight(Math.ceil(currentHeight));
+    }
+
     setActiveTab(tab);
 
     if (focus) {
@@ -329,6 +306,25 @@ function ThemeSettingsModal({ onClose }: { onClose: () => void }) {
       document.removeEventListener('keydown', handleKeyDown, true);
     };
   }, [onClose]);
+
+  effect(() => {
+    if (panelHeight === null || !panelContentRef.current) return;
+
+    const targetHeight = Math.ceil(
+      panelContentRef.current.getBoundingClientRect().height,
+    );
+    const frameId = requestAnimationFrame(() => {
+      setPanelHeight(targetHeight);
+    });
+    const resetTimer = window.setTimeout(() => {
+      setPanelHeight(null);
+    }, 220);
+
+    return () => {
+      cancelAnimationFrame(frameId);
+      window.clearTimeout(resetTimer);
+    };
+  }, [activeTab]);
 
   const handleTabKeyDown = (event: KeyboardEvent, tab: ThemeTab) => {
     const currentIndex = tabs.findIndex((item) => item.id === tab);
@@ -454,15 +450,25 @@ function ThemeSettingsModal({ onClose }: { onClose: () => void }) {
       React.createElement(
         'div',
         {
-          key: activeTab,
+          ref: panelRef,
           id: `${MODAL_ID}-${activeTab}-panel`,
           className: 'luminous-theme-menu__panel',
+          style:
+            panelHeight === null ? undefined : { height: `${panelHeight}px` },
           role: 'tabpanel',
           'aria-labelledby': `${MODAL_ID}-${activeTab}-tab`,
         },
-        activeTab === 'appearance'
-          ? React.createElement(AppearanceSettings)
-          : React.createElement(MotionSettings),
+        React.createElement(
+          'div',
+          {
+            key: activeTab,
+            ref: panelContentRef,
+            className: 'luminous-theme-menu__panel-content',
+          },
+          activeTab === 'appearance'
+            ? React.createElement(AppearanceSettings)
+            : React.createElement(MotionSettings),
+        ),
       ),
       React.createElement(
         'p',
@@ -563,17 +569,32 @@ function ToggleSettingRow({ setting }: { setting: ToggleSetting }) {
     ),
     React.createElement(
       'span',
-      { className: 'luminous-theme-menu__switch' },
-      React.createElement('input', {
-        type: 'checkbox',
-        checked,
-        onChange: (event: Event) =>
-          Luminous.Settings.set(
-            setting.key,
-            (event.currentTarget as HTMLInputElement).checked,
-          ),
-      }),
-      React.createElement('span'),
+      { className: 'luminous-theme-menu__toggle-control' },
+      setting.key === 'dynamicPalette' &&
+        React.createElement(
+          'span',
+          {
+            className: 'luminous-theme-menu__palette-preview',
+            'aria-hidden': 'true',
+          },
+          React.createElement('i'),
+          React.createElement('i'),
+          React.createElement('i'),
+        ),
+      React.createElement(
+        'span',
+        { className: 'luminous-theme-menu__switch' },
+        React.createElement('input', {
+          type: 'checkbox',
+          checked,
+          onChange: (event: Event) =>
+            Luminous.Settings.set(
+              setting.key,
+              (event.currentTarget as HTMLInputElement).checked,
+            ),
+        }),
+        React.createElement('span'),
+      ),
     ),
   );
 }

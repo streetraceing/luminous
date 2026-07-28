@@ -54,9 +54,9 @@ export class Palette {
       }
 
       const colors = {
-        primary: palette.colorRaw.toString(),
-        light: palette.colorLight.toString(),
-        dark: palette.colorDark.toString(),
+        primary: palette.colorRaw.toCSS(Spicetify.Color.CSSFormat.HEX),
+        light: palette.colorLight.toCSS(Spicetify.Color.CSSFormat.HEX),
+        dark: palette.colorDark.toCSS(Spicetify.Color.CSSFormat.HEX),
       };
 
       if (Object.values(colors).some((color) => !color)) {
