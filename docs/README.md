@@ -12,7 +12,7 @@ This documentation covers the everyday use and technical structure of the Lumino
 
 | Need                        | Where to start                          |
 | --------------------------- | --------------------------------------- |
-| Install or build the theme  | [Project README](../README.md#install)  |
+| Install or build the theme  | [Project README](./README.md#install)   |
 | Change the visual effect    | [Customisation](./customization.md)     |
 | Understand source modules   | [Architecture](./architecture.md)       |
 | Recover from a broken apply | [Troubleshooting](./troubleshooting.md) |

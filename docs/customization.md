@@ -10,20 +10,20 @@ The dialog has **Appearance** and **Motion** tabs. It moves keyboard focus into 
 
 ## Settings
 
-| Setting               |                 Range | Default | Effect                                                                      |
-| --------------------- | --------------------: | ------: | --------------------------------------------------------------------------- |
-| Dynamic background    |              On / Off |      On | Uses the current cover art or Canvas as the backdrop.                       |
-| Dynamic palette       |              On / Off |      On | Extracts colours from the current cover and subtly tints Luminous surfaces. |
-| Background blur       |               0-48 px |   24 px | Softens the artwork or video behind Spotify.                                |
-| Background brightness |               30-120% |     75% | Adjusts the intensity of the backdrop.                                      |
-| Surface opacity       |                0-100% |     50% | Controls the transparency of the glass-like UI surfaces.                    |
-| Surface blur          |               0-32 px |   16 px | Controls blur on navigation and content surfaces.                           |
-| Palette strength      |                 0-45% |     24% | Sets how visible the extracted cover colours are.                           |
-| Background movement   | Still / Drift / Float |   Drift | Adds a low-impact animation to the active background layer.                 |
-| Motion speed          |                8-48 s |    20 s | Sets the duration of one animation cycle.                                   |
-| Reduce motion         |              On / Off |     Off | Stops Luminous animations and background cross-fades.                       |
+| Setting               |                 Range | Default | Effect                                                                        |
+| --------------------- | --------------------: | ------: | ----------------------------------------------------------------------------- |
+| Dynamic background    |              On / Off |      On | Uses the current cover, Canvas, or visible Spotify NPV video as the backdrop. |
+| Dynamic palette       |              On / Off |      On | Extracts colours from the current cover and subtly tints Luminous surfaces.   |
+| Background blur       |               0-48 px |   24 px | Softens the artwork or video behind Spotify.                                  |
+| Background brightness |               30-120% |     75% | Adjusts the intensity of the backdrop.                                        |
+| Surface opacity       |                0-100% |     50% | Controls the transparency of the glass-like UI surfaces.                      |
+| Surface blur          |               0-32 px |   16 px | Controls blur on navigation and content surfaces.                             |
+| Palette strength      |                 0-45% |     24% | Sets how visible the extracted cover colours are.                             |
+| Background movement   | Still / Drift / Float |   Drift | Adds a low-impact animation to the active background layer.                   |
+| Motion speed          |                8-48 s |    20 s | Sets the duration of one animation cycle.                                     |
+| Reduce motion         |              On / Off |     Off | Stops Luminous animations and background cross-fades.                         |
 
-When a Spotify Canvas is available, Luminous uses it in preference to the static cover image. If Canvas playback cannot be captured, the theme automatically falls back to the album artwork.
+When a Spotify Canvas is available, Luminous uses it in preference to the static cover image. If no Canvas is present, Luminous can also use a visible long-form video from Spotify's Now Playing View (NPV). If a video stream cannot be captured, the theme automatically falls back to the album artwork.
 
 ## Dynamic palette
 

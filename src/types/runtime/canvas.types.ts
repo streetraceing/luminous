@@ -3,8 +3,9 @@ export type CanvasEvent = 'mount' | 'unmount' | 'change';
 export type CanvasPayload = {
   video: HTMLVideoElement | null;
   mode: CanvasMode;
+  source: string | null;
 };
 
 export type CanvasListener = (payload: CanvasPayload) => void;
 
-export type CanvasMode = 'npv' | 'cinema' | null;
+export type CanvasMode = 'npv' | 'npv-video' | 'cinema' | null;

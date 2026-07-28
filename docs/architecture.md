@@ -36,7 +36,7 @@ The renderer maintains two image and two video elements. New content is prepared
 
 Images are decoded asynchronously and kept in a small, capped preload cache. This prevents visible flashes during song changes while keeping the cache bounded.
 
-For Canvas, the renderer requests `captureStream()` from Spotify's existing video element. If the browser does not provide a stream or playback fails, it displays the track image instead. The source Canvas is never moved or modified.
+For Canvas and visible long-form NPV videos, the renderer requests `captureStream()` from Spotify's existing video element. The source video is never moved or modified. If the browser does not provide a stream or playback fails, Luminous displays the track image instead.
 
 ## Dynamic palette and motion
 

@@ -11,9 +11,7 @@ export function DynamicBackgroundFeature() {
   const [song, setSong] = state<SongPayload | null>(() =>
     Luminous.Song.getSync(),
   );
-  const [canvas, setCanvas] = state<HTMLVideoElement | null>(() =>
-    Luminous.Canvas.getVideo(),
-  );
+  const [canvas, setCanvas] = state<CanvasPayload>(() => Luminous.Canvas.get());
   const [enabled, setEnabled] = state(
     () => Luminous.Settings.get('dynamicBackground') !== false,
   );
@@ -27,8 +25,8 @@ export function DynamicBackgroundFeature() {
   const renderKey = memo(() => {
     if (!appActive) return 'inactive';
     if (!enabled) return 'disabled';
-    if (canvas) {
-      return `canvas:${canvas.currentSrc}:${song?.image ?? ''}`;
+    if (canvas.video) {
+      return `canvas:${canvas.source ?? ''}:${song?.image ?? ''}`;
     }
     if (song?.image) return `image:${song.image}`;
     return 'empty';
@@ -42,11 +40,11 @@ export function DynamicBackgroundFeature() {
     };
 
     const handleCanvas = (payload: CanvasPayload) => {
-      setCanvas(payload.video);
+      setCanvas(payload);
     };
 
-    const handleCanvasUnmount = () => {
-      setCanvas(null);
+    const handleCanvasUnmount = (payload: CanvasPayload) => {
+      setCanvas(payload);
     };
 
     Luminous.Song.addEventListener('ready', handleSong);
@@ -109,8 +107,8 @@ export function DynamicBackgroundFeature() {
       return;
     }
 
-    if (canvas) {
-      Luminous.Background.render({ canvas, image: song?.image });
+    if (canvas.video) {
+      Luminous.Background.render({ canvas: canvas.video, image: song?.image });
       return;
     }
 

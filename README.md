@@ -24,7 +24,7 @@ Luminous transforms Spotify's default interface into a softly lit, translucent w
 
 ## Highlights
 
-- Dynamic backgrounds from cover art, with Canvas as the preferred source.
+- Dynamic backgrounds from cover art, Canvas, and Spotify NPV videos.
 - Dynamic colour accents extracted from the current cover art.
 - Adjustable background, glass surfaces, and low-impact background movement.
 - A focused settings dialog in Spotify's top bar with Appearance and Motion tabs.

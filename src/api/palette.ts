@@ -34,8 +34,7 @@ export class Palette {
       return;
     }
 
-    const extractColorPreset = Spicetify.extractColorPreset;
-    if (typeof extractColorPreset !== 'function') {
+    if (typeof Spicetify.extractColorPreset !== 'function') {
       this.clear();
       return;
     }
@@ -43,7 +42,7 @@ export class Palette {
     const requestId = ++this.requestId;
 
     try {
-      const presets = await extractColorPreset(image);
+      const presets = await Spicetify.extractColorPreset(image);
       if (requestId !== this.requestId) return;
 
       const palette =

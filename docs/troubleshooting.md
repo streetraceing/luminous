@@ -15,7 +15,7 @@ If the **Dynamic background** setting is off, this is expected. Re-enable it thr
 
 ## Canvas does not play in the background
 
-Canvas support depends on Spotify exposing a playable video and the browser runtime supporting `captureStream()`. Luminous automatically falls back to the current track's cover art when either condition is unavailable. This fallback does not indicate an error.
+Canvas and long-form NPV video support depend on Spotify exposing a visible, playable video and the browser runtime supporting `captureStream()`. Luminous automatically falls back to the current track's cover art when either condition is unavailable. This fallback does not indicate an error.
 
 ## Settings do not persist
 

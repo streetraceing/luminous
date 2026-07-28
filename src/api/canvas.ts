@@ -7,6 +7,8 @@ import {
 
 export class Canvas {
   private static readonly NPV_VIDEO_SELECTOR = '.canvasVideoContainerNPV video';
+  private static readonly NPV_LONGFORM_VIDEO_SELECTOR =
+    '#VideoPlayerNpv_ReactPortal video';
   private static readonly CINEMA_VIDEO_SELECTOR =
     '.Root__top-container:has(#VideoPlayerCinema_ReactPortal) video';
 
@@ -16,13 +18,20 @@ export class Canvas {
 
   private static currentVideo: HTMLVideoElement | null = null;
   private static currentMode: CanvasMode = null;
+  private static currentSource: string | null = null;
+  private static observedSourceVideo: HTMLVideoElement | null = null;
+  private static readonly handleVideoSourceChange = () => this.scheduleCheck();
   private static initialized = false;
 
   private static createPayload(
     video: HTMLVideoElement | null,
     mode: CanvasMode,
   ): CanvasPayload {
-    return { video, mode };
+    return {
+      video,
+      mode,
+      source: video?.currentSrc || video?.src || null,
+    };
   }
 
   static addEventListener(event: CanvasEvent, listener: CanvasListener) {
@@ -86,6 +95,11 @@ export class Canvas {
       return this.createPayload(npv, 'npv');
     }
 
+    const npvLongform = this.findVisibleVideo(this.NPV_LONGFORM_VIDEO_SELECTOR);
+    if (npvLongform) {
+      return this.createPayload(npvLongform, 'npv-video');
+    }
+
     const cinema = document.querySelector(
       this.CINEMA_VIDEO_SELECTOR,
     ) as HTMLVideoElement | null;
@@ -97,16 +111,41 @@ export class Canvas {
     return this.createPayload(null, null);
   }
 
+  private static findVisibleVideo(selector: string): HTMLVideoElement | null {
+    const videos = document.querySelectorAll<HTMLVideoElement>(selector);
+
+    return (
+      Array.from(videos).find((video) => {
+        const style = getComputedStyle(video);
+        return (
+          video.isConnected &&
+          style.display !== 'none' &&
+          style.visibility !== 'hidden' &&
+          !video.ended &&
+          video.getClientRects().length > 0
+        );
+      }) ?? null
+    );
+  }
+
   private static check() {
-    const { video, mode } = this.detect();
+    const { video, mode, source } = this.detect();
 
     const previousVideo = this.currentVideo;
     const previousMode = this.currentMode;
 
-    if (previousVideo === video && previousMode === mode) return;
+    if (
+      previousVideo === video &&
+      previousMode === mode &&
+      this.currentSource === source
+    ) {
+      return;
+    }
 
     this.currentVideo = video;
     this.currentMode = mode;
+    this.currentSource = source;
+    this.observeVideoSource(video);
 
     if (previousVideo && !video) {
       const payload = this.createPayload(null, previousMode);
@@ -131,6 +170,28 @@ export class Canvas {
     this.getListeners(event).forEach((listener) => {
       this.callListener(listener, payload);
     });
+  }
+
+  private static observeVideoSource(video: HTMLVideoElement | null) {
+    if (video === this.observedSourceVideo) return;
+
+    this.observedSourceVideo?.removeEventListener(
+      'loadedmetadata',
+      this.handleVideoSourceChange,
+    );
+    this.observedSourceVideo?.removeEventListener(
+      'emptied',
+      this.handleVideoSourceChange,
+    );
+    this.observedSourceVideo?.removeEventListener(
+      'ended',
+      this.handleVideoSourceChange,
+    );
+    this.observedSourceVideo = video;
+
+    video?.addEventListener('loadedmetadata', this.handleVideoSourceChange);
+    video?.addEventListener('emptied', this.handleVideoSourceChange);
+    video?.addEventListener('ended', this.handleVideoSourceChange);
   }
 
   private static callListener(
