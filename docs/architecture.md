@@ -40,7 +40,7 @@ For Canvas and visible long-form NPV videos, the renderer requests `captureStrea
 
 ## Dynamic palette and motion
 
-`Palette` uses Spicetify's built-in `extractColorPreset()` API, so no image-processing library or secondary network request is added. Each extraction is associated with a request identifier. When the song changes, older requests are invalidated and cannot update the active CSS variables.
+`Palette` samples a small local canvas drawn from the cover image, so it does not depend on Spicetify's internal colour-extraction API. The result is cached and each extraction is associated with a request identifier. When the song changes, older requests are invalidated and cannot update the active CSS variables.
 
 The extracted primary colour is used as a subtle tint for the main view and edges of the Spotify navigation and player. If extraction fails or the setting is disabled, Luminous removes the custom variables and returns to Spotify's original accent colour.
 

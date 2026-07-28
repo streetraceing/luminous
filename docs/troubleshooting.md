@@ -17,6 +17,8 @@ If the **Dynamic background** setting is off, this is expected. Re-enable it thr
 
 Canvas and long-form NPV video support depend on Spotify exposing a visible, playable video and the browser runtime supporting `captureStream()`. Luminous automatically falls back to the current track's cover art when either condition is unavailable. This fallback does not indicate an error.
 
+Some long-form videos are protected by EME/DRM and cannot legally or technically be captured by the browser. Luminous remembers that limitation for the current video element and uses cover art instead without retrying the protected stream.
+
 ## Settings do not persist
 
 The settings are stored in Spicetify local storage. Check whether another Spotify modification clears local storage, then change a setting and allow a moment for it to save before force-quitting the app. Normal page close and restart writes any pending change automatically.

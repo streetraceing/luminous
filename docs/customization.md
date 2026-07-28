@@ -27,7 +27,7 @@ When a Spotify Canvas is available, Luminous uses it in preference to the static
 
 ## Dynamic palette
 
-Luminous asks Spicetify to analyse the current cover artwork and uses the extracted colour as a restrained accent in the main view, navigation edge, player edge, and settings dialog. The feature never blocks playback or background rendering: if colour extraction is unavailable or fails, the normal Spotify accent remains in use.
+Luminous analyses a small local copy of the current cover artwork and uses the extracted colour as a restrained accent in the main view, navigation edge, player edge, and settings dialog. The feature never blocks playback or background rendering: if the cover cannot be read, the normal Spotify accent remains in use.
 
 The result for an old track is discarded as soon as playback changes, so fast track changes cannot apply a stale palette.
 

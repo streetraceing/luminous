@@ -36,6 +36,7 @@ export class Background {
   private static pendingCanvasVideo: HTMLVideoElement | null = null;
   private static pendingCanvasFallback: string | null = null;
   private static videoCleanupTimer: number | null = null;
+  private static unsupportedCanvasSources = new WeakSet<HTMLVideoElement>();
 
   private static currentType: BackgroundType = 'none';
 
@@ -343,22 +344,22 @@ export class Background {
       return true;
     }
 
+    if (this.unsupportedCanvasSources.has(sourceVideo)) {
+      return false;
+    }
+
     const captureStream = (sourceVideo as CapturableVideo).captureStream;
     let stream: MediaStream | undefined;
 
     try {
       stream = captureStream?.call(sourceVideo);
-    } catch (error) {
-      Luminous.Logger.warn(
-        'Background',
-        'Failed to capture Canvas stream',
-        error,
-      );
+    } catch {
+      this.unsupportedCanvasSources.add(sourceVideo);
       return false;
     }
 
     if (!stream) {
-      Luminous.Logger.warn('Background', 'Canvas capture is not available');
+      this.unsupportedCanvasSources.add(sourceVideo);
       return false;
     }
 
