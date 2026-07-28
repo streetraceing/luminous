@@ -37,11 +37,11 @@ const normalizeBackgroundEnergyProfile = (
 
 const energyProfileFactors: Record<
   BackgroundEnergyProfile,
-  { duration: number; intensity: number }
+  { blobDurations: [number, number, number, number] }
 > = {
-  calm: { duration: 18, intensity: 0.42 },
-  ambient: { duration: 9, intensity: 0.72 },
-  bass: { duration: 2.8, intensity: 1 },
+  calm: { blobDurations: [28, 34, 40, 46] },
+  ambient: { blobDurations: [18, 24, 30, 36] },
+  bass: { blobDurations: [9, 13, 17, 21] },
 };
 
 const applyBackgroundEnergy = (
@@ -58,11 +58,12 @@ const applyBackgroundEnergy = (
     '--luminous-palette-effect-opacity',
     `${auraOpacity}%`,
   );
-  Luminous.Settings.setVar(
-    '--luminous-energy-effect-opacity',
-    `${Math.round(auraOpacity * energy.intensity)}%`,
-  );
-  Luminous.Settings.setVar('--luminous-energy-duration', `${energy.duration}s`);
+  energy.blobDurations.forEach((duration, index) => {
+    Luminous.Settings.setVar(
+      `--luminous-blob-${index + 1}-duration`,
+      `${duration}s`,
+    );
+  });
 };
 
 Luminous.Settings.register('backgroundBlur', {

@@ -44,7 +44,7 @@ For Canvas and visible long-form NPV videos, the renderer requests `captureStrea
 
 The extracted colours drive a blurred aura in `#luminous-dynamic-background` only. The main view, navigation, player, and settings controls stay on Spotify's normal colour scheme. If extraction fails or the setting is disabled, the aura is removed without affecting the interface.
 
-Background motion is implemented with CSS `translate` animations on the active image or video layer only. The palette aura shares the same motion mode by animating its gradient positions; the **Calm**, **Ambient**, and **Bass** energy profiles add progressively stronger background-only layers, with Bass using transform-based pulse rings. Inactive layers do not animate. Users can select **Still**, **Drift**, or **Float**, and the reduced-motion setting disables both custom motion and background cross-fades.
+Background motion is implemented with CSS `translate` animations on the active image or video layer only. The palette aura is rendered as four blurred colour blobs, each moving on its own transform-only trajectory; the **Calm**, **Ambient**, and **Bass** profiles control their density and speed. Inactive layers do not animate. Users can select **Still**, **Drift**, or **Float**, and the reduced-motion setting disables both custom motion and background cross-fades.
 
 ## Settings and performance
 

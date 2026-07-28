@@ -135,6 +135,19 @@ export class Background {
     return video;
   }
 
+  private static createEffectsLayer(): HTMLDivElement {
+    const effects = document.createElement('div');
+    effects.className = 'luminous-background-effects';
+
+    ['one', 'two', 'three', 'four'].forEach((variant) => {
+      const blob = document.createElement('span');
+      blob.className = `luminous-background-blob luminous-background-blob--${variant}`;
+      effects.append(blob);
+    });
+
+    return effects;
+  }
+
   private static ensureBackground() {
     if (this.root?.isConnected) return;
 
@@ -169,8 +182,9 @@ export class Background {
     const imageB = this.createImageLayer();
     const videoA = this.createVideoLayer();
     const videoB = this.createVideoLayer();
+    const effects = this.createEffectsLayer();
 
-    this.root.append(this.base, imageA, imageB, videoA, videoB);
+    this.root.append(this.base, imageA, imageB, videoA, videoB, effects);
     this.imageLayers = [imageA, imageB];
     this.videoLayers = [videoA, videoB];
     this.activeImage = 0;

@@ -135,7 +135,7 @@ const backgroundEnergySetting: ChoiceSetting = {
   key: 'backgroundEnergy',
   label: 'Backdrop energy',
   description:
-    'Use Ambient for richer flow, or Bass for bright pulse waves on active tracks.',
+    'Use Ambient for richer flow, or Bass for faster, brighter colour movement.',
   fallback: 'ambient',
   options: [
     { value: 'calm', label: 'Calm' },

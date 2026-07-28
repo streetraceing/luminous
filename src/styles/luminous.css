@@ -10,8 +10,10 @@ html:root {
   --luminous-palette-light: var(--spice-text);
   --luminous-palette-dark: var(--spice-main);
   --luminous-palette-effect-opacity: 34%;
-  --luminous-energy-effect-opacity: 24%;
-  --luminous-energy-duration: 9s;
+  --luminous-blob-1-duration: 18s;
+  --luminous-blob-2-duration: 24s;
+  --luminous-blob-3-duration: 30s;
+  --luminous-blob-4-duration: 36s;
   --luminous-accent: var(--spice-button-active);
   --luminous-ui-background: color-mix(
     in srgb,
@@ -25,147 +27,186 @@ html.hideDynamicBackground #luminous-dynamic-background {
   display: none;
 }
 
-html.luminous-dynamic-palette #luminous-dynamic-background::after {
-  position: absolute;
-  z-index: 1;
-  inset: -20%;
-  width: 140%;
-  height: 140%;
-  pointer-events: none;
-  content: '';
-  background:
-    radial-gradient(
-      closest-side at 16% 18%,
-      color-mix(in srgb, var(--luminous-palette-light) 72%, transparent),
-      transparent 100%
-    ),
-    radial-gradient(
-      closest-side at 84% 76%,
-      color-mix(in srgb, var(--luminous-palette-primary) 82%, transparent),
-      transparent 100%
-    ),
-    radial-gradient(
-      closest-side at 52% 54%,
-      color-mix(in srgb, var(--luminous-palette-dark) 62%, transparent),
-      transparent 100%
-    );
-  background-position:
-    0% 0%,
-    100% 100%,
-    50% 50%;
-  background-repeat: no-repeat;
-  background-size:
-    84% 84%,
-    96% 96%,
-    90% 90%;
-  opacity: var(--luminous-palette-effect-opacity);
-  mix-blend-mode: soft-light;
-  filter: blur(32px) saturate(1.18);
-  transform: translateZ(0);
-  will-change: background-position, transform;
-}
-
-html.luminous-dynamic-palette #luminous-dynamic-background::before {
+.luminous-background-effects {
   position: absolute;
   z-index: 2;
-  inset: -18%;
-  width: 136%;
-  height: 136%;
+  inset: 0;
+  overflow: hidden;
   pointer-events: none;
-  content: '';
-  opacity: var(--luminous-energy-effect-opacity);
-  transform: translateZ(0);
-  will-change: background-position, transform;
+  opacity: 0;
+  transition: opacity 700ms ease;
 }
 
-html.luminous-energy-calm #luminous-dynamic-background::after {
-  filter: blur(36px) saturate(1.1);
+html.luminous-dynamic-palette .luminous-background-effects {
+  opacity: var(--luminous-palette-effect-opacity);
 }
 
-html.luminous-energy-calm #luminous-dynamic-background::before {
-  background:
-    radial-gradient(
-      ellipse 44% 36% at 20% 72%,
-      color-mix(in srgb, var(--luminous-palette-primary) 58%, transparent),
-      transparent 100%
-    ),
-    radial-gradient(
-      ellipse 36% 42% at 78% 24%,
-      color-mix(in srgb, var(--luminous-palette-light) 48%, transparent),
-      transparent 100%
-    );
-  background-repeat: no-repeat;
-  mix-blend-mode: soft-light;
-  filter: blur(38px);
-}
-
-html.luminous-energy-ambient #luminous-dynamic-background::after {
-  filter: blur(28px) saturate(1.36);
-}
-
-html.luminous-energy-ambient #luminous-dynamic-background::before {
-  background:
-    radial-gradient(
-      ellipse 32% 48% at 18% 76%,
-      color-mix(in srgb, var(--luminous-palette-primary) 86%, transparent),
-      transparent 100%
-    ),
-    radial-gradient(
-      ellipse 44% 30% at 82% 18%,
-      color-mix(in srgb, var(--luminous-palette-light) 74%, transparent),
-      transparent 100%
-    ),
-    radial-gradient(
-      ellipse 28% 38% at 60% 56%,
-      color-mix(in srgb, var(--luminous-palette-dark) 72%, transparent),
-      transparent 100%
-    );
-  background-position:
-    0% 100%,
-    100% 0%,
-    50% 50%;
-  background-repeat: no-repeat;
-  background-size:
-    92% 92%,
-    100% 100%,
-    86% 86%;
+.luminous-background-blob {
+  position: absolute;
+  display: block;
+  width: 68vmax;
+  aspect-ratio: 1;
+  pointer-events: none;
+  border-radius: 50%;
   mix-blend-mode: screen;
-  filter: blur(24px) saturate(1.24);
+  filter: blur(42px) saturate(1.18);
+  will-change: transform;
 }
 
-html.luminous-energy-bass #luminous-dynamic-background::after {
-  mix-blend-mode: screen;
-  filter: blur(22px) saturate(1.68) brightness(1.08);
+.luminous-background-blob--one {
+  top: -43vmax;
+  left: -34vmax;
+  background: radial-gradient(
+    circle at 34% 32%,
+    color-mix(in srgb, var(--luminous-palette-light) 86%, transparent) 0%,
+    color-mix(in srgb, var(--luminous-palette-primary) 76%, transparent) 30%,
+    transparent 69%
+  );
 }
 
-html.luminous-energy-bass #luminous-dynamic-background::before {
-  background:
-    radial-gradient(
-      ellipse at 50% 54%,
-      transparent 0 13%,
-      color-mix(in srgb, var(--luminous-palette-primary) 90%, transparent) 14%
-        16%,
-      transparent 17% 34%,
-      color-mix(in srgb, var(--luminous-palette-light) 62%, transparent) 35% 38%,
-      transparent 39% 100%
-    ),
-    radial-gradient(
-      circle at 22% 76%,
-      color-mix(in srgb, var(--luminous-palette-primary) 70%, transparent),
-      transparent 34%
-    ),
-    radial-gradient(
-      circle at 78% 24%,
-      color-mix(in srgb, var(--luminous-palette-light) 64%, transparent),
-      transparent 30%
-    );
-  background-repeat: no-repeat;
-  background-size:
-    100% 100%,
-    58% 58%,
-    54% 54%;
-  mix-blend-mode: screen;
-  filter: blur(6px) saturate(1.52) brightness(1.18);
+.luminous-background-blob--two {
+  top: -38vmax;
+  right: -38vmax;
+  width: 74vmax;
+  background: radial-gradient(
+    circle at 62% 42%,
+    color-mix(in srgb, var(--luminous-palette-primary) 88%, transparent) 0%,
+    color-mix(in srgb, var(--luminous-palette-light) 58%, transparent) 32%,
+    transparent 70%
+  );
+}
+
+.luminous-background-blob--three {
+  bottom: -52vmax;
+  left: 5vmax;
+  width: 82vmax;
+  background: radial-gradient(
+    circle at 48% 32%,
+    color-mix(in srgb, var(--luminous-palette-primary) 74%, transparent) 0%,
+    color-mix(in srgb, var(--luminous-palette-dark) 46%, transparent) 38%,
+    transparent 72%
+  );
+}
+
+.luminous-background-blob--four {
+  right: -38vmax;
+  bottom: -40vmax;
+  width: 62vmax;
+  background: radial-gradient(
+    circle at 34% 30%,
+    color-mix(in srgb, var(--luminous-palette-light) 82%, transparent) 0%,
+    color-mix(in srgb, var(--luminous-palette-primary) 60%, transparent) 34%,
+    transparent 70%
+  );
+}
+
+html.luminous-energy-calm .luminous-background-effects {
+  filter: saturate(0.78) brightness(0.9);
+}
+
+html.luminous-energy-calm .luminous-background-blob {
+  filter: blur(54px) saturate(0.94);
+}
+
+html.luminous-energy-calm .luminous-background-blob--one {
+  opacity: 0.72;
+}
+
+html.luminous-energy-calm .luminous-background-blob--two {
+  opacity: 0.48;
+}
+
+html.luminous-energy-calm
+  :is(.luminous-background-blob--three, .luminous-background-blob--four) {
+  opacity: 0;
+}
+
+html.luminous-energy-ambient .luminous-background-blob--one {
+  opacity: 0.8;
+}
+
+html.luminous-energy-ambient .luminous-background-blob--two {
+  opacity: 0.68;
+}
+
+html.luminous-energy-ambient .luminous-background-blob--three {
+  opacity: 0.52;
+}
+
+html.luminous-energy-ambient .luminous-background-blob--four {
+  opacity: 0.58;
+}
+
+html.luminous-energy-bass .luminous-background-effects {
+  filter: saturate(1.28) brightness(1.08);
+}
+
+html.luminous-energy-bass .luminous-background-blob {
+  filter: blur(34px) saturate(1.46);
+}
+
+html.luminous-energy-bass .luminous-background-blob--one {
+  opacity: 0.9;
+}
+
+html.luminous-energy-bass .luminous-background-blob--two {
+  opacity: 0.84;
+}
+
+html.luminous-energy-bass .luminous-background-blob--three {
+  opacity: 0.68;
+}
+
+html.luminous-energy-bass .luminous-background-blob--four {
+  opacity: 0.74;
+}
+
+html:not(.luminous-reduce-motion).luminous-motion-drift.luminous-dynamic-palette
+  .luminous-background-blob--one {
+  animation: luminous-blob-one-drift var(--luminous-blob-1-duration) ease-in-out
+    infinite alternate;
+}
+
+html:not(.luminous-reduce-motion).luminous-motion-drift.luminous-dynamic-palette
+  .luminous-background-blob--two {
+  animation: luminous-blob-two-drift var(--luminous-blob-2-duration) ease-in-out
+    infinite alternate;
+}
+
+html:not(.luminous-reduce-motion).luminous-motion-drift.luminous-dynamic-palette
+  .luminous-background-blob--three {
+  animation: luminous-blob-three-drift var(--luminous-blob-3-duration)
+    ease-in-out infinite alternate;
+}
+
+html:not(.luminous-reduce-motion).luminous-motion-drift.luminous-dynamic-palette
+  .luminous-background-blob--four {
+  animation: luminous-blob-four-drift var(--luminous-blob-4-duration)
+    ease-in-out infinite alternate;
+}
+
+html:not(.luminous-reduce-motion).luminous-motion-float.luminous-dynamic-palette
+  .luminous-background-blob--one {
+  animation: luminous-blob-one-float var(--luminous-blob-1-duration) ease-in-out
+    infinite;
+}
+
+html:not(.luminous-reduce-motion).luminous-motion-float.luminous-dynamic-palette
+  .luminous-background-blob--two {
+  animation: luminous-blob-two-float var(--luminous-blob-2-duration) ease-in-out
+    infinite;
+}
+
+html:not(.luminous-reduce-motion).luminous-motion-float.luminous-dynamic-palette
+  .luminous-background-blob--three {
+  animation: luminous-blob-three-float var(--luminous-blob-3-duration)
+    ease-in-out infinite;
+}
+
+html:not(.luminous-reduce-motion).luminous-motion-float.luminous-dynamic-palette
+  .luminous-background-blob--four {
+  animation: luminous-blob-four-float var(--luminous-blob-4-duration)
+    ease-in-out infinite;
 }
 
 html:not(.luminous-reduce-motion).luminous-motion-drift
@@ -184,55 +225,10 @@ html:not(.luminous-reduce-motion).luminous-motion-float
   will-change: translate;
 }
 
-html:not(.luminous-reduce-motion).luminous-motion-drift.luminous-dynamic-palette
-  #luminous-dynamic-background::after {
-  animation: luminous-palette-drift var(--luminous-motion-duration) ease-in-out
-    infinite alternate;
-}
-
-html:not(.luminous-reduce-motion).luminous-motion-float.luminous-dynamic-palette
-  #luminous-dynamic-background::after {
-  animation: luminous-palette-float var(--luminous-motion-duration) ease-in-out
-    infinite;
-}
-
-html:not(.luminous-reduce-motion).luminous-motion-drift.luminous-energy-calm
-  #luminous-dynamic-background::before {
-  animation: luminous-energy-breathe var(--luminous-energy-duration) ease-in-out
-    infinite alternate;
-}
-
-html:not(.luminous-reduce-motion).luminous-motion-float.luminous-energy-calm
-  #luminous-dynamic-background::before {
-  animation: luminous-energy-float var(--luminous-energy-duration) ease-in-out
-    infinite;
-}
-
-html:not(.luminous-reduce-motion).luminous-motion-drift.luminous-energy-ambient
-  #luminous-dynamic-background::before,
-html:not(.luminous-reduce-motion).luminous-motion-float.luminous-energy-ambient
-  #luminous-dynamic-background::before {
-  animation: luminous-energy-flow var(--luminous-energy-duration) ease-in-out
-    infinite alternate;
-}
-
-html:not(.luminous-reduce-motion).luminous-motion-drift.luminous-energy-bass
-  #luminous-dynamic-background::before,
-html:not(.luminous-reduce-motion).luminous-motion-float.luminous-energy-bass
-  #luminous-dynamic-background::before {
-  animation: luminous-bass-impact var(--luminous-energy-duration)
-    cubic-bezier(0.22, 0.85, 0.28, 1) infinite;
-}
-
 html.luminous-reduce-motion
   #luminous-dynamic-background
   .luminous-background-layer--active,
-html.luminous-reduce-motion #luminous-dynamic-background::after {
-  animation: none !important;
-  transition: none !important;
-}
-
-html.luminous-reduce-motion #luminous-dynamic-background::before {
+html.luminous-reduce-motion .luminous-background-blob {
   animation: none !important;
   transition: none !important;
 }
@@ -262,117 +258,109 @@ html.luminous-reduce-motion #luminous-dynamic-background::before {
   }
 }
 
-@keyframes luminous-palette-drift {
+@keyframes luminous-blob-one-drift {
   from {
-    background-position:
-      0% 0%,
-      100% 100%,
-      50% 50%;
-    transform: scale(1.02) translate3d(-1.4%, -0.8%, 0);
+    transform: translate3d(-7%, -5%, 0) scale(0.9);
   }
 
   to {
-    background-position:
-      44% 68%,
-      32% 18%,
-      78% 94%;
-    transform: scale(1.1) translate3d(1.4%, 0.8%, 0);
+    transform: translate3d(24%, 19%, 0) scale(1.16);
   }
 }
 
-@keyframes luminous-palette-float {
-  0%,
-  100% {
-    background-position:
-      0% 0%,
-      100% 100%,
-      50% 50%;
-    transform: scale(1.03) translate3d(-0.8%, 1%, 0);
+@keyframes luminous-blob-two-drift {
+  from {
+    transform: translate3d(8%, -8%, 0) scale(1.08);
   }
 
-  38% {
-    background-position:
-      54% 30%,
-      28% 74%,
-      82% 22%;
-    transform: scale(1.09) translate3d(1.2%, -1%, 0);
+  to {
+    transform: translate3d(-26%, 24%, 0) scale(0.86);
+  }
+}
+
+@keyframes luminous-blob-three-drift {
+  from {
+    transform: translate3d(-12%, 10%, 0) scale(0.88);
+  }
+
+  to {
+    transform: translate3d(20%, -18%, 0) scale(1.14);
+  }
+}
+
+@keyframes luminous-blob-four-drift {
+  from {
+    transform: translate3d(12%, 8%, 0) scale(1.12);
+  }
+
+  to {
+    transform: translate3d(-26%, -20%, 0) scale(0.9);
+  }
+}
+
+@keyframes luminous-blob-one-float {
+  0%,
+  100% {
+    transform: translate3d(-6%, -4%, 0) scale(0.92);
+  }
+
+  42% {
+    transform: translate3d(25%, 17%, 0) scale(1.17);
   }
 
   72% {
-    background-position:
-      26% 86%,
-      72% 24%,
-      18% 64%;
-    transform: scale(1.06) translate3d(0.8%, 1.2%, 0);
+    transform: translate3d(8%, 25%, 0) scale(1.04);
   }
 }
 
-@keyframes luminous-energy-breathe {
-  from {
-    transform: scale(1.02) translate3d(-1.2%, 0.8%, 0);
-  }
-
-  to {
-    transform: scale(1.1) translate3d(1.2%, -0.8%, 0);
-  }
-}
-
-@keyframes luminous-energy-float {
+@keyframes luminous-blob-two-float {
   0%,
   100% {
-    transform: scale(1.02) translate3d(-0.8%, 1.1%, 0);
+    transform: translate3d(6%, -7%, 0) scale(1.08);
+  }
+
+  36% {
+    transform: translate3d(-24%, 18%, 0) scale(0.9);
+  }
+
+  76% {
+    transform: translate3d(-8%, 31%, 0) scale(1.15);
+  }
+}
+
+@keyframes luminous-blob-three-float {
+  0%,
+  100% {
+    transform: translate3d(-10%, 8%, 0) scale(0.9);
   }
 
   48% {
-    transform: scale(1.1) translate3d(1.3%, -1.2%, 0);
+    transform: translate3d(22%, -20%, 0) scale(1.16);
+  }
+
+  82% {
+    transform: translate3d(29%, -2%, 0) scale(1.02);
   }
 }
 
-@keyframes luminous-energy-flow {
-  from {
-    background-position:
-      0% 100%,
-      100% 0%,
-      50% 50%;
-    transform: scale(1.03) translate3d(-1.5%, 0.9%, 0);
-  }
-
-  to {
-    background-position:
-      46% 18%,
-      18% 84%,
-      92% 42%;
-    transform: scale(1.12) translate3d(1.5%, -0.9%, 0);
-  }
-}
-
-@keyframes luminous-bass-impact {
+@keyframes luminous-blob-four-float {
   0%,
   100% {
-    transform: scale(0.88) translateZ(0);
+    transform: translate3d(11%, 7%, 0) scale(1.1);
   }
 
-  16% {
-    transform: scale(1.12) translateZ(0);
+  39% {
+    transform: translate3d(-24%, -19%, 0) scale(0.92);
   }
 
-  31% {
-    transform: scale(0.96) translateZ(0);
-  }
-
-  47% {
-    transform: scale(1.08) translateZ(0);
-  }
-
-  64% {
-    transform: scale(0.99) translateZ(0);
+  74% {
+    transform: translate3d(-6%, -29%, 0) scale(1.14);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   #luminous-dynamic-background .luminous-background-layer--active,
-  #luminous-dynamic-background::after,
-  #luminous-dynamic-background::before {
+  .luminous-background-blob {
     animation: none !important;
   }
 }

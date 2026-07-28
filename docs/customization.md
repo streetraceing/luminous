@@ -34,7 +34,7 @@ The aura follows the selected background movement. **Still** keeps it static, wh
 
 ## Backdrop energy
 
-**Calm** uses a wide, dim breathing glow for mellow music. **Ambient** is the default: brighter flowing light pools give artwork and Canvas more depth. **Bass** adds fast expanding rings and flashes drawn from the cover palette, intended for energetic or bass-heavy tracks. These profiles are visual presets: Spotify does not expose a reliable audio-analysis stream to the theme, so Luminous never guesses the beat or touches playback audio.
+**Calm** uses two wide, dim blurred colour forms for mellow music. **Ambient** is the default: several large blobs drift at different speeds, giving artwork and Canvas a deeper, liquid atmosphere. **Bass** keeps the same visual language but moves the brighter blobs faster for energetic or bass-heavy tracks. These profiles are visual presets: Spotify does not expose a reliable audio-analysis stream to the theme, so Luminous never guesses the beat or touches playback audio.
 
 The result for an old track is discarded as soon as playback changes, so fast track changes cannot apply a stale palette.
 
