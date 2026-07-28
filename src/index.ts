@@ -42,6 +42,22 @@ Luminous.Settings.register('backgroundBrightness', {
   },
 });
 
+Luminous.Settings.register('uiBlur', {
+  default: 16,
+  normalize: normalizeNumber(16, 0, 32),
+  apply: (value) => {
+    Luminous.Settings.setVar('--luminous-ui-blur', `${value}px`);
+  },
+});
+
+Luminous.Settings.register('paletteStrength', {
+  default: 24,
+  normalize: normalizeNumber(24, 0, 45),
+  apply: (value) => {
+    Luminous.Settings.setVar('--luminous-palette-strength', `${value}%`);
+  },
+});
+
 Luminous.Settings.register('uiOpacity', {
   default: 50,
   normalize: normalizeNumber(50, 0, 100),
@@ -75,6 +91,51 @@ Luminous.Settings.register('dynamicBackground', {
     Luminous.Settings.removeVar('--luminous-background');
     Luminous.Settings.removeVar('--luminous-ui-base');
     Luminous.Settings.removeVar('--luminous-ui-opacity');
+  },
+});
+
+Luminous.Settings.register('dynamicPalette', {
+  default: true,
+  normalize: (value) => (typeof value === 'boolean' ? value : true),
+  apply: (value) => {
+    if (value === false) {
+      Luminous.Palette.clear();
+    }
+  },
+});
+
+const motionModes = ['still', 'drift', 'float'] as const;
+type MotionMode = (typeof motionModes)[number];
+
+const normalizeMotionMode = (value: unknown): MotionMode => {
+  return typeof value === 'string' && motionModes.includes(value as MotionMode)
+    ? (value as MotionMode)
+    : 'drift';
+};
+
+Luminous.Settings.register('backgroundMotion', {
+  default: 'drift',
+  normalize: normalizeMotionMode,
+  apply: (value) => {
+    motionModes.forEach((mode) => {
+      Luminous.Settings.toggleClass(`luminous-motion-${mode}`, mode === value);
+    });
+  },
+});
+
+Luminous.Settings.register('motionDuration', {
+  default: 28,
+  normalize: normalizeNumber(28, 10, 60),
+  apply: (value) => {
+    Luminous.Settings.setVar('--luminous-motion-duration', `${value}s`);
+  },
+});
+
+Luminous.Settings.register('reduceMotion', {
+  default: false,
+  normalize: (value) => (typeof value === 'boolean' ? value : false),
+  apply: (value) => {
+    Luminous.Settings.toggleClass('luminous-reduce-motion', value === true);
   },
 });
 

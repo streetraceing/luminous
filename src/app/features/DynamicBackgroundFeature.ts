@@ -17,6 +17,9 @@ export function DynamicBackgroundFeature() {
   const [enabled, setEnabled] = state(
     () => Luminous.Settings.get('dynamicBackground') !== false,
   );
+  const [dynamicPalette, setDynamicPalette] = state(
+    () => Luminous.Settings.get('dynamicPalette') !== false,
+  );
   const [appActive, setAppActive] = state(
     () => getUiHealth().status !== 'booting',
   );
@@ -33,6 +36,7 @@ export function DynamicBackgroundFeature() {
 
   effect(() => {
     const handleSong = (nextSong: SongPayload) => {
+      Luminous.Palette.cancel();
       setSong(nextSong);
       Luminous.Background.preloadImage(nextSong.image);
     };
@@ -60,6 +64,11 @@ export function DynamicBackgroundFeature() {
       (value) => setEnabled(value !== false),
       { immediate: true },
     );
+    const unsubscribePaletteSetting = Luminous.Settings.subscribe<boolean>(
+      'dynamicPalette',
+      (value) => setDynamicPalette(value !== false),
+      { immediate: true },
+    );
 
     const currentSong = Luminous.Song.getSync();
     if (currentSong) {
@@ -74,9 +83,20 @@ export function DynamicBackgroundFeature() {
       Luminous.Canvas.removeEventListener('unmount', handleCanvasUnmount);
       unsubscribeHealth();
       unsubscribeSetting();
+      unsubscribePaletteSetting();
       Luminous.Background.destroy();
+      Luminous.Palette.clear();
     };
   }, []);
+
+  effect(() => {
+    if (!appActive || !dynamicPalette) {
+      Luminous.Palette.clear();
+      return;
+    }
+
+    void Luminous.Palette.applyFromImage(song?.image);
+  }, [appActive, dynamicPalette, song?.image]);
 
   effect(() => {
     if (!appActive) {

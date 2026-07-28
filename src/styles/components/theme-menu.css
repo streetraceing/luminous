@@ -5,72 +5,56 @@
   display: grid;
   padding: clamp(16px, 5vw, 72px);
   background: rgba(0, 0, 0, 0.5);
-  background: color-mix(in srgb, #000 48%, transparent);
-  backdrop-filter: blur(18px) saturate(1.2);
-  isolation: isolate;
+  backdrop-filter: blur(14px) saturate(1.05);
   overscroll-behavior: contain;
   place-items: center;
-  animation: luminous-theme-modal-backdrop-in 180ms ease-out;
+  animation: luminous-theme-modal-backdrop-in 140ms ease-out;
 }
 
 .luminous-theme-menu {
-  width: min(100%, 620px);
-  max-height: min(720px, calc(100dvh - 32px));
-  padding: clamp(16px, 2.4vw, 28px);
+  width: min(100%, 680px);
+  max-height: min(760px, calc(100dvh - 32px));
   color: var(--spice-text);
-  background:
-    radial-gradient(
-      circle at 0 0,
-      color-mix(in srgb, var(--spice-button-active) 22%, transparent),
-      transparent 42%
-    ),
-    linear-gradient(rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.015)),
-    color-mix(in srgb, var(--luminous-ui-base) 94%, transparent);
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 24px;
-  box-shadow:
-    0 32px 96px rgba(0, 0, 0, 0.52),
-    inset 0 1px 0 rgba(255, 255, 255, 0.14);
+  background: color-mix(in srgb, var(--luminous-ui-base) 96%, transparent);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 16px;
+  box-shadow: 0 24px 72px rgba(0, 0, 0, 0.5);
   overflow: auto;
   overscroll-behavior: contain;
   scrollbar-width: thin;
-  animation: luminous-theme-modal-panel-in 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  animation: luminous-theme-modal-panel-in 180ms
+    cubic-bezier(0.2, 0.75, 0.25, 1);
 }
 
 .luminous-theme-menu__header {
   display: grid;
   grid-template-columns: auto 1fr auto auto;
   align-items: center;
-  gap: 10px;
-  min-height: 48px;
-  padding: 2px 2px 20px;
+  gap: 12px;
+  min-height: 52px;
+  padding: 20px 22px 16px;
 }
 
 .luminous-theme-menu__mark {
   display: grid;
-  width: 44px;
-  height: 44px;
+  width: 36px;
+  height: 36px;
   color: #000;
-  background: var(--spice-button-active);
-  border-radius: 14px;
-  box-shadow: 0 10px 28px
-    color-mix(in srgb, var(--spice-button-active) 32%, transparent);
-  font-size: 18px;
-  font-weight: 900;
+  background: var(--luminous-accent);
+  border-radius: 10px;
   place-items: center;
 }
 
 .luminous-theme-menu__luminous-icon {
-  display: grid;
-  width: 24px;
-  height: 24px;
-  place-items: center;
+  width: 20px;
+  height: 20px;
   fill: currentColor;
 }
 
-.luminous-theme-menu__title {
+.luminous-theme-menu__title,
+.luminous-theme-menu__copy {
   display: grid;
-  gap: 2px;
+  gap: 3px;
   min-width: 0;
 }
 
@@ -82,108 +66,132 @@
 }
 
 .luminous-theme-menu__title span {
-  font-size: 17px;
-  font-weight: 800;
+  font-size: 16px;
+  font-weight: 700;
 }
 
 .luminous-theme-menu__title small,
 .luminous-theme-menu__copy small {
-  overflow: hidden;
   color: var(--spice-subtext);
-  line-height: 1.35;
-  text-overflow: ellipsis;
+  line-height: 1.4;
 }
 
 .luminous-theme-menu__title small {
   font-size: 12px;
-  font-weight: 600;
-  white-space: nowrap;
+}
+
+.luminous-theme-menu__reset-button,
+.luminous-theme-menu__icon-button,
+.luminous-theme-menu__tab,
+.luminous-theme-menu__choice-button {
+  color: inherit;
+  cursor: pointer;
+  border: 0;
 }
 
 .luminous-theme-menu__reset-button,
 .luminous-theme-menu__icon-button {
-  color: var(--spice-text);
-  cursor: pointer;
-  background: rgba(255, 255, 255, 0.075);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: transparent;
 }
 
 .luminous-theme-menu__reset-button {
-  height: 34px;
-  min-width: 72px;
-  padding: 0 12px;
-  border-radius: 999px;
+  padding: 7px 9px;
+  color: var(--spice-subtext);
+  border-radius: 6px;
   font-size: 13px;
+  font-weight: 600;
 }
 
 .luminous-theme-menu__icon-button {
   display: grid;
-  width: 34px;
-  height: 34px;
+  width: 32px;
+  height: 32px;
   padding: 0;
   border-radius: 50%;
-  font-size: 13px;
   place-items: center;
 }
 
 .luminous-theme-menu__close-icon {
-  display: grid;
   width: 16px;
   height: 16px;
-  place-items: center;
   fill: currentColor;
 }
 
 .luminous-theme-menu__reset-button:hover,
 .luminous-theme-menu__icon-button:hover {
-  background: rgba(255, 255, 255, 0.12);
+  color: var(--spice-text);
+  background: rgba(255, 255, 255, 0.08);
 }
 
-.luminous-theme-menu__reset-button:focus-visible,
-.luminous-theme-menu__icon-button:focus-visible,
-.luminous-theme-menu__switch input:focus-visible + span,
-.luminous-theme-menu__range input:focus-visible {
-  outline: 2px solid var(--spice-button-active);
-  outline-offset: 3px;
+.luminous-theme-menu__tabs {
+  display: flex;
+  gap: 20px;
+  padding: 0 22px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.luminous-theme-menu__section {
-  display: grid;
-  gap: 6px;
-  padding: 12px;
-  background: rgba(255, 255, 255, 0.055);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 18px;
-}
-
-.luminous-theme-menu__section-header {
-  padding: 5px 8px 9px;
+.luminous-theme-menu__tab {
+  position: relative;
+  padding: 13px 1px 11px;
   color: var(--spice-subtext);
-  font-size: 12px;
-  font-weight: 800;
-  text-transform: uppercase;
+  background: transparent;
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.luminous-theme-menu__tab::after {
+  position: absolute;
+  right: 0;
+  bottom: -1px;
+  left: 0;
+  height: 2px;
+  background: transparent;
+  content: '';
+  transition: background-color 150ms ease;
+}
+
+.luminous-theme-menu__tab:hover,
+.luminous-theme-menu__tab--active {
+  color: var(--spice-text);
+}
+
+.luminous-theme-menu__tab--active::after {
+  background: var(--luminous-accent);
+}
+
+.luminous-theme-menu__panel {
+  padding: 22px;
+  animation: luminous-theme-tab-in 170ms ease-out;
+}
+
+.luminous-theme-menu__panel-heading {
+  margin: 0 0 12px;
+}
+
+.luminous-theme-menu__panel-heading h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.luminous-theme-menu__panel-heading p {
+  margin: 5px 0 0;
+  color: var(--spice-subtext);
+  font-size: 13px;
+  line-height: 1.45;
 }
 
 .luminous-theme-menu__row {
   display: grid;
-  gap: 10px;
-  padding: 12px;
-  border-radius: 12px;
+  gap: 12px;
+  padding: 15px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
   font-size: 14px;
 }
 
-.luminous-theme-menu__row:hover {
-  background: rgba(255, 255, 255, 0.045);
-}
-
-.luminous-theme-menu__copy {
-  display: grid;
-  gap: 3px;
-  min-width: 0;
-}
-
 .luminous-theme-menu__copy > span {
-  font-weight: 700;
+  font-weight: 650;
 }
 
 .luminous-theme-menu__copy small {
@@ -198,14 +206,15 @@
 .luminous-theme-menu__switch {
   position: relative;
   display: inline-grid;
-  width: 46px;
-  height: 26px;
+  width: 44px;
+  height: 24px;
   align-items: center;
 }
 
 .luminous-theme-menu__switch input {
   position: absolute;
   inset: 0;
+  z-index: 1;
   opacity: 0;
   cursor: pointer;
 }
@@ -213,30 +222,30 @@
 .luminous-theme-menu__switch span {
   position: absolute;
   inset: 0;
-  background: rgba(255, 255, 255, 0.15);
-  border: 1px solid rgba(255, 255, 255, 0.11);
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 999px;
   transition:
-    background 160ms ease,
-    border-color 160ms ease;
+    background-color 150ms ease,
+    border-color 150ms ease;
 }
 
 .luminous-theme-menu__switch span::after {
   position: absolute;
   top: 3px;
   left: 3px;
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   background: var(--spice-text);
   border-radius: 50%;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.34);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.32);
   content: '';
-  transition: transform 160ms ease;
+  transition: transform 150ms ease;
 }
 
 .luminous-theme-menu__switch input:checked + span {
-  background: var(--spice-button-active);
-  border-color: rgba(255, 255, 255, 0.18);
+  background: var(--luminous-accent);
+  border-color: var(--luminous-accent);
 }
 
 .luminous-theme-menu__switch input:checked + span::after {
@@ -247,42 +256,92 @@
   display: grid;
   grid-template-columns: 1fr auto;
   align-items: start;
-  gap: 12px;
+  gap: 14px;
 }
 
 .luminous-theme-menu__range strong {
-  min-width: 46px;
-  padding: 3px 7px;
-  color: var(--spice-text);
-  background: rgba(255, 255, 255, 0.07);
-  border-radius: 999px;
+  min-width: 48px;
+  padding: 3px 0;
+  color: var(--spice-subtext);
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 600;
   text-align: right;
 }
 
 .luminous-theme-menu__range-control {
   display: grid;
-  height: 22px;
+  height: 18px;
   align-items: center;
 }
 
 .luminous-theme-menu__range input {
   width: 100%;
-  height: 18px;
-  accent-color: var(--spice-button-active);
+  height: 16px;
+  accent-color: var(--luminous-accent);
   cursor: pointer;
 }
 
-.luminous-theme-menu__footer {
-  margin: 18px 8px 0;
+.luminous-theme-menu__choice {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.luminous-theme-menu__choices {
+  display: inline-flex;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 7px;
+}
+
+.luminous-theme-menu__choice-button {
+  min-width: 54px;
+  padding: 7px 10px;
   color: var(--spice-subtext);
+  background: transparent;
+  border-left: 1px solid rgba(255, 255, 255, 0.12);
   font-size: 12px;
-  text-align: center;
+  font-weight: 600;
+}
+
+.luminous-theme-menu__choice-button:first-child {
+  border-left: 0;
+}
+
+.luminous-theme-menu__choice-button:hover {
+  color: var(--spice-text);
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.luminous-theme-menu__choice-button--active {
+  color: #000;
+  background: var(--luminous-accent);
+}
+
+.luminous-theme-menu__choice-button--active:hover {
+  color: #000;
+  background: var(--luminous-accent);
+}
+
+.luminous-theme-menu__footer {
+  margin: 0;
+  padding: 13px 22px 16px;
+  color: var(--spice-subtext);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 12px;
 }
 
 .luminous-theme-menu-button--active {
-  color: var(--spice-button-active);
+  color: var(--luminous-accent);
+}
+
+.luminous-theme-menu__reset-button:focus-visible,
+.luminous-theme-menu__icon-button:focus-visible,
+.luminous-theme-menu__tab:focus-visible,
+.luminous-theme-menu__choice-button:focus-visible,
+.luminous-theme-menu__switch input:focus-visible + span,
+.luminous-theme-menu__range input:focus-visible {
+  outline: 2px solid var(--luminous-accent);
+  outline-offset: 3px;
 }
 
 @keyframes luminous-theme-modal-backdrop-in {
@@ -294,7 +353,14 @@
 @keyframes luminous-theme-modal-panel-in {
   from {
     opacity: 0;
-    transform: translateY(14px) scale(0.98);
+    transform: translateY(8px);
+  }
+}
+
+@keyframes luminous-theme-tab-in {
+  from {
+    opacity: 0;
+    transform: translateX(8px);
   }
 }
 
@@ -305,7 +371,7 @@
 
   .luminous-theme-menu {
     max-height: calc(100dvh - 24px);
-    border-radius: 20px;
+    border-radius: 12px;
   }
 
   .luminous-theme-menu__header {
@@ -313,7 +379,8 @@
       'mark title close'
       'mark reset close';
     grid-template-columns: auto 1fr auto;
-    row-gap: 12px;
+    padding: 18px 16px 14px;
+    row-gap: 8px;
   }
 
   .luminous-theme-menu__mark {
@@ -327,21 +394,53 @@
   .luminous-theme-menu__reset-button {
     grid-area: reset;
     justify-self: start;
+    margin-left: -9px;
   }
 
   .luminous-theme-menu__icon-button {
     grid-area: close;
   }
+
+  .luminous-theme-menu__tabs {
+    padding: 0 16px;
+  }
+
+  .luminous-theme-menu__panel {
+    padding: 18px 16px;
+  }
+
+  .luminous-theme-menu__choice {
+    grid-template-columns: 1fr;
+  }
+
+  .luminous-theme-menu__choices {
+    justify-self: start;
+  }
+
+  .luminous-theme-menu__footer {
+    padding: 13px 16px 15px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .luminous-theme-modal-backdrop,
-  .luminous-theme-menu {
+  .luminous-theme-menu,
+  .luminous-theme-menu__panel {
     animation: none;
   }
 
   .luminous-theme-menu__switch span,
-  .luminous-theme-menu__switch span::after {
+  .luminous-theme-menu__switch span::after,
+  .luminous-theme-menu__tab::after {
     transition: none;
   }
+}
+
+html.luminous-reduce-motion
+  :is(
+    .luminous-theme-modal-backdrop,
+    .luminous-theme-menu,
+    .luminous-theme-menu__panel
+  ) {
+  animation: none;
 }

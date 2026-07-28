@@ -5,6 +5,11 @@
   z-index: 11 !important;
 }
 
+html.luminous-dynamic-palette .Root__now-playing-bar {
+  box-shadow: inset 0 1px
+    color-mix(in srgb, var(--luminous-palette-primary) 24%, transparent);
+}
+
 .Root__now-playing-bar > aside {
   background: var(--luminous-ui-background);
   border-radius: 8px;

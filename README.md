@@ -25,8 +25,9 @@ Luminous transforms Spotify's default interface into a softly lit, translucent w
 ## Highlights
 
 - Dynamic backgrounds from cover art, with Canvas as the preferred source.
-- Adjustable background blur, brightness, and glass-surface opacity.
-- A compact settings panel in Spotify's top bar.
+- Dynamic colour accents extracted from the current cover art.
+- Adjustable background, glass surfaces, and low-impact background movement.
+- A focused settings dialog in Spotify's top bar with Appearance and Motion tabs.
 - Graceful fallbacks when artwork, Canvas, or Spotify UI elements are unavailable.
 - No runtime dependencies bundled with the theme.
 

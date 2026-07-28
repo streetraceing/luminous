@@ -459,13 +459,15 @@ export class Background {
     }
 
     this.imageLayers.forEach((element) => {
-      element.style.opacity =
-        type === 'image' && element === activeElement ? '1' : '0';
+      const active = type === 'image' && element === activeElement;
+      element.style.opacity = active ? '1' : '0';
+      element.classList.toggle('luminous-background-layer--active', active);
     });
 
     this.videoLayers.forEach((element) => {
-      element.style.opacity =
-        type === 'canvas' && element === activeElement ? '1' : '0';
+      const active = type === 'canvas' && element === activeElement;
+      element.style.opacity = active ? '1' : '0';
+      element.classList.toggle('luminous-background-layer--active', active);
     });
 
     this.scheduleVideoCleanup();

@@ -2,6 +2,7 @@ import { Background } from '../render/background';
 import { Canvas } from './canvas';
 import { Logger } from './logger';
 import { Native } from './native';
+import { Palette } from './palette';
 import { Settings } from './settings';
 import { Song } from './song';
 
@@ -12,6 +13,7 @@ export function exposeGlobalAPI() {
       Canvas,
       Song,
       Native,
+      Palette,
       Settings,
       Logger,
       version: __APP_VERSION__,

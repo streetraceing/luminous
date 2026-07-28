@@ -6,13 +6,81 @@ html:root {
   --luminous-ui-opacity: 100%;
   --luminous-ui-blur: 16px;
   --luminous-ui-base: var(--spice-main);
+  --luminous-palette-primary: var(--spice-button-active);
+  --luminous-palette-light: var(--spice-text);
+  --luminous-palette-dark: var(--spice-main);
+  --luminous-palette-strength: 24%;
+  --luminous-ui-tint: transparent;
+  --luminous-accent: var(--spice-button-active);
   --luminous-ui-background: color-mix(
     in srgb,
     var(--luminous-ui-base) var(--luminous-ui-opacity),
     transparent
   );
+  --luminous-motion-duration: 28s;
 }
 
 html.hideDynamicBackground #luminous-dynamic-background {
   display: none;
+}
+
+html.luminous-dynamic-palette {
+  --luminous-ui-tint: color-mix(
+    in srgb,
+    var(--luminous-palette-primary) var(--luminous-palette-strength),
+    transparent
+  );
+  --luminous-accent: color-mix(
+    in srgb,
+    var(--luminous-palette-primary) 76%,
+    var(--spice-button-active)
+  );
+}
+
+html:not(.luminous-reduce-motion).luminous-motion-drift
+  #luminous-dynamic-background
+  .luminous-background-layer--active {
+  animation: luminous-background-drift var(--luminous-motion-duration)
+    ease-in-out infinite alternate;
+}
+
+html:not(.luminous-reduce-motion).luminous-motion-float
+  #luminous-dynamic-background
+  .luminous-background-layer--active {
+  animation: luminous-background-float var(--luminous-motion-duration)
+    ease-in-out infinite;
+}
+
+html.luminous-reduce-motion
+  #luminous-dynamic-background
+  .luminous-background-layer--active {
+  animation: none !important;
+  transition: none !important;
+}
+
+@keyframes luminous-background-drift {
+  from {
+    object-position: 46% 48%;
+  }
+
+  to {
+    object-position: 54% 52%;
+  }
+}
+
+@keyframes luminous-background-float {
+  0%,
+  100% {
+    object-position: 48% 46%;
+  }
+
+  50% {
+    object-position: 53% 54%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #luminous-dynamic-background .luminous-background-layer--active {
+    animation: none !important;
+  }
 }
