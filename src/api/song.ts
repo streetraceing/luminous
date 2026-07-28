@@ -10,6 +10,7 @@ export class Song {
   private static readonly INITIAL_TRACK_SYNC_INTERVAL = 100;
 
   private static current: Spicetify.PlayerTrack | null = null;
+  private static currentSignature: string | null = null;
   private static listeners = new Map<SongEvent, Set<SongListener>>();
 
   private static ready = false;
@@ -169,7 +170,15 @@ export class Song {
   }
 
   private static handleTrack(track: Spicetify.PlayerTrack | null) {
-    if (!track || this.current?.uri === track.uri) return;
+    if (!track) return;
+
+    const signature = this.createTrackSignature(track);
+    if (
+      this.current?.uri === track.uri &&
+      this.currentSignature === signature
+    ) {
+      return;
+    }
 
     if (this.initialTrackTimer !== null) {
       window.clearTimeout(this.initialTrackTimer);
@@ -177,6 +186,7 @@ export class Song {
     }
 
     this.current = track;
+    this.currentSignature = signature;
 
     if (!this.ready) {
       this.ready = true;
@@ -188,6 +198,18 @@ export class Song {
 
     Luminous.Logger.info('Song', 'Changed to', track);
     this.emit('change');
+  }
+
+  private static createTrackSignature(track: Spicetify.PlayerTrack): string {
+    const artists = track.artists?.map((artist) => artist.name).join('|') ?? '';
+    const image = normalizeImageUrl(
+      track.images?.[0]?.url ??
+        track.album?.images?.[0]?.url ??
+        track.metadata?.image_url ??
+        null,
+    );
+
+    return `${track.uri}\u0000${track.name}\u0000${artists}\u0000${image ?? ''}`;
   }
 
   private static createPayload(track: Spicetify.PlayerTrack): SongPayload {

@@ -19,8 +19,13 @@ export class Canvas {
   private static currentVideo: HTMLVideoElement | null = null;
   private static currentMode: CanvasMode = null;
   private static currentSource: string | null = null;
+  private static revision = 0;
   private static observedSourceVideo: HTMLVideoElement | null = null;
-  private static readonly handleVideoSourceChange = () => this.scheduleCheck();
+  private static forceCheck = false;
+  private static readonly handleVideoSourceChange = () => {
+    this.forceCheck = true;
+    this.scheduleCheck();
+  };
   private static initialized = false;
 
   private static createPayload(
@@ -31,6 +36,7 @@ export class Canvas {
       video,
       mode,
       source: video?.currentSrc || video?.src || null,
+      revision: this.revision,
     };
   }
 
@@ -73,6 +79,8 @@ export class Canvas {
     this.observer.observe(document.documentElement, {
       childList: true,
       subtree: true,
+      attributes: true,
+      attributeFilter: ['class', 'style', 'hidden', 'src'],
     });
     this.check();
   }
@@ -130,11 +138,14 @@ export class Canvas {
 
   private static check() {
     const { video, mode, source } = this.detect();
+    const forced = this.forceCheck;
+    this.forceCheck = false;
 
     const previousVideo = this.currentVideo;
     const previousMode = this.currentMode;
 
     if (
+      !forced &&
       previousVideo === video &&
       previousMode === mode &&
       this.currentSource === source
@@ -145,6 +156,7 @@ export class Canvas {
     this.currentVideo = video;
     this.currentMode = mode;
     this.currentSource = source;
+    this.revision++;
     this.observeVideoSource(video);
 
     if (previousVideo && !video) {
@@ -175,23 +187,26 @@ export class Canvas {
   private static observeVideoSource(video: HTMLVideoElement | null) {
     if (video === this.observedSourceVideo) return;
 
-    this.observedSourceVideo?.removeEventListener(
+    const events: Array<keyof HTMLMediaElementEventMap> = [
       'loadedmetadata',
-      this.handleVideoSourceChange,
-    );
-    this.observedSourceVideo?.removeEventListener(
+      'loadeddata',
+      'canplay',
+      'playing',
       'emptied',
-      this.handleVideoSourceChange,
-    );
-    this.observedSourceVideo?.removeEventListener(
       'ended',
-      this.handleVideoSourceChange,
-    );
+    ];
+
+    events.forEach((event) => {
+      this.observedSourceVideo?.removeEventListener(
+        event,
+        this.handleVideoSourceChange,
+      );
+    });
     this.observedSourceVideo = video;
 
-    video?.addEventListener('loadedmetadata', this.handleVideoSourceChange);
-    video?.addEventListener('emptied', this.handleVideoSourceChange);
-    video?.addEventListener('ended', this.handleVideoSourceChange);
+    events.forEach((event) => {
+      video?.addEventListener(event, this.handleVideoSourceChange);
+    });
   }
 
   private static callListener(

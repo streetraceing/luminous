@@ -57,9 +57,8 @@ const appearanceToggles: ToggleSetting[] = [
   },
   {
     key: 'dynamicPalette',
-    label: 'Dynamic palette',
-    description:
-      'Add an animated colour aura from the current cover to the backdrop.',
+    label: 'Adaptive effects',
+    description: 'Build a colour scene automatically from each track cover.',
     fallback: true,
   },
 ];
@@ -108,9 +107,9 @@ const appearanceNumericSettings: NumericSetting[] = [
   },
   {
     key: 'paletteStrength',
-    label: 'Palette strength',
+    label: 'Effect intensity',
     description:
-      'Controls the intensity of the animated colour effect behind Spotify.',
+      'Controls how strongly the adaptive scene appears behind Spotify.',
     min: 0,
     max: 45,
     step: 1,
@@ -122,7 +121,7 @@ const appearanceNumericSettings: NumericSetting[] = [
 const motionChoiceSetting: ChoiceSetting = {
   key: 'backgroundMotion',
   label: 'Background movement',
-  description: 'Choose how the artwork, Canvas, and colour aura travel.',
+  description: 'Choose how the artwork, Canvas, and adaptive scene travel.',
   fallback: 'drift',
   options: [
     { value: 'still', label: 'Still' },
@@ -131,24 +130,11 @@ const motionChoiceSetting: ChoiceSetting = {
   ],
 };
 
-const backgroundEnergySetting: ChoiceSetting = {
-  key: 'backgroundEnergy',
-  label: 'Backdrop energy',
-  description:
-    'Use Ambient for richer flow, or Bass for faster, brighter colour movement.',
-  fallback: 'ambient',
-  options: [
-    { value: 'calm', label: 'Calm' },
-    { value: 'ambient', label: 'Ambient' },
-    { value: 'bass', label: 'Bass' },
-  ],
-};
-
 const motionNumericSettings: NumericSetting[] = [
   {
     key: 'motionDuration',
     label: 'Motion speed',
-    description: 'Sets the duration of one background movement cycle.',
+    description: 'Scales the media movement and the adaptive scene tempo.',
     min: 8,
     max: 48,
     step: 1,
@@ -170,7 +156,6 @@ const resettableSettings = [
   ...appearanceToggles.map((setting) => setting.key),
   ...appearanceNumericSettings.map((setting) => setting.key),
   motionChoiceSetting.key,
-  backgroundEnergySetting.key,
   ...motionNumericSettings.map((setting) => setting.key),
   ...motionToggles.map((setting) => setting.key),
 ];
@@ -539,13 +524,10 @@ function MotionSettings() {
       React.createElement(
         'p',
         null,
-        'Set the motion style and energy of the artwork, colour aura, and pulse effects.',
+        'Set the overall movement while each track keeps its own adaptive scene.',
       ),
     ),
     React.createElement(ChoiceSettingRow, { setting: motionChoiceSetting }),
-    React.createElement(ChoiceSettingRow, {
-      setting: backgroundEnergySetting,
-    }),
     motionNumericSettings.map((setting) =>
       React.createElement(NumericSettingRow, {
         key: setting.key,

@@ -1,64 +1,63 @@
 # Customisation
 
-Luminous keeps its visual controls inside Spotify so that changes are immediate and survive the next launch.
+Luminous keeps its visual controls inside Spotify so changes are immediate and persist across launches.
 
 ## Open the settings dialog
 
-Open your profile menu from the avatar in Spotify's top bar and select **Luminous Settings**. Luminous opens a focused, full-screen dialog with a blurred backdrop. Select the backdrop, use the close button, or press <kbd>Esc</kbd> to close it.
+Open your profile menu from the avatar in Spotify's top bar and select **Luminous Settings**. Select the backdrop, use the close button, or press <kbd>Esc</kbd> to close the dialog.
 
 The dialog has **Appearance** and **Motion** tabs. It moves keyboard focus into its controls while open and supports arrow keys in the tab list.
 
 ## Settings
 
-| Setting               |                 Range | Default | Effect                                                                        |
-| --------------------- | --------------------: | ------: | ----------------------------------------------------------------------------- |
-| Dynamic background    |              On / Off |      On | Uses the current cover, Canvas, or visible Spotify NPV video as the backdrop. |
-| Dynamic palette       |              On / Off |      On | Extracts colours from the current cover for a moving background aura.         |
-| Backdrop energy       | Calm / Ambient / Bass | Ambient | Selects the character of the background-only colour effects.                  |
-| Background blur       |               0-48 px |   24 px | Softens the artwork or video behind Spotify.                                  |
-| Background brightness |               30-120% |     75% | Adjusts the intensity of the backdrop.                                        |
-| Surface opacity       |                0-100% |     50% | Controls the transparency of the glass-like UI surfaces.                      |
-| Surface blur          |               0-32 px |   16 px | Controls blur on navigation and content surfaces.                             |
-| Palette strength      |                 0-45% |     24% | Sets the visibility of the colour effect behind the background media.         |
-| Background movement   | Still / Drift / Float |   Drift | Adds a low-impact animation to the active background layer.                   |
-| Motion speed          |                8-48 s |    20 s | Sets the duration of one animation cycle.                                     |
-| Reduce motion         |              On / Off |     Off | Stops Luminous animations and background cross-fades.                         |
+| Setting               | Range                 | Default | Effect                                                                        |
+| --------------------- | --------------------- | ------- | ----------------------------------------------------------------------------- |
+| Dynamic background    | On / Off              | On      | Uses the current cover, Canvas, or visible Spotify NPV video as the backdrop. |
+| Adaptive effects      | On / Off              | On      | Builds an automatic colour scene from the current cover.                      |
+| Background blur       | 0–48 px               | 24 px   | Softens the artwork or video behind Spotify.                                  |
+| Background brightness | 30–120%               | 75%     | Adjusts the intensity of the backdrop media.                                  |
+| Surface opacity       | 0–100%                | 50%     | Controls the transparency of the glass-like UI surfaces.                      |
+| Surface blur          | 0–32 px               | 16 px   | Controls blur on navigation and content surfaces.                             |
+| Effect intensity      | 0–45%                 | 24%     | Sets the visibility of the adaptive scene.                                    |
+| Background movement   | Still / Drift / Float | Drift   | Chooses the overall movement pattern.                                         |
+| Motion speed          | 8–48 s                | 20 s    | Scales media movement and the adaptive scene tempo.                           |
+| Reduce motion         | On / Off              | Off     | Stops custom animation and background cross-fades.                            |
 
-When a Spotify Canvas is available, Luminous uses it in preference to the static cover image. If no Canvas is present, Luminous can also use a visible long-form video from Spotify's Now Playing View (NPV). If a video stream cannot be captured, the theme automatically falls back to the album artwork.
+When a Spotify Canvas is available, Luminous prefers it over the static cover. A visible long-form Now Playing video can also be used. If video capture is unavailable or not ready, the theme keeps the artwork visible and retries when the source becomes playable.
 
-## Dynamic palette
+## Adaptive effects
 
-Luminous analyses a small local copy of the current cover artwork and uses the extracted colours only inside the dynamic background. They form a blurred, animated aura over the cover, Canvas, or NPV video; Spotify's main view, navigation, player, and settings controls retain their normal colours.
+Luminous analyses a small local copy of the cover and extracts several distinct colours together with saturation, contrast, brightness, and colour diversity. These values select one of five scene families automatically:
 
-The aura follows the selected background movement. **Still** keeps it static, while **Drift** and **Float** move its gradients slowly without adding any animation to the interface itself. Set **Palette strength** to `0%` to leave the background media completely uncoloured.
+- **Aurora** for cool blue, cyan, and violet artwork.
+- **Ember** for warm red, orange, and gold artwork.
+- **Bloom** for green and organic palettes.
+- **Prism** for colourful, high-contrast covers.
+- **Halo** for restrained or nearly monochrome artwork.
 
-## Backdrop energy
+Each scene receives its own colour balance, light placement, and tempo. The analysis never reads or modifies playback audio, so it is visual adaptation rather than beat detection. Results from an old track are discarded as soon as playback changes.
 
-**Calm** uses two wide, dim blurred colour forms for mellow music. **Ambient** is the default: several large blobs drift at different speeds, giving artwork and Canvas a deeper, liquid atmosphere. **Bass** keeps the same visual language but moves the brighter blobs faster for energetic or bass-heavy tracks. These profiles are visual presets: Spotify does not expose a reliable audio-analysis stream to the theme, so Luminous never guesses the beat or touches playback audio.
-
-The result for an old track is discarded as soon as playback changes, so fast track changes cannot apply a stale palette.
+**Effect intensity** controls only the generated light scene. Set it to `0%` to keep the cover or video without added colour. **Background movement** and **Motion speed** remain global preferences; the scene character itself no longer needs manual selection per track.
 
 ## Recommended looks
 
-| Goal             |  Blur | Brightness | Surface opacity |
-| ---------------- | ----: | ---------: | --------------: |
-| Clear artwork    | 12 px |        85% |             35% |
-| Balanced default | 24 px |        75% |             50% |
-| Calm and subdued | 36 px |        60% |             65% |
+| Goal             |  Blur | Brightness | Surface opacity | Effect intensity |
+| ---------------- | ----: | ---------: | --------------: | ---------------: |
+| Clear artwork    | 12 px |        85% |             35% |              18% |
+| Balanced default | 24 px |        75% |             50% |              24% |
+| Calm and subdued | 36 px |        60% |             65% |              12% |
 
-These values are only starting points; the best balance depends on the artwork and display brightness. Use **Still** or turn on **Reduce motion** when you prefer a static interface.
+Use **Still** or enable **Reduce motion** for a static interface.
 
 ## Reset and persistence
 
-**Reset** restores every Luminous setting to its default. Values are stored in Spicetify local storage under `luminous-settings`, so they are retained after Spotify restarts. Luminous batches rapid slider updates before writing them to storage, then flushes a pending change when the page is closed.
+**Reset** restores every visible Luminous setting to its default. Values are stored in Spicetify local storage under `luminous-settings`. Rapid slider updates are batched, and a pending change is flushed when the page closes.
 
 ## Local theme workflow
-
-From the repository root:
 
 ```bash
 npm run build
 npm run apply
 ```
 
-Use `npm run revert` to switch back to the `marketplace` theme configured by this project's script.
+Use `npm run revert` to switch back to the `marketplace` theme configured by this project.

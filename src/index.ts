@@ -23,49 +23,6 @@ const normalizeNumber = (fallback: number, min: number, max: number) => {
   };
 };
 
-const backgroundEnergyProfiles = ['calm', 'ambient', 'bass'] as const;
-type BackgroundEnergyProfile = (typeof backgroundEnergyProfiles)[number];
-
-const normalizeBackgroundEnergyProfile = (
-  value: unknown,
-): BackgroundEnergyProfile => {
-  return typeof value === 'string' &&
-    backgroundEnergyProfiles.includes(value as BackgroundEnergyProfile)
-    ? (value as BackgroundEnergyProfile)
-    : 'ambient';
-};
-
-const energyProfileFactors: Record<
-  BackgroundEnergyProfile,
-  { blobDurations: [number, number, number, number] }
-> = {
-  calm: { blobDurations: [28, 34, 40, 46] },
-  ambient: { blobDurations: [18, 24, 30, 36] },
-  bass: { blobDurations: [9, 13, 17, 21] },
-};
-
-const applyBackgroundEnergy = (
-  profile: BackgroundEnergyProfile,
-  strength: number,
-) => {
-  const energy = energyProfileFactors[profile];
-  const auraOpacity = Math.min(86, Math.round(strength * 1.85));
-
-  backgroundEnergyProfiles.forEach((name) => {
-    Luminous.Settings.toggleClass(`luminous-energy-${name}`, name === profile);
-  });
-  Luminous.Settings.setVar(
-    '--luminous-palette-effect-opacity',
-    `${auraOpacity}%`,
-  );
-  energy.blobDurations.forEach((duration, index) => {
-    Luminous.Settings.setVar(
-      `--luminous-blob-${index + 1}-duration`,
-      `${duration}s`,
-    );
-  });
-};
-
 Luminous.Settings.register('backgroundBlur', {
   default: 24,
   normalize: normalizeNumber(24, 0, 48),
@@ -97,24 +54,18 @@ Luminous.Settings.register('paletteStrength', {
   default: 24,
   normalize: normalizeNumber(24, 0, 45),
   apply: (value) => {
-    applyBackgroundEnergy(
-      normalizeBackgroundEnergyProfile(
-        Luminous.Settings.get('backgroundEnergy'),
-      ),
-      Number(value),
+    const opacity = Math.min(72, Math.round(Number(value) * 1.6));
+    Luminous.Settings.setVar(
+      '--luminous-palette-effect-opacity',
+      `${opacity}%`,
     );
   },
 });
 
+// Keep the former manual profile key only to migrate saved settings cleanly.
 Luminous.Settings.register('backgroundEnergy', {
-  default: 'ambient',
-  normalize: normalizeBackgroundEnergyProfile,
-  apply: (value) => {
-    applyBackgroundEnergy(
-      normalizeBackgroundEnergyProfile(value),
-      Number(Luminous.Settings.get('paletteStrength') ?? 24),
-    );
-  },
+  default: 'adaptive',
+  normalize: () => 'adaptive',
 });
 
 Luminous.Settings.register('uiOpacity', {
@@ -186,7 +137,9 @@ Luminous.Settings.register('motionDuration', {
   default: 20,
   normalize: normalizeNumber(20, 8, 48),
   apply: (value) => {
-    Luminous.Settings.setVar('--luminous-motion-duration', `${value}s`);
+    const duration = Number(value);
+    Luminous.Settings.setVar('--luminous-motion-duration', `${duration}s`);
+    Luminous.Palette.setMotionDuration(duration);
   },
 });
 

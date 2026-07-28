@@ -1,3 +1,33 @@
+@property --luminous-palette-primary {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #648cff;
+}
+
+@property --luminous-palette-secondary {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #8c5cff;
+}
+
+@property --luminous-palette-accent {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #53e7d8;
+}
+
+@property --luminous-palette-light {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #dce8ff;
+}
+
+@property --luminous-palette-dark {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #10152a;
+}
+
 html:root {
   --luminous-background: var(--spice-sidebar);
   --luminous-background-blur: 24px;
@@ -6,14 +36,20 @@ html:root {
   --luminous-ui-opacity: 100%;
   --luminous-ui-blur: 16px;
   --luminous-ui-base: var(--spice-main);
-  --luminous-palette-primary: var(--spice-button-active);
-  --luminous-palette-light: var(--spice-text);
-  --luminous-palette-dark: var(--spice-main);
-  --luminous-palette-effect-opacity: 34%;
-  --luminous-blob-1-duration: 18s;
-  --luminous-blob-2-duration: 24s;
-  --luminous-blob-3-duration: 30s;
-  --luminous-blob-4-duration: 36s;
+  --luminous-palette-primary: #648cff;
+  --luminous-palette-secondary: #8c5cff;
+  --luminous-palette-accent: #53e7d8;
+  --luminous-palette-light: #dce8ff;
+  --luminous-palette-dark: #10152a;
+  --luminous-palette-effect-opacity: 38%;
+  --luminous-effect-angle: 220deg;
+  --luminous-effect-saturation: 1.2;
+  --luminous-effect-brightness: 1;
+  --luminous-effect-contrast: 1;
+  --luminous-blob-1-duration: 24s;
+  --luminous-blob-2-duration: 31s;
+  --luminous-blob-3-duration: 38s;
+  --luminous-blob-4-duration: 46s;
   --luminous-accent: var(--spice-button-active);
   --luminous-ui-background: color-mix(
     in srgb,
@@ -21,6 +57,13 @@ html:root {
     transparent
   );
   --luminous-motion-duration: 20s;
+
+  transition:
+    --luminous-palette-primary 900ms ease,
+    --luminous-palette-secondary 900ms ease,
+    --luminous-palette-accent 900ms ease,
+    --luminous-palette-light 900ms ease,
+    --luminous-palette-dark 900ms ease;
 }
 
 html.hideDynamicBackground #luminous-dynamic-background {
@@ -34,179 +77,416 @@ html.hideDynamicBackground #luminous-dynamic-background {
   overflow: hidden;
   pointer-events: none;
   opacity: 0;
-  transition: opacity 700ms ease;
+  filter: saturate(var(--luminous-effect-saturation))
+    brightness(var(--luminous-effect-brightness))
+    contrast(var(--luminous-effect-contrast));
+  transition:
+    opacity 700ms ease,
+    filter 900ms ease;
 }
 
 html.luminous-dynamic-palette .luminous-background-effects {
   opacity: var(--luminous-palette-effect-opacity);
 }
 
-.luminous-background-blob {
+.luminous-background-effects > span {
   position: absolute;
   display: block;
-  width: 68vmax;
-  aspect-ratio: 1;
   pointer-events: none;
-  border-radius: 50%;
+}
+
+.luminous-background-mesh {
+  inset: -24%;
+  opacity: 0.56;
+  background:
+    radial-gradient(
+      circle at 18% 24%,
+      color-mix(in srgb, var(--luminous-palette-light) 78%, transparent) 0%,
+      color-mix(in srgb, var(--luminous-palette-primary) 46%, transparent) 20%,
+      transparent 45%
+    ),
+    radial-gradient(
+      circle at 78% 18%,
+      color-mix(in srgb, var(--luminous-palette-accent) 76%, transparent) 0%,
+      color-mix(in srgb, var(--luminous-palette-secondary) 42%, transparent) 24%,
+      transparent 48%
+    ),
+    radial-gradient(
+      circle at 58% 82%,
+      color-mix(in srgb, var(--luminous-palette-secondary) 72%, transparent) 0%,
+      color-mix(in srgb, var(--luminous-palette-dark) 38%, transparent) 30%,
+      transparent 58%
+    );
   mix-blend-mode: screen;
-  filter: blur(42px) saturate(1.18);
-  will-change: transform;
+  filter: blur(34px);
+  transform: rotate(var(--luminous-effect-angle)) scale(1.08);
+  transform-origin: center;
+}
+
+.luminous-background-halo {
+  top: 50%;
+  left: 50%;
+  width: 84vmax;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  opacity: 0.48;
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--luminous-palette-light) 54%, transparent) 0%,
+    color-mix(in srgb, var(--luminous-palette-primary) 38%, transparent) 20%,
+    color-mix(in srgb, var(--luminous-palette-secondary) 24%, transparent) 42%,
+    transparent 68%
+  );
+  mix-blend-mode: screen;
+  filter: blur(24px);
+  transform: translate3d(-50%, -50%, 0) scale(0.86);
+}
+
+.luminous-background-ribbon {
+  width: 128vmax;
+  height: 24vmax;
+  border-radius: 50%;
+  opacity: 0.44;
+  background: linear-gradient(
+    90deg,
+    transparent 4%,
+    color-mix(in srgb, var(--luminous-palette-primary) 64%, transparent) 25%,
+    color-mix(in srgb, var(--luminous-palette-light) 58%, transparent) 48%,
+    color-mix(in srgb, var(--luminous-palette-accent) 62%, transparent) 72%,
+    transparent 96%
+  );
+  mix-blend-mode: screen;
+  filter: blur(30px) saturate(1.16);
+  transform-origin: center;
+}
+
+.luminous-background-ribbon--one {
+  top: 2%;
+  left: -26%;
+  transform: rotate(calc(var(--luminous-effect-angle) - 208deg));
+}
+
+.luminous-background-ribbon--two {
+  right: -31%;
+  bottom: 3%;
+  opacity: 0.32;
+  transform: rotate(calc(var(--luminous-effect-angle) - 42deg));
+}
+
+.luminous-background-blob {
+  width: 58vmax;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  opacity: 0.62;
+  mix-blend-mode: screen;
+  filter: blur(44px) saturate(1.16);
 }
 
 .luminous-background-blob--one {
-  top: -43vmax;
-  left: -34vmax;
+  top: -35vmax;
+  left: -28vmax;
   background: radial-gradient(
-    circle at 34% 32%,
-    color-mix(in srgb, var(--luminous-palette-light) 86%, transparent) 0%,
-    color-mix(in srgb, var(--luminous-palette-primary) 76%, transparent) 30%,
-    transparent 69%
+    circle at 36% 34%,
+    color-mix(in srgb, var(--luminous-palette-light) 84%, transparent) 0%,
+    color-mix(in srgb, var(--luminous-palette-primary) 70%, transparent) 31%,
+    transparent 70%
   );
 }
 
 .luminous-background-blob--two {
-  top: -38vmax;
-  right: -38vmax;
-  width: 74vmax;
+  top: -31vmax;
+  right: -32vmax;
+  width: 68vmax;
   background: radial-gradient(
-    circle at 62% 42%,
-    color-mix(in srgb, var(--luminous-palette-primary) 88%, transparent) 0%,
-    color-mix(in srgb, var(--luminous-palette-light) 58%, transparent) 32%,
-    transparent 70%
-  );
-}
-
-.luminous-background-blob--three {
-  bottom: -52vmax;
-  left: 5vmax;
-  width: 82vmax;
-  background: radial-gradient(
-    circle at 48% 32%,
-    color-mix(in srgb, var(--luminous-palette-primary) 74%, transparent) 0%,
-    color-mix(in srgb, var(--luminous-palette-dark) 46%, transparent) 38%,
+    circle at 60% 44%,
+    color-mix(in srgb, var(--luminous-palette-accent) 82%, transparent) 0%,
+    color-mix(in srgb, var(--luminous-palette-secondary) 62%, transparent) 34%,
     transparent 72%
   );
 }
 
-.luminous-background-blob--four {
-  right: -38vmax;
-  bottom: -40vmax;
-  width: 62vmax;
+.luminous-background-blob--three {
+  bottom: -45vmax;
+  left: -2vmax;
+  width: 76vmax;
   background: radial-gradient(
-    circle at 34% 30%,
-    color-mix(in srgb, var(--luminous-palette-light) 82%, transparent) 0%,
-    color-mix(in srgb, var(--luminous-palette-primary) 60%, transparent) 34%,
-    transparent 70%
+    circle at 48% 30%,
+    color-mix(in srgb, var(--luminous-palette-secondary) 74%, transparent) 0%,
+    color-mix(in srgb, var(--luminous-palette-dark) 44%, transparent) 40%,
+    transparent 74%
   );
 }
 
-html.luminous-energy-calm .luminous-background-effects {
-  filter: saturate(0.78) brightness(0.9);
+.luminous-background-blob--four {
+  right: -31vmax;
+  bottom: -34vmax;
+  width: 56vmax;
+  background: radial-gradient(
+    circle at 34% 32%,
+    color-mix(in srgb, var(--luminous-palette-light) 72%, transparent) 0%,
+    color-mix(in srgb, var(--luminous-palette-accent) 62%, transparent) 35%,
+    transparent 72%
+  );
 }
 
-html.luminous-energy-calm .luminous-background-blob {
-  filter: blur(54px) saturate(0.94);
-}
-
-html.luminous-energy-calm .luminous-background-blob--one {
-  opacity: 0.72;
-}
-
-html.luminous-energy-calm .luminous-background-blob--two {
-  opacity: 0.48;
-}
-
-html.luminous-energy-calm
-  :is(.luminous-background-blob--three, .luminous-background-blob--four) {
-  opacity: 0;
-}
-
-html.luminous-energy-ambient .luminous-background-blob--one {
-  opacity: 0.8;
-}
-
-html.luminous-energy-ambient .luminous-background-blob--two {
-  opacity: 0.68;
-}
-
-html.luminous-energy-ambient .luminous-background-blob--three {
-  opacity: 0.52;
-}
-
-html.luminous-energy-ambient .luminous-background-blob--four {
+html.luminous-effect-aurora .luminous-background-ribbon {
+  height: 20vmax;
   opacity: 0.58;
 }
 
-html.luminous-energy-bass .luminous-background-effects {
-  filter: saturate(1.28) brightness(1.08);
+html.luminous-effect-aurora .luminous-background-ribbon--one {
+  top: 2%;
+  left: -20%;
 }
 
-html.luminous-energy-bass .luminous-background-blob {
-  filter: blur(34px) saturate(1.46);
+html.luminous-effect-aurora .luminous-background-ribbon--two {
+  right: -25%;
+  bottom: 0;
+  opacity: 0.42;
 }
 
-html.luminous-energy-bass .luminous-background-blob--one {
-  opacity: 0.9;
+html.luminous-effect-ember .luminous-background-mesh {
+  background:
+    radial-gradient(
+      ellipse at 50% 88%,
+      color-mix(in srgb, var(--luminous-palette-light) 72%, transparent) 0%,
+      color-mix(in srgb, var(--luminous-palette-accent) 52%, transparent) 18%,
+      transparent 48%
+    ),
+    radial-gradient(
+      circle at 14% 68%,
+      color-mix(in srgb, var(--luminous-palette-primary) 68%, transparent) 0%,
+      transparent 42%
+    ),
+    radial-gradient(
+      circle at 86% 62%,
+      color-mix(in srgb, var(--luminous-palette-secondary) 62%, transparent) 0%,
+      transparent 44%
+    );
 }
 
-html.luminous-energy-bass .luminous-background-blob--two {
-  opacity: 0.84;
+html.luminous-effect-ember .luminous-background-halo {
+  top: 74%;
+  width: 96vmax;
+  opacity: 0.62;
 }
 
-html.luminous-energy-bass .luminous-background-blob--three {
-  opacity: 0.68;
+html.luminous-effect-ember .luminous-background-ribbon--one {
+  top: auto;
+  bottom: 9%;
+  left: -18%;
+  height: 18vmax;
+  transform: rotate(-7deg);
 }
 
-html.luminous-energy-bass .luminous-background-blob--four {
+html.luminous-effect-ember .luminous-background-ribbon--two {
+  right: -22%;
+  bottom: 24%;
+  height: 14vmax;
+  opacity: 0.28;
+  transform: rotate(12deg);
+}
+
+html.luminous-effect-bloom .luminous-background-mesh {
+  background:
+    radial-gradient(
+      ellipse at 50% 48%,
+      color-mix(in srgb, var(--luminous-palette-light) 66%, transparent) 0%,
+      color-mix(in srgb, var(--luminous-palette-primary) 44%, transparent) 22%,
+      transparent 53%
+    ),
+    radial-gradient(
+      ellipse at 22% 62%,
+      color-mix(in srgb, var(--luminous-palette-secondary) 68%, transparent) 0%,
+      transparent 45%
+    ),
+    radial-gradient(
+      ellipse at 80% 34%,
+      color-mix(in srgb, var(--luminous-palette-accent) 70%, transparent) 0%,
+      transparent 46%
+    );
+}
+
+html.luminous-effect-bloom .luminous-background-halo {
+  width: 72vmax;
+  opacity: 0.66;
+}
+
+html.luminous-effect-bloom .luminous-background-ribbon--one {
+  top: -1%;
+  left: -31%;
+  transform: rotate(64deg);
+}
+
+html.luminous-effect-bloom .luminous-background-ribbon--two {
+  right: -29%;
+  bottom: -2%;
+  transform: rotate(-58deg);
+}
+
+html.luminous-effect-prism .luminous-background-mesh {
+  opacity: 0.72;
+  background: conic-gradient(
+    from var(--luminous-effect-angle) at 50% 50%,
+    color-mix(in srgb, var(--luminous-palette-primary) 58%, transparent),
+    color-mix(in srgb, var(--luminous-palette-accent) 62%, transparent),
+    color-mix(in srgb, var(--luminous-palette-light) 48%, transparent),
+    color-mix(in srgb, var(--luminous-palette-secondary) 64%, transparent),
+    color-mix(in srgb, var(--luminous-palette-primary) 58%, transparent)
+  );
+  filter: blur(50px) saturate(1.24);
+}
+
+html.luminous-effect-prism .luminous-background-halo {
+  opacity: 0.3;
+}
+
+html.luminous-effect-prism .luminous-background-ribbon {
+  height: 17vmax;
+  opacity: 0.54;
+}
+
+html.luminous-effect-halo .luminous-background-mesh {
+  opacity: 0.24;
+  filter: blur(56px) saturate(0.82);
+}
+
+html.luminous-effect-halo .luminous-background-halo {
+  width: 94vmax;
+  opacity: 0.78;
+  filter: blur(36px) saturate(0.82);
+}
+
+html.luminous-effect-halo .luminous-background-ribbon {
+  opacity: 0.08;
+}
+
+html.luminous-effect-halo .luminous-background-blob {
+  opacity: 0.3;
+  filter: blur(58px) saturate(0.78);
+}
+
+html.luminous-effect-energy-soft .luminous-background-mesh {
+  opacity: 0.38;
+}
+
+html.luminous-effect-energy-soft .luminous-background-ribbon {
+  opacity: 0.24;
+}
+
+html.luminous-effect-energy-soft .luminous-background-blob {
+  opacity: 0.42;
+}
+
+html.luminous-effect-energy-soft .luminous-background-blob--four {
+  opacity: 0.2;
+}
+
+html.luminous-effect-energy-vivid .luminous-background-mesh {
   opacity: 0.74;
 }
 
-html:not(.luminous-reduce-motion).luminous-motion-drift.luminous-dynamic-palette
-  .luminous-background-blob--one {
-  animation: luminous-blob-one-drift var(--luminous-blob-1-duration) ease-in-out
-    infinite alternate;
+html.luminous-effect-energy-vivid .luminous-background-ribbon {
+  opacity: 0.62;
+  filter: blur(26px) saturate(1.32);
 }
 
-html:not(.luminous-reduce-motion).luminous-motion-drift.luminous-dynamic-palette
-  .luminous-background-blob--two {
-  animation: luminous-blob-two-drift var(--luminous-blob-2-duration) ease-in-out
-    infinite alternate;
+html.luminous-effect-energy-vivid .luminous-background-blob {
+  opacity: 0.78;
+  filter: blur(38px) saturate(1.34);
 }
 
-html:not(.luminous-reduce-motion).luminous-motion-drift.luminous-dynamic-palette
-  .luminous-background-blob--three {
-  animation: luminous-blob-three-drift var(--luminous-blob-3-duration)
-    ease-in-out infinite alternate;
+html.luminous-effect-tone-dark .luminous-background-halo {
+  opacity: 0.68;
 }
 
-html:not(.luminous-reduce-motion).luminous-motion-drift.luminous-dynamic-palette
-  .luminous-background-blob--four {
-  animation: luminous-blob-four-drift var(--luminous-blob-4-duration)
-    ease-in-out infinite alternate;
+html.luminous-effect-tone-light .luminous-background-effects {
+  mix-blend-mode: soft-light;
 }
 
-html:not(.luminous-reduce-motion).luminous-motion-float.luminous-dynamic-palette
-  .luminous-background-blob--one {
-  animation: luminous-blob-one-float var(--luminous-blob-1-duration) ease-in-out
+html:not(.luminous-reduce-motion):is(
+    .luminous-motion-drift,
+    .luminous-motion-float
+  ).luminous-dynamic-palette
+  .luminous-background-mesh {
+  animation: luminous-mesh-orbit var(--luminous-blob-4-duration) linear infinite;
+  will-change: transform;
+}
+
+html:not(.luminous-reduce-motion):is(
+    .luminous-motion-drift,
+    .luminous-motion-float
+  ).luminous-dynamic-palette
+  .luminous-background-halo {
+  animation: luminous-halo-breathe var(--luminous-blob-3-duration) ease-in-out
     infinite;
+  will-change: transform;
 }
 
-html:not(.luminous-reduce-motion).luminous-motion-float.luminous-dynamic-palette
+html:not(.luminous-reduce-motion):is(
+    .luminous-motion-drift,
+    .luminous-motion-float
+  ).luminous-dynamic-palette
+  .luminous-background-ribbon--one {
+  animation: luminous-ribbon-one var(--luminous-blob-1-duration) ease-in-out
+    infinite alternate;
+  will-change: transform;
+}
+
+html:not(.luminous-reduce-motion):is(
+    .luminous-motion-drift,
+    .luminous-motion-float
+  ).luminous-dynamic-palette
+  .luminous-background-ribbon--two {
+  animation: luminous-ribbon-two var(--luminous-blob-2-duration) ease-in-out
+    infinite alternate;
+  will-change: transform;
+}
+
+html:not(.luminous-reduce-motion):is(
+    .luminous-motion-drift,
+    .luminous-motion-float
+  ).luminous-dynamic-palette
+  .luminous-background-blob--one {
+  animation: luminous-blob-one var(--luminous-blob-1-duration) ease-in-out
+    infinite alternate;
+  will-change: transform;
+}
+
+html:not(.luminous-reduce-motion):is(
+    .luminous-motion-drift,
+    .luminous-motion-float
+  ).luminous-dynamic-palette
   .luminous-background-blob--two {
-  animation: luminous-blob-two-float var(--luminous-blob-2-duration) ease-in-out
-    infinite;
+  animation: luminous-blob-two var(--luminous-blob-2-duration) ease-in-out
+    infinite alternate;
+  will-change: transform;
 }
 
-html:not(.luminous-reduce-motion).luminous-motion-float.luminous-dynamic-palette
+html:not(.luminous-reduce-motion):is(
+    .luminous-motion-drift,
+    .luminous-motion-float
+  ).luminous-dynamic-palette
   .luminous-background-blob--three {
-  animation: luminous-blob-three-float var(--luminous-blob-3-duration)
-    ease-in-out infinite;
+  animation: luminous-blob-three var(--luminous-blob-3-duration) ease-in-out
+    infinite alternate;
+  will-change: transform;
+}
+
+html:not(.luminous-reduce-motion):is(
+    .luminous-motion-drift,
+    .luminous-motion-float
+  ).luminous-dynamic-palette
+  .luminous-background-blob--four {
+  animation: luminous-blob-four var(--luminous-blob-4-duration) ease-in-out
+    infinite alternate;
+  will-change: transform;
 }
 
 html:not(.luminous-reduce-motion).luminous-motion-float.luminous-dynamic-palette
-  .luminous-background-blob--four {
-  animation: luminous-blob-four-float var(--luminous-blob-4-duration)
-    ease-in-out infinite;
+  .luminous-background-effects
+  > span {
+  animation-direction: normal;
 }
 
 html:not(.luminous-reduce-motion).luminous-motion-drift
@@ -225,10 +505,12 @@ html:not(.luminous-reduce-motion).luminous-motion-float
   will-change: translate;
 }
 
+html.luminous-reduce-motion,
 html.luminous-reduce-motion
   #luminous-dynamic-background
   .luminous-background-layer--active,
-html.luminous-reduce-motion .luminous-background-blob {
+html.luminous-reduce-motion .luminous-background-effects,
+html.luminous-reduce-motion .luminous-background-effects > span {
   animation: none !important;
   transition: none !important;
 }
@@ -258,109 +540,104 @@ html.luminous-reduce-motion .luminous-background-blob {
   }
 }
 
-@keyframes luminous-blob-one-drift {
+@keyframes luminous-mesh-orbit {
+  0% {
+    transform: rotate(var(--luminous-effect-angle)) scale(1.06)
+      translate3d(-2%, -1%, 0);
+  }
+
+  50% {
+    transform: rotate(calc(var(--luminous-effect-angle) + 16deg)) scale(1.16)
+      translate3d(3%, 2%, 0);
+  }
+
+  100% {
+    transform: rotate(calc(var(--luminous-effect-angle) + 32deg)) scale(1.08)
+      translate3d(-1%, 3%, 0);
+  }
+}
+
+@keyframes luminous-halo-breathe {
+  0%,
+  100% {
+    transform: translate3d(-50%, -50%, 0) scale(0.82);
+  }
+
+  50% {
+    transform: translate3d(-48%, -52%, 0) scale(1.08);
+  }
+}
+
+@keyframes luminous-ribbon-one {
   from {
-    transform: translate3d(-7%, -5%, 0) scale(0.9);
+    translate: -7% -4%;
+    scale: 0.94;
   }
 
   to {
-    transform: translate3d(24%, 19%, 0) scale(1.16);
+    translate: 10% 9%;
+    scale: 1.08;
   }
 }
 
-@keyframes luminous-blob-two-drift {
+@keyframes luminous-ribbon-two {
   from {
-    transform: translate3d(8%, -8%, 0) scale(1.08);
+    translate: 8% 4%;
+    scale: 1.06;
   }
 
   to {
-    transform: translate3d(-26%, 24%, 0) scale(0.86);
+    translate: -12% -8%;
+    scale: 0.92;
   }
 }
 
-@keyframes luminous-blob-three-drift {
+@keyframes luminous-blob-one {
   from {
-    transform: translate3d(-12%, 10%, 0) scale(0.88);
+    transform: translate3d(-8%, -6%, 0) scale(0.9);
   }
 
   to {
-    transform: translate3d(20%, -18%, 0) scale(1.14);
+    transform: translate3d(25%, 20%, 0) scale(1.16);
   }
 }
 
-@keyframes luminous-blob-four-drift {
+@keyframes luminous-blob-two {
   from {
-    transform: translate3d(12%, 8%, 0) scale(1.12);
+    transform: translate3d(9%, -8%, 0) scale(1.08);
   }
 
   to {
-    transform: translate3d(-26%, -20%, 0) scale(0.9);
+    transform: translate3d(-27%, 25%, 0) scale(0.87);
   }
 }
 
-@keyframes luminous-blob-one-float {
-  0%,
-  100% {
-    transform: translate3d(-6%, -4%, 0) scale(0.92);
+@keyframes luminous-blob-three {
+  from {
+    transform: translate3d(-12%, 11%, 0) scale(0.88);
   }
 
-  42% {
-    transform: translate3d(25%, 17%, 0) scale(1.17);
-  }
-
-  72% {
-    transform: translate3d(8%, 25%, 0) scale(1.04);
+  to {
+    transform: translate3d(21%, -19%, 0) scale(1.15);
   }
 }
 
-@keyframes luminous-blob-two-float {
-  0%,
-  100% {
-    transform: translate3d(6%, -7%, 0) scale(1.08);
+@keyframes luminous-blob-four {
+  from {
+    transform: translate3d(13%, 8%, 0) scale(1.12);
   }
 
-  36% {
-    transform: translate3d(-24%, 18%, 0) scale(0.9);
-  }
-
-  76% {
-    transform: translate3d(-8%, 31%, 0) scale(1.15);
-  }
-}
-
-@keyframes luminous-blob-three-float {
-  0%,
-  100% {
-    transform: translate3d(-10%, 8%, 0) scale(0.9);
-  }
-
-  48% {
-    transform: translate3d(22%, -20%, 0) scale(1.16);
-  }
-
-  82% {
-    transform: translate3d(29%, -2%, 0) scale(1.02);
-  }
-}
-
-@keyframes luminous-blob-four-float {
-  0%,
-  100% {
-    transform: translate3d(11%, 7%, 0) scale(1.1);
-  }
-
-  39% {
-    transform: translate3d(-24%, -19%, 0) scale(0.92);
-  }
-
-  74% {
-    transform: translate3d(-6%, -29%, 0) scale(1.14);
+  to {
+    transform: translate3d(-27%, -21%, 0) scale(0.9);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
+  html:root,
   #luminous-dynamic-background .luminous-background-layer--active,
-  .luminous-background-blob {
+  .luminous-background-effects,
+  .luminous-background-effects > span {
     animation: none !important;
+    transition: none !important;
   }
 }

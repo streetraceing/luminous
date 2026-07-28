@@ -1,20 +1,20 @@
 # Luminous documentation
 
-This documentation covers the everyday use and technical structure of the Luminous Spicetify theme.
+These guides cover installation, visual controls, runtime design, and common failures.
 
 ## Guides
 
-- [Customisation](./customization.md) - use the built-in settings panel and understand each option.
-- [Architecture](./architecture.md) - learn how the theme detects Spotify state and renders the dynamic backdrop.
-- [Troubleshooting](./troubleshooting.md) - resolve common installation and display issues.
+- [Customisation](./customization.md) — configure the backdrop and adaptive effects.
+- [Architecture](./architecture.md) — understand track detection, visual analysis, Canvas capture, and rendering.
+- [Troubleshooting](./troubleshooting.md) — resolve installation, background, Canvas, and persistence issues.
 
 ## Quick reference
 
-| Need                        | Where to start                          |
-| --------------------------- | --------------------------------------- |
-| Install or build the theme  | [Project README](./README.md#install)   |
-| Change the visual effect    | [Customisation](./customization.md)     |
-| Understand source modules   | [Architecture](./architecture.md)       |
-| Recover from a broken apply | [Troubleshooting](./troubleshooting.md) |
+| Need                           | Where to start                          |
+| ------------------------------ | --------------------------------------- |
+| Install or build the theme     | [Project README](../README.md)          |
+| Tune the adaptive backdrop     | [Customisation](./customization.md)     |
+| Understand source modules      | [Architecture](./architecture.md)       |
+| Diagnose a broken installation | [Troubleshooting](./troubleshooting.md) |
 
-Luminous is designed as a lightweight layer on top of Spotify and Spicetify: it reuses Spotify's React runtime and Canvas playback instead of bundling a separate UI or video pipeline.
+Luminous reuses Spotify's React runtime and media elements instead of bundling a separate UI or playback pipeline.

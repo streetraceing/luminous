@@ -32,7 +32,9 @@ export class Background {
   private static activeVideo = 0;
   private static videoRenderId = 0;
   private static currentCanvasSource: HTMLVideoElement | null = null;
+  private static currentCanvasKey: string | null = null;
   private static pendingCanvasSource: HTMLVideoElement | null = null;
+  private static pendingCanvasKey: string | null = null;
   private static pendingCanvasVideo: HTMLVideoElement | null = null;
   private static pendingCanvasFallback: string | null = null;
   private static videoCleanupTimer: number | null = null;
@@ -139,12 +141,25 @@ export class Background {
     const effects = document.createElement('div');
     effects.className = 'luminous-background-effects';
 
-    ['one', 'two', 'three', 'four'].forEach((variant) => {
-      const blob = document.createElement('span');
-      blob.className = `luminous-background-blob luminous-background-blob--${variant}`;
-      effects.append(blob);
+    const mesh = document.createElement('span');
+    mesh.className = 'luminous-background-mesh';
+
+    const halo = document.createElement('span');
+    halo.className = 'luminous-background-halo';
+
+    const ribbons = ['one', 'two'].map((variant) => {
+      const ribbon = document.createElement('span');
+      ribbon.className = `luminous-background-ribbon luminous-background-ribbon--${variant}`;
+      return ribbon;
     });
 
+    const blobs = ['one', 'two', 'three', 'four'].map((variant) => {
+      const blob = document.createElement('span');
+      blob.className = `luminous-background-blob luminous-background-blob--${variant}`;
+      return blob;
+    });
+
+    effects.append(mesh, halo, ...ribbons, ...blobs);
     return effects;
   }
 
@@ -191,6 +206,7 @@ export class Background {
     this.activeVideo = 0;
     this.currentType = 'none';
     this.currentCanvasSource = null;
+    this.currentCanvasKey = null;
     this.clearPendingCanvas();
 
     document.body.prepend(this.root);
@@ -199,6 +215,7 @@ export class Background {
   static render(options?: {
     image?: string | null;
     canvas?: HTMLVideoElement | null;
+    canvasSource?: string | null;
   }) {
     this.ensureBackground();
 
@@ -208,7 +225,14 @@ export class Background {
       return;
     }
 
-    if (options.canvas && this.renderCanvas(options.canvas, options.image)) {
+    if (
+      options.canvas &&
+      this.renderCanvas(
+        options.canvas,
+        options.image,
+        options.canvasSource ?? null,
+      )
+    ) {
       return;
     }
 
@@ -234,6 +258,7 @@ export class Background {
     this.ensureBackground();
     this.videoRenderId++;
     this.currentCanvasSource = null;
+    this.currentCanvasKey = null;
     this.clearPendingCanvas();
     if (!this.imageLayers) {
       Luminous.Logger.warn('Background', 'No image layers for render');
@@ -332,6 +357,7 @@ export class Background {
   private static renderCanvas(
     sourceVideo: HTMLVideoElement,
     fallbackImage?: string | null,
+    sourceKey?: string | null,
   ): boolean {
     this.ensureBackground();
 
@@ -340,16 +366,21 @@ export class Background {
       return false;
     }
 
+    const canvasKey =
+      (sourceKey ?? sourceVideo.currentSrc) || sourceVideo.src || null;
+
     if (
       this.currentType === 'canvas' &&
       this.currentCanvasSource === sourceVideo &&
-      this.get()?.isConnected
+      this.currentCanvasKey === canvasKey &&
+      this.isCanvasLayerUsable(this.get())
     ) {
       return true;
     }
 
     if (
       this.pendingCanvasSource === sourceVideo &&
+      this.pendingCanvasKey === canvasKey &&
       this.pendingCanvasVideo?.isConnected
     ) {
       if (fallbackImage !== undefined) {
@@ -359,22 +390,44 @@ export class Background {
       return true;
     }
 
+    if (this.pendingCanvasVideo) {
+      this.videoRenderId++;
+      const pendingVideo = this.pendingCanvasVideo;
+      this.clearPendingCanvas();
+      this.resetVideo(pendingVideo);
+    }
+
     if (this.unsupportedCanvasSources.has(sourceVideo)) {
       return false;
     }
 
-    const captureStream = (sourceVideo as CapturableVideo).captureStream;
-    let stream: MediaStream | undefined;
+    if (
+      !sourceVideo.isConnected ||
+      sourceVideo.ended ||
+      sourceVideo.readyState < HTMLMediaElement.HAVE_CURRENT_DATA
+    ) {
+      return false;
+    }
 
-    try {
-      stream = captureStream?.call(sourceVideo);
-    } catch {
+    const captureStream = (sourceVideo as CapturableVideo).captureStream;
+    if (typeof captureStream !== 'function') {
       this.unsupportedCanvasSources.add(sourceVideo);
       return false;
     }
 
-    if (!stream) {
-      this.unsupportedCanvasSources.add(sourceVideo);
+    let stream: MediaStream;
+
+    try {
+      stream = captureStream.call(sourceVideo);
+    } catch (error) {
+      if (this.isPermanentCanvasError(error)) {
+        this.unsupportedCanvasSources.add(sourceVideo);
+      }
+      return false;
+    }
+
+    if (stream.getVideoTracks().length === 0) {
+      stream.getTracks().forEach((track) => track.stop());
       return false;
     }
 
@@ -390,6 +443,7 @@ export class Background {
     next.srcObject = stream;
 
     this.pendingCanvasSource = sourceVideo;
+    this.pendingCanvasKey = canvasKey;
     this.pendingCanvasVideo = next;
     this.pendingCanvasFallback = fallbackImage ?? null;
 
@@ -404,6 +458,7 @@ export class Background {
           this.clearPendingCanvas();
           this.activeVideo = nextIndex;
           this.currentCanvasSource = sourceVideo;
+          this.currentCanvasKey = canvasKey;
           this.transitionTo('canvas', next);
           Luminous.Logger.info(
             'Background',
@@ -418,6 +473,18 @@ export class Background {
         const currentFallback = this.pendingCanvasFallback;
         this.clearPendingCanvas();
         this.resetVideo(next);
+
+        if (this.isInterruptedPlayback(error)) {
+          if (this.currentType === 'none' && currentFallback) {
+            this.renderImage(currentFallback);
+          }
+          return;
+        }
+
+        if (this.isPermanentCanvasError(error)) {
+          this.unsupportedCanvasSources.add(sourceVideo);
+        }
+
         Luminous.Logger.warn(
           'Background',
           'Failed to play canvas stream',
@@ -438,6 +505,7 @@ export class Background {
     this.imageRenderId++;
     this.videoRenderId++;
     this.currentCanvasSource = null;
+    this.currentCanvasKey = null;
     this.clearPendingCanvas();
 
     this.cancelVideoCleanup();
@@ -458,6 +526,7 @@ export class Background {
     this.imageRenderId++;
     this.videoRenderId++;
     this.currentCanvasSource = null;
+    this.currentCanvasKey = null;
     this.clearPendingCanvas();
     this.transitionTo('none');
   }
@@ -490,6 +559,20 @@ export class Background {
     this.emit('change');
   }
 
+  private static isCanvasLayerUsable(
+    element: BackgroundElement | null,
+  ): element is HTMLVideoElement {
+    if (!(element instanceof HTMLVideoElement) || !element.isConnected) {
+      return false;
+    }
+
+    const stream = element.srcObject;
+    return (
+      stream instanceof MediaStream &&
+      stream.getVideoTracks().some((track) => track.readyState === 'live')
+    );
+  }
+
   private static isPendingCanvas(
     renderId: number,
     video: HTMLVideoElement,
@@ -499,6 +582,7 @@ export class Background {
 
   private static clearPendingCanvas() {
     this.pendingCanvasSource = null;
+    this.pendingCanvasKey = null;
     this.pendingCanvasVideo = null;
     this.pendingCanvasFallback = null;
   }
@@ -528,6 +612,23 @@ export class Background {
 
     window.clearTimeout(this.videoCleanupTimer);
     this.videoCleanupTimer = null;
+  }
+
+  private static getErrorName(error: unknown): string | null {
+    if (typeof error !== 'object' || error === null || !('name' in error)) {
+      return null;
+    }
+
+    return typeof error.name === 'string' ? error.name : null;
+  }
+
+  private static isInterruptedPlayback(error: unknown): boolean {
+    return this.getErrorName(error) === 'AbortError';
+  }
+
+  private static isPermanentCanvasError(error: unknown): boolean {
+    const name = this.getErrorName(error);
+    return name === 'NotSupportedError' || name === 'SecurityError';
   }
 
   private static resetVideo(video: HTMLVideoElement) {

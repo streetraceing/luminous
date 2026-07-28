@@ -26,24 +26,33 @@ export function DynamicBackgroundFeature() {
     if (!appActive) return 'inactive';
     if (!enabled) return 'disabled';
     if (canvas.video) {
-      return `canvas:${canvas.source ?? ''}:${song?.image ?? ''}`;
+      return `canvas:${canvas.source ?? ''}:${canvas.revision}:${song?.image ?? ''}`;
     }
     if (song?.image) return `image:${song.image}`;
     return 'empty';
   }, [appActive, canvas, enabled, song?.image]);
 
   effect(() => {
+    let songKey = song ? `${song.uri}\u0000${song.image ?? ''}` : null;
+    let canvasKey = `${canvas.mode ?? ''}\u0000${canvas.source ?? ''}\u0000${canvas.revision}`;
+    let canvasVideo = canvas.video;
+
     const handleSong = (nextSong: SongPayload) => {
+      const nextKey = `${nextSong.uri}\u0000${nextSong.image ?? ''}`;
+      if (songKey === nextKey) return;
+
+      songKey = nextKey;
       Luminous.Palette.cancel();
-      setSong(nextSong);
       Luminous.Background.preloadImage(nextSong.image);
+      setSong(nextSong);
     };
 
     const handleCanvas = (payload: CanvasPayload) => {
-      setCanvas(payload);
-    };
+      const nextKey = `${payload.mode ?? ''}\u0000${payload.source ?? ''}\u0000${payload.revision}`;
+      if (canvasKey === nextKey && canvasVideo === payload.video) return;
 
-    const handleCanvasUnmount = (payload: CanvasPayload) => {
+      canvasKey = nextKey;
+      canvasVideo = payload.video;
       setCanvas(payload);
     };
 
@@ -51,7 +60,7 @@ export function DynamicBackgroundFeature() {
     Luminous.Song.addEventListener('change', handleSong);
     Luminous.Canvas.addEventListener('mount', handleCanvas);
     Luminous.Canvas.addEventListener('change', handleCanvas);
-    Luminous.Canvas.addEventListener('unmount', handleCanvasUnmount);
+    Luminous.Canvas.addEventListener('unmount', handleCanvas);
 
     const unsubscribeHealth = subscribeUiHealth((health) => {
       setAppActive(health.status !== 'booting');
@@ -68,17 +77,12 @@ export function DynamicBackgroundFeature() {
       { immediate: true },
     );
 
-    const currentSong = Luminous.Song.getSync();
-    if (currentSong) {
-      handleSong(currentSong);
-    }
-
     return () => {
       Luminous.Song.removeEventListener('ready', handleSong);
       Luminous.Song.removeEventListener('change', handleSong);
       Luminous.Canvas.removeEventListener('mount', handleCanvas);
       Luminous.Canvas.removeEventListener('change', handleCanvas);
-      Luminous.Canvas.removeEventListener('unmount', handleCanvasUnmount);
+      Luminous.Canvas.removeEventListener('unmount', handleCanvas);
       unsubscribeHealth();
       unsubscribeSetting();
       unsubscribePaletteSetting();
@@ -88,13 +92,13 @@ export function DynamicBackgroundFeature() {
   }, []);
 
   effect(() => {
-    if (!appActive || !dynamicPalette) {
+    if (!appActive || !enabled || !dynamicPalette) {
       Luminous.Palette.clear();
       return;
     }
 
     void Luminous.Palette.applyFromImage(song?.image);
-  }, [appActive, dynamicPalette, song?.image]);
+  }, [appActive, dynamicPalette, enabled, song?.image]);
 
   effect(() => {
     if (!appActive) {
@@ -108,7 +112,11 @@ export function DynamicBackgroundFeature() {
     }
 
     if (canvas.video) {
-      Luminous.Background.render({ canvas: canvas.video, image: song?.image });
+      Luminous.Background.render({
+        canvas: canvas.video,
+        canvasSource: canvas.source,
+        image: song?.image,
+      });
       return;
     }
 

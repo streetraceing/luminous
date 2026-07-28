@@ -1,2 +1,3 @@
 export type LoggerLevel = 'INFO' | 'WARN' | 'ERROR';
-export type LoggerChannel = 'Main' | 'Background' | 'Canvas' | 'Song';
+export type LoggerChannel =
+  'Main' | 'Background' | 'Canvas' | 'Palette' | 'Song';

@@ -4,6 +4,7 @@ export type CanvasPayload = {
   video: HTMLVideoElement | null;
   mode: CanvasMode;
   source: string | null;
+  revision: number;
 };
 
 export type CanvasListener = (payload: CanvasPayload) => void;

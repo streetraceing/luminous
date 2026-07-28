@@ -14,6 +14,7 @@ export class Logger {
     Main: 'color:#68c4e8',
     Background: 'color:#60a5fa',
     Canvas: 'color:#a78bfa',
+    Palette: 'color:#f472b6',
     Song: 'color:#34d399',
   };
 

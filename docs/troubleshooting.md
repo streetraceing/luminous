@@ -2,38 +2,42 @@
 
 ## The theme does not appear after applying
 
-1. Confirm that Spicetify itself works with your installed Spotify desktop version.
-2. From the project root, run `npm run build` and confirm that `dist/theme.js` and `dist/user.css` are created.
-3. Run `npm run apply`, then restart Spotify completely if the UI remains unchanged.
-4. Open the developer console and look for messages prefixed with `Luminous`.
+1. Confirm that Spicetify works with the installed Spotify desktop version.
+2. Run `npm run typecheck` and `npm run build` from the project root.
+3. Confirm that `dist/theme.js` and `dist/user.css` exist.
+4. Run `npm run apply`, then restart Spotify completely if needed.
+5. Check the developer console for messages prefixed with `Luminous`.
 
 ## The background is blank
 
-Luminous shows a neutral base layer when Spotify has not supplied artwork yet. Start playback and wait for the track metadata to load.
+Luminous shows a neutral base until Spotify supplies track artwork. Start playback and wait for metadata to load. Also confirm that **Dynamic background** is enabled in **Luminous Settings**.
 
-If the **Dynamic background** setting is off, this is expected. Re-enable it through the brightness icon in the top bar.
+## Adaptive effects are missing or too subtle
+
+Confirm that **Adaptive effects** is enabled and **Effect intensity** is above `0%`. Nearly monochrome covers intentionally use the restrained Halo scene. The cover or video remains visible when colour extraction fails.
 
 ## Canvas does not play in the background
 
-Canvas and long-form NPV video support depend on Spotify exposing a visible, playable video and the browser runtime supporting `captureStream()`. Luminous automatically falls back to the current track's cover art when either condition is unavailable. This fallback does not indicate an error.
+Canvas and long-form NPV support require Spotify to expose a playable video and Chromium to support `captureStream()`. Luminous keeps the current cover visible while a source is not ready and retries after media readiness changes.
 
-Some long-form videos are protected by EME/DRM and cannot legally or technically be captured by the browser. Luminous remembers that limitation for the current video element and uses cover art instead without retrying the protected stream.
+Protected EME/DRM video cannot be captured. Unsupported or security-restricted sources use artwork without repeated capture attempts. A warning is useful when reporting a real playback failure; an ordinary artwork fallback alone is not an error.
 
 ## Settings do not persist
 
-The settings are stored in Spicetify local storage. Check whether another Spotify modification clears local storage, then change a setting and allow a moment for it to save before force-quitting the app. Normal page close and restart writes any pending change automatically.
+Settings are stored in Spicetify local storage under `luminous-settings`. Check whether another modification clears local storage. Luminous batches slider writes and flushes pending changes during a normal page close.
 
 ## The interface looks incorrect after a Spotify update
 
-Spotify can change its DOM structure without notice. First update Spicetify and Luminous to the latest compatible versions, then rebuild and apply the theme again:
+Spotify can change its DOM without notice. Update Spicetify and Luminous, then run:
 
 ```bash
 npm install
+npm run typecheck
 npm run build
 npm run apply
 ```
 
-If the problem persists, include the Spotify version, Spicetify version, operating system, a screenshot, and relevant `Luminous` console messages when opening an issue.
+If the problem remains, include Spotify, Spicetify, and Luminous versions together with the operating system, a screenshot, and relevant console messages.
 
 ## Return to the Marketplace theme
 
@@ -41,4 +45,4 @@ If the problem persists, include the Spotify version, Spicetify version, operati
 npm run revert
 ```
 
-This project's script selects the `marketplace` theme, reapplies Spicetify, and removes the locally synchronised Luminous build.
+This selects the configured `marketplace` theme, reapplies Spicetify, and removes the locally synchronised Luminous build.
