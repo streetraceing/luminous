@@ -1,8 +1,11 @@
 import { unmountLuminousApp } from './runtime';
 
 const ROOT_CLASSES = [
+  'luminous-runtime-active',
   'hideDynamicBackground',
   'luminous-dynamic-palette',
+  'luminous-palette-transitioning',
+  'luminous-track-changing',
   'luminous-glass-highlights',
   'luminous-reduce-motion',
   'luminous-runtime-suspended',
@@ -70,4 +73,5 @@ export function destroyLuminousRuntime(): void {
 
 export function markLuminousRuntimeActive(): void {
   destroyed = false;
+  document.documentElement.classList.add('luminous-runtime-active');
 }

@@ -4,14 +4,13 @@
 
 `ThemeMenuFeature` waits for `Spicetify.Menu.Item`, registers **Luminous Settings**, and deregisters it on teardown. Opening the item mounts the modal through Spotify's React runtime.
 
-The dialog contains Appearance, Motion, and Advanced tabs generated from centralized setting metadata. It provides:
+The dialog contains Presets, Appearance, Motion, and Advanced tabs generated from centralized setting metadata. It provides:
 
 - visual preset buttons;
 - controlled toggle/range/choice fields backed by `Settings.subscribe()`;
 - reset of all user-visible settings;
 - runtime summary;
 - copyable diagnostics;
-- animated panel-height transitions;
 - Escape close;
 - focus trapping;
 - restoration of the previously focused element;
@@ -27,13 +26,15 @@ Reduced motion is true when the explicit setting is on, or when `respectSystemMo
 
 Pointer parallax maps viewport pointer coordinates to -1…1 targets and approaches them in requestAnimationFrame using smoothing factor 0.12. Tiny values snap to zero. CSS receives pixel offsets; pointer leave smoothly returns to center. No frame loop runs while the target is settled.
 
-Visibility handling sets `luminous-runtime-suspended` and delegates media suspension to Background. This avoids running decorative CSS and cloned Canvas playback when the Spotify document is hidden.
+Visibility handling sets `luminous-runtime-suspended` to pause Luminous-owned decorative CSS when the Spotify document is hidden. Canvas clones are intentionally left under the browser's media throttling instead of being force-paused/restarted, avoiding black first-frame artifacts after Alt+Tab.
 
 ## UI synchronization
 
 `src/ui/synchronize.ts` handles Spotify surfaces that are not stable public APIs. It uses MutationObservers plus requestAnimationFrame scheduling rather than performing expensive layout work on every raw mutation.
 
-Responsibilities include synchronizing main-view/sidebar/cinema states and cleaning Spotify-controlled attributes that conflict with theme layout. `SynchronizeFeature` manages the aggregate subscription; `src/ui/health.ts` reports whether expected shell regions are booting, healthy, or degraded.
+Responsibilities include synchronizing playlist header artwork, Home header sizing, and shell health. `SynchronizeFeature` manages the aggregate subscription; `src/ui/health.ts` reports whether expected shell regions are booting, healthy, or degraded. Luminous deliberately does not rewrite Spotify's generic `data-transition` state: that attribute is transient and can also be used outside Cinema, so styling or deleting it can create one-frame UI disappearance during track changes. A missing `#main-view` must persist for 500 ms before health is downgraded to `booting`, filtering single-commit React detach/reattach cycles. Synchronizers also retain the last valid decoration while a still-connected target temporarily loses nested React children, avoiding remove/re-add flashes during Spotify commits.
+
+Cinema-only CSS hiding is gated by the actual `#VideoPlayerCinema_ReactPortal`, not transition attributes alone. This prevents transient `data-cinema-npv-*` flags from hiding global navigation or sidebars during an ordinary song/Canvas update. The startup splash fallback is similarly gated by `luminous-runtime-active`; once the JavaScript runtime is alive, a temporary Spotify shell remount can never reactivate the fullscreen bootstrap overlay. The splash also disconnects its document-wide observer and health subscription after its first completed startup run.
 
 `DynamicBackgroundFeature` waits until health leaves `booting` before activating media work. Degraded does not mean disabled: Spotify selectors can partially change while enough of the shell still exists for the theme to remain useful.
 

@@ -4,12 +4,13 @@ import {
   HomeHeaderHeightSyncOptions,
 } from '../types/runtime/dynamic.types';
 import { Logger } from '../api/logger';
-import { setUiHealth } from './health';
+import { getUiHealth, setUiHealth } from './health';
 
 const PLAYLIST_BACKGROUND_CLASS = 'luminous-playlist-background';
 const PLAYLIST_BACKGROUND_VAR = '--luminous-playlist-background-image';
 const HOME_HEADER_HEIGHT_CLASS = 'luminous-home-header-height';
 const HOME_HEADER_HEIGHT_VAR = '--luminous-home-header-height';
+const SHELL_MISSING_GRACE_MS = 500;
 
 export class Synchronize {
   static playlistBackground(
@@ -83,12 +84,17 @@ export class Synchronize {
         ) as HTMLElement | null);
 
       if (!source || !target) {
+        // Spotify often detaches and reattaches header internals for a single
+        // React commit. Keep the last valid decoration while its target still
+        // exists instead of flashing back to the unstyled header for one frame.
+        if (lastTarget?.isConnected) return;
         cleanupTarget();
         return;
       }
 
       const background = getComputedStyle(source).backgroundImage;
       if (!background || background === 'none') {
+        if (lastTarget === target && lastBackground) return;
         cleanupTarget();
         return;
       }
@@ -208,6 +214,10 @@ export class Synchronize {
       ) as HTMLElement | null;
 
       if (!header || !chips || !firstSection) {
+        // Do not collapse a previously measured Home header because a nested
+        // Spotify subtree disappeared for one transient render. Route changes
+        // still clean it up once the previous header disconnects.
+        if (lastHeader?.isConnected) return;
         cleanupHeader();
         return;
       }
@@ -260,6 +270,7 @@ export class Synchronize {
     let rafId: number | null = null;
     let disposed = false;
     let waitingSince: number | null = null;
+    let shellMissingTimer: number | null = null;
 
     function hasSpotifyShell(): boolean {
       return document.querySelector('.Root__top-container #main-view') !== null;
@@ -271,6 +282,29 @@ export class Synchronize {
         document.querySelector('.main-view-container') ||
         document.querySelector('[data-testid="main-view"]')
       );
+    }
+
+    function cancelShellMissingTimer() {
+      if (shellMissingTimer === null) return;
+
+      window.clearTimeout(shellMissingTimer);
+      shellMissingTimer = null;
+    }
+
+    function scheduleShellMissingCommit() {
+      if (shellMissingTimer !== null) return;
+
+      // Spotify can detach #main-view for a single React commit while changing
+      // tracks. Treat that as a transient DOM state, not a runtime reboot.
+      // Otherwise every health subscriber gets a false booting edge exactly at
+      // songchange, which is enough to remount/fade UI owned by Luminous.
+      shellMissingTimer = window.setTimeout(() => {
+        shellMissingTimer = null;
+        if (disposed || hasSpotifyShell()) return;
+
+        waitingSince = null;
+        setUiHealth({ status: 'booting', brokenSince: null });
+      }, SHELL_MISSING_GRACE_MS);
     }
 
     function scheduleCheck() {
@@ -285,9 +319,13 @@ export class Synchronize {
     function check() {
       if (!hasSpotifyShell()) {
         waitingSince = null;
-        setUiHealth({ status: 'booting', brokenSince: null });
+
+        if (getUiHealth().status === 'booting') return;
+        scheduleShellMissingCommit();
         return;
       }
+
+      cancelShellMissingTimer();
 
       if (hasSpotifyUi()) {
         waitingSince = null;
@@ -321,49 +359,9 @@ export class Synchronize {
           rafId = null;
         }
 
+        cancelShellMissingTimer();
         waitingSince = null;
         setUiHealth({ status: 'booting', brokenSince: null });
-      },
-    };
-  }
-
-  static observeCinema(): SyncController {
-    let observer: MutationObserver | null = null;
-
-    function cleanupAttributes() {
-      const html = document.documentElement;
-
-      html.removeAttribute('data-transition');
-
-      [
-        'data-right-sidebar-open-preenter',
-        'data-right-sidebar-open-preexit',
-        'data-right-sidebar-open-duringexit',
-        'data-right-sidebar-open-postexit',
-      ].forEach((attribute) => {
-        html.removeAttribute(attribute);
-      });
-    }
-
-    observer = new MutationObserver(cleanupAttributes);
-    observer.observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: [
-        'data-transition',
-        'data-right-sidebar-open-preenter',
-        'data-right-sidebar-open-duringenter',
-        'data-right-sidebar-open-postenter',
-        'data-right-sidebar-open-preexit',
-        'data-right-sidebar-open-duringexit',
-        'data-right-sidebar-open-postexit',
-      ],
-    });
-    cleanupAttributes();
-
-    return {
-      disconnect() {
-        observer?.disconnect();
-        observer = null;
       },
     };
   }

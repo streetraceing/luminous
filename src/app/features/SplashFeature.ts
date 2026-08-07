@@ -21,9 +21,17 @@ export function SplashFeature() {
   const mountedAt = ref<number | null>(shellPresent ? SCRIPT_STARTED_AT : null);
   const finished = ref(false);
 
-  effect(() => subscribeUiHealth(setHealth), []);
+  effect(() => {
+    if (!visible) return;
+    return subscribeUiHealth(setHealth);
+  }, [visible]);
 
   effect(() => {
+    // Shell presence matters only while the startup splash is actually alive.
+    // Disconnect the document-wide observer permanently after it finishes so
+    // song-change React commits cannot keep re-rendering a hidden boot UI.
+    if (!visible) return;
+
     let frameId: number | null = null;
 
     const syncShellPresence = () => {
@@ -47,7 +55,7 @@ export function SplashFeature() {
       observer.disconnect();
       if (frameId !== null) cancelAnimationFrame(frameId);
     };
-  }, []);
+  }, [visible]);
 
   effect(() => {
     if (!shellPresent || finished.current) return;

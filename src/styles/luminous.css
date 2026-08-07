@@ -75,9 +75,17 @@ html.hideDynamicBackground #luminous-dynamic-background {
   display: none;
 }
 
+/* Track-change stability --------------------------------------------------- */
+
+html.luminous-track-changing:not(:has(#VideoPlayerCinema_ReactPortal))
+  :is(.Root__globalNav, #main-view, .Root__now-playing-bar) {
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
 .luminous-background-effects {
   position: absolute;
-  z-index: 2;
+  z-index: 3;
   inset: 0;
   overflow: hidden;
   pointer-events: none;
@@ -92,6 +100,20 @@ html.hideDynamicBackground #luminous-dynamic-background {
 
 html.luminous-dynamic-palette .luminous-background-effects {
   opacity: var(--luminous-palette-effect-opacity);
+}
+
+html.luminous-palette-transitioning .luminous-background-effects {
+  /* Keep luminance stable while the adaptive scene changes. Fading this
+     layer to zero makes every translucent Spotify surface pulse darker. */
+  opacity: var(--luminous-palette-effect-opacity);
+}
+
+html.luminous-palette-transitioning .luminous-background-effects > span {
+  animation-play-state: paused !important;
+}
+
+html.luminous-track-changing .luminous-background-effects > span {
+  animation-play-state: paused !important;
 }
 
 .luminous-background-effects > span {

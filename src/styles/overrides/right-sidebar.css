@@ -59,12 +59,12 @@
   background: transparent !important;
 }
 
-:is(
-    html[data-cinema-npv-postenter],
-    html[data-cinema-npv-duringenter],
-    html[data-cinema-npv-preenter],
-    html[data-cinema-npv-preexit],
-    html[data-cinema-npv-duringexit]
+html:has(#VideoPlayerCinema_ReactPortal):is(
+    [data-cinema-npv-postenter],
+    [data-cinema-npv-duringenter],
+    [data-cinema-npv-preenter],
+    [data-cinema-npv-preexit],
+    [data-cinema-npv-duringexit]
   ):not(
     :is(
       html[data-right-sidebar-open-postenter],

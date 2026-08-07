@@ -1,6 +1,8 @@
 /* src/styles/components/splash.css */
-body:has(.Root__top-container #main-view):not(:has(.luminous-splash))::before,
-body:has(.Root__top-container #main-view):not(:has(.luminous-splash))::after {
+html:not(.luminous-runtime-active)
+  body:has(.Root__top-container #main-view):not(:has(.luminous-splash))::before,
+html:not(.luminous-runtime-active)
+  body:has(.Root__top-container #main-view):not(:has(.luminous-splash))::after {
   position: fixed;
   z-index: 9999;
   pointer-events: none;
@@ -8,7 +10,10 @@ body:has(.Root__top-container #main-view):not(:has(.luminous-splash))::after {
   animation: luminous-bootstrap-splash-failsafe 1ms linear 3s forwards;
 }
 
-body:has(.Root__top-container #main-view):not(:has(.luminous-splash))::before {
+html:not(.luminous-runtime-active)
+  body:has(.Root__top-container #main-view):not(
+    :has(.luminous-splash)
+  )::before {
   inset: 0;
   background: var(--spice-main, #121212);
   background: color-mix(
@@ -18,7 +23,8 @@ body:has(.Root__top-container #main-view):not(:has(.luminous-splash))::before {
   );
 }
 
-body:has(.Root__top-container #main-view):not(:has(.luminous-splash))::after {
+html:not(.luminous-runtime-active)
+  body:has(.Root__top-container #main-view):not(:has(.luminous-splash))::after {
   top: 50%;
   left: 50%;
   width: 42px;
@@ -174,7 +180,10 @@ body:has(.Root__top-container #main-view):not(:has(.luminous-splash))::after {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  body:has(.Root__top-container #main-view):not(:has(.luminous-splash))::after,
+  html:not(.luminous-runtime-active)
+    body:has(.Root__top-container #main-view):not(
+      :has(.luminous-splash)
+    )::after,
   .luminous-splash__loader span {
     animation-duration: 1.8s;
   }
@@ -855,9 +864,17 @@ html.hideDynamicBackground #luminous-dynamic-background {
   display: none;
 }
 
+/* Track-change stability --------------------------------------------------- */
+
+html.luminous-track-changing:not(:has(#VideoPlayerCinema_ReactPortal))
+  :is(.Root__globalNav, #main-view, .Root__now-playing-bar) {
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
 .luminous-background-effects {
   position: absolute;
-  z-index: 2;
+  z-index: 3;
   inset: 0;
   overflow: hidden;
   pointer-events: none;
@@ -872,6 +889,20 @@ html.hideDynamicBackground #luminous-dynamic-background {
 
 html.luminous-dynamic-palette .luminous-background-effects {
   opacity: var(--luminous-palette-effect-opacity);
+}
+
+html.luminous-palette-transitioning .luminous-background-effects {
+  /* Keep luminance stable while the adaptive scene changes. Fading this
+     layer to zero makes every translucent Spotify surface pulse darker. */
+  opacity: var(--luminous-palette-effect-opacity);
+}
+
+html.luminous-palette-transitioning .luminous-background-effects > span {
+  animation-play-state: paused !important;
+}
+
+html.luminous-track-changing .luminous-background-effects > span {
+  animation-play-state: paused !important;
 }
 
 .luminous-background-effects > span {
@@ -1728,13 +1759,12 @@ html.hideDynamicBackground
   background: transparent;
 }
 
-:is(
-    html[data-transition],
-    html[data-cinema-npv-postenter],
-    html[data-cinema-npv-duringenter],
-    html[data-cinema-npv-preenter],
-    html[data-cinema-npv-preexit],
-    html[data-cinema-npv-duringexit]
+html:has(#VideoPlayerCinema_ReactPortal):is(
+    [data-cinema-npv-postenter],
+    [data-cinema-npv-duringenter],
+    [data-cinema-npv-preenter],
+    [data-cinema-npv-preexit],
+    [data-cinema-npv-duringexit]
   )
   .Root__now-playing-bar
   :is(button[data-testid='pip-toggle-button']) {
@@ -1871,16 +1901,6 @@ html.hideDynamicBackground
 
 #main-view .main-view-container .before-scroll-node {
   display: none;
-}
-
-/* Hide when left-sidebar expanded */
-
-.Root__top-container:has(#Desktop_LeftSidebar_Id:not([class='Root__nav-bar']))
-  #main-view {
-  visibility: hidden;
-  opacity: 0;
-  transition: none;
-  pointer-events: none;
 }
 
 /* Playlist page */
@@ -2091,12 +2111,12 @@ html.hideDynamicBackground
   background: transparent !important;
 }
 
-:is(
-    html[data-cinema-npv-postenter],
-    html[data-cinema-npv-duringenter],
-    html[data-cinema-npv-preenter],
-    html[data-cinema-npv-preexit],
-    html[data-cinema-npv-duringexit]
+html:has(#VideoPlayerCinema_ReactPortal):is(
+    [data-cinema-npv-postenter],
+    [data-cinema-npv-duringenter],
+    [data-cinema-npv-preenter],
+    [data-cinema-npv-preexit],
+    [data-cinema-npv-duringexit]
   ):not(
     :is(
       html[data-right-sidebar-open-postenter],
@@ -2129,13 +2149,12 @@ html.hideDynamicBackground
   background: var(--luminous-background);
 }
 
-:is(
-    html[data-transition],
-    html[data-cinema-npv-postenter],
-    html[data-cinema-npv-duringenter],
-    html[data-cinema-npv-preenter],
-    html[data-cinema-npv-preexit],
-    html[data-cinema-npv-duringexit]
+html:has(#VideoPlayerCinema_ReactPortal):is(
+    [data-cinema-npv-postenter],
+    [data-cinema-npv-duringenter],
+    [data-cinema-npv-preenter],
+    [data-cinema-npv-preexit],
+    [data-cinema-npv-duringexit]
   )
   .Root__globalNav {
   visibility: hidden;

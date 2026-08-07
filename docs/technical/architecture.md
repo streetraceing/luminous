@@ -80,7 +80,7 @@ Behavior:
 - Otherwise → render artwork.
 - No media → neutral base.
 
-Every song change cancels older palette work and preloads the new cover. Event listeners and setting subscriptions are explicitly removed by effect cleanup.
+Every song change preloads the next cover and warms its palette profile, but does not immediately mutate the visible palette. Media settles first; a settled Background event then commits the cached profile. Event listeners and setting subscriptions are explicitly removed by effect cleanup.
 
 ## Lifecycle and hot replacement
 

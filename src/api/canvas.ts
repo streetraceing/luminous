@@ -12,7 +12,6 @@ const MEDIA_SOURCE_EVENTS: Array<keyof HTMLMediaElementEventMap> = [
   'playing',
   'emptied',
   'ended',
-  'suspend',
 ];
 
 export class Canvas {
@@ -37,12 +36,10 @@ export class Canvas {
   private static currentSource: string | null = null;
   private static revision = 0;
   private static observedSourceVideo: HTMLVideoElement | null = null;
-  private static forceCheck = false;
   private static initialized = false;
   private static enabled = true;
 
   private static readonly handleVideoSourceChange = () => {
-    this.forceCheck = true;
     this.scheduleCheck();
   };
 
@@ -117,7 +114,6 @@ export class Canvas {
     this.currentVideo = null;
     this.currentMode = null;
     this.currentSource = null;
-    this.forceCheck = false;
 
     if (previousVideo) {
       this.revision++;
@@ -143,7 +139,6 @@ export class Canvas {
     this.currentMode = null;
     this.currentSource = null;
     this.revision = 0;
-    this.forceCheck = false;
     this.initialized = false;
     this.enabled = true;
   }
@@ -165,31 +160,57 @@ export class Canvas {
     });
   }
 
-  private static detect(): CanvasPayload {
+  private static detect(): {
+    payload: CanvasPayload;
+    observedVideo: HTMLVideoElement | null;
+  } {
+    let observedVideo: HTMLVideoElement | null = null;
+
     for (const candidate of this.VIDEO_CANDIDATES) {
-      const video = this.findBestVideo(candidate.selector);
-      if (video) return this.createPayload(video, candidate.mode);
+      const videos = Array.from(
+        document.querySelectorAll<HTMLVideoElement>(candidate.selector),
+      );
+      const visible = videos.filter((video) => this.isVisibleVideo(video));
+
+      if (!observedVideo) {
+        observedVideo =
+          visible.find((video) => !video.ended) ?? visible[0] ?? null;
+      }
+
+      const playable = this.findBestPlayableVideo(visible);
+      if (playable) {
+        return {
+          payload: this.createPayload(playable, candidate.mode),
+          observedVideo: playable,
+        };
+      }
     }
 
-    return this.createPayload(null, null, null);
+    return {
+      payload: this.createPayload(null, null, null),
+      observedVideo,
+    };
   }
 
-  private static findBestVideo(selector: string): HTMLVideoElement | null {
-    const videos = Array.from(
-      document.querySelectorAll<HTMLVideoElement>(selector),
+  private static findBestPlayableVideo(
+    videos: HTMLVideoElement[],
+  ): HTMLVideoElement | null {
+    const playable = videos.filter(
+      (video) =>
+        !video.ended &&
+        video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA &&
+        video.videoWidth > 0 &&
+        video.videoHeight > 0,
     );
 
-    const visible = videos.filter((video) => this.isVisibleVideo(video));
-    if (!visible.length) return null;
+    if (!playable.length) return null;
 
     return (
-      visible.find(
-        (video) =>
-          !video.ended &&
-          video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA,
+      playable.find((video) => !video.paused) ??
+      playable.find(
+        (video) => video.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA,
       ) ??
-      visible.find((video) => !video.ended) ??
-      visible[0]
+      playable[0]
     );
   }
 
@@ -208,16 +229,15 @@ export class Canvas {
   private static check(): void {
     if (!this.initialized) return;
 
-    const detected = this.detect();
-    const forced = this.forceCheck;
-    this.forceCheck = false;
+    const detection = this.detect();
+    const detected = detection.payload;
+    this.observeVideoSource(detection.observedVideo);
 
     const previousVideo = this.currentVideo;
     const previousMode = this.currentMode;
     const previousSource = this.currentSource;
 
     if (
-      !forced &&
       previousVideo === detected.video &&
       previousMode === detected.mode &&
       previousSource === detected.source
@@ -229,7 +249,6 @@ export class Canvas {
     this.currentMode = detected.mode;
     this.currentSource = detected.source;
     this.revision++;
-    this.observeVideoSource(detected.video);
 
     if (previousVideo && !detected.video) {
       const payload = this.createPayload(null, previousMode, previousSource);

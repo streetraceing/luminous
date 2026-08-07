@@ -2,7 +2,7 @@
 (() => {
   const __APP_VERSION__ = '2.2.0';
   const __APP_AUTHOR__ = 'streetraceing';
-  const __BUILD_TIME__ = '07/08/2026 20:59:37 UTC+00:00';
+  const __BUILD_TIME__ = '07/08/2026 23:27:49 UTC+00:00';
   const modules = {
     'src/api/canvas': function (module, exports, require) {
       'use strict';
@@ -15,7 +15,6 @@
         'playing',
         'emptied',
         'ended',
-        'suspend',
       ];
       class Canvas {
         static VIDEO_CANDIDATES = [
@@ -35,11 +34,9 @@
         static currentSource = null;
         static revision = 0;
         static observedSourceVideo = null;
-        static forceCheck = false;
         static initialized = false;
         static enabled = true;
         static handleVideoSourceChange = () => {
-          this.forceCheck = true;
           this.scheduleCheck();
         };
         static addEventListener(event, listener) {
@@ -99,7 +96,6 @@
           this.currentVideo = null;
           this.currentMode = null;
           this.currentSource = null;
-          this.forceCheck = false;
           if (previousVideo) {
             this.revision++;
             this.emit(
@@ -121,7 +117,6 @@
           this.currentMode = null;
           this.currentSource = null;
           this.revision = 0;
-          this.forceCheck = false;
           this.initialized = false;
           this.enabled = true;
         }
@@ -140,24 +135,46 @@
           });
         }
         static detect() {
+          let observedVideo = null;
           for (const candidate of this.VIDEO_CANDIDATES) {
-            const video = this.findBestVideo(candidate.selector);
-            if (video) return this.createPayload(video, candidate.mode);
+            const videos = Array.from(
+              document.querySelectorAll(candidate.selector),
+            );
+            const visible = videos.filter((video) =>
+              this.isVisibleVideo(video),
+            );
+            if (!observedVideo) {
+              observedVideo =
+                visible.find((video) => !video.ended) ?? visible[0] ?? null;
+            }
+            const playable = this.findBestPlayableVideo(visible);
+            if (playable) {
+              return {
+                payload: this.createPayload(playable, candidate.mode),
+                observedVideo: playable,
+              };
+            }
           }
-          return this.createPayload(null, null, null);
+          return {
+            payload: this.createPayload(null, null, null),
+            observedVideo,
+          };
         }
-        static findBestVideo(selector) {
-          const videos = Array.from(document.querySelectorAll(selector));
-          const visible = videos.filter((video) => this.isVisibleVideo(video));
-          if (!visible.length) return null;
+        static findBestPlayableVideo(videos) {
+          const playable = videos.filter(
+            (video) =>
+              !video.ended &&
+              video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA &&
+              video.videoWidth > 0 &&
+              video.videoHeight > 0,
+          );
+          if (!playable.length) return null;
           return (
-            visible.find(
-              (video) =>
-                !video.ended &&
-                video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA,
+            playable.find((video) => !video.paused) ??
+            playable.find(
+              (video) => video.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA,
             ) ??
-            visible.find((video) => !video.ended) ??
-            visible[0]
+            playable[0]
           );
         }
         static isVisibleVideo(video) {
@@ -172,14 +189,13 @@
         }
         static check() {
           if (!this.initialized) return;
-          const detected = this.detect();
-          const forced = this.forceCheck;
-          this.forceCheck = false;
+          const detection = this.detect();
+          const detected = detection.payload;
+          this.observeVideoSource(detection.observedVideo);
           const previousVideo = this.currentVideo;
           const previousMode = this.currentMode;
           const previousSource = this.currentSource;
           if (
-            !forced &&
             previousVideo === detected.video &&
             previousMode === detected.mode &&
             previousSource === detected.source
@@ -190,7 +206,6 @@
           this.currentMode = detected.mode;
           this.currentSource = detected.source;
           this.revision++;
-          this.observeVideoSource(detected.video);
           if (previousVideo && !detected.video) {
             const payload = this.createPayload(
               null,
@@ -557,6 +572,7 @@
       Object.defineProperty(exports, '__esModule', { value: true });
       exports.Palette = void 0;
       const PALETTE_CLASS = 'luminous-dynamic-palette';
+      const PALETTE_TRANSITION_CLASS = 'luminous-palette-transitioning';
       const PALETTE_VARIABLES = [
         '--luminous-palette-primary',
         '--luminous-palette-secondary',
@@ -593,8 +609,10 @@
         static requestId = 0;
         static source = null;
         static cache = new Map();
+        static pendingProfiles = new Map();
         static currentProfile = null;
         static motionScale = 1;
+        static transitionOwner = 0;
         static cancel() {
           this.requestId++;
         }
@@ -602,6 +620,8 @@
           this.cancel();
           this.source = null;
           this.currentProfile = null;
+          this.transitionOwner = 0;
+          document.documentElement.classList.remove(PALETTE_TRANSITION_CLASS);
           this.clearAppliedPalette();
         }
         static setMotionDuration(duration) {
@@ -611,6 +631,16 @@
           this.motionScale = normalized / DEFAULT_MOTION_DURATION;
           if (this.currentProfile) {
             this.applyDurations(this.currentProfile.baseDurations);
+          }
+        }
+        static async warmFromImage(image) {
+          if (!image || this.cache.has(image)) return;
+          try {
+            await this.loadProfile(image);
+          } catch {
+            // Warm-up is opportunistic. applyFromImage() will report a real failure
+            // if the profile is still unavailable when it is actually needed.
+            return;
           }
         }
         static async applyFromImage(image) {
@@ -626,24 +656,68 @@
           }
           const requestId = ++this.requestId;
           try {
-            const profile =
-              this.getCachedPalette(image) ??
-              (await this.extractProfile(image));
+            const profile = await this.loadProfile(image);
             if (requestId !== this.requestId) return;
-            this.cachePalette(image, profile);
-            this.applyProfile(profile);
-            this.source = image;
+            await this.commitProfile(profile, image, requestId);
           } catch (error) {
             if (requestId !== this.requestId) return;
-            this.source = null;
-            this.currentProfile = null;
-            this.clearAppliedPalette();
+            // A temporary cover/CDN/CORS failure should not blank the entire effect
+            // scene. Preserve the last known-good palette and let the next song or
+            // retry replace it normally. Explicit disable/cleanup still calls clear().
             Luminous.Logger.warn(
               'Palette',
-              'Failed to create adaptive background effects',
+              'Failed to create adaptive background effects; keeping previous palette',
               error,
             );
           }
+        }
+        static loadProfile(source) {
+          const cached = this.getCachedPalette(source);
+          if (cached) return Promise.resolve(cached);
+          const pending = this.pendingProfiles.get(source);
+          if (pending) return pending;
+          const request = this.extractProfile(source)
+            .then((profile) => {
+              this.cachePalette(source, profile);
+              return profile;
+            })
+            .finally(() => {
+              this.pendingProfiles.delete(source);
+            });
+          this.pendingProfiles.set(source, request);
+          return request;
+        }
+        static async commitProfile(profile, source, requestId) {
+          const root = document.documentElement;
+          const shouldSoftenSwap =
+            this.currentProfile !== null && this.source !== source;
+          if (shouldSoftenSwap) {
+            this.transitionOwner = requestId;
+            root.classList.add(PALETTE_TRANSITION_CLASS);
+          }
+          // Do not fade the effect layer to zero between songs. The effect sits
+          // underneath translucent Spotify surfaces, so a fade-to-black reads as a
+          // full-interface flash even when the media layer itself is stable. The
+          // registered palette color properties already interpolate smoothly; keep
+          // the effect luminance present and only pause its motion while the profile
+          // classes/variables are committed.
+          this.applyProfile(profile);
+          this.source = source;
+          if (!shouldSoftenSwap) return;
+          await this.nextPaint();
+          if (
+            requestId !== this.requestId ||
+            this.transitionOwner !== requestId
+          ) {
+            return;
+          }
+          this.transitionOwner = 0;
+          root.classList.remove(PALETTE_TRANSITION_CLASS);
+        }
+        static nextPaint() {
+          return new Promise((resolve) => {
+            requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+          });
         }
         static async extractProfile(source) {
           const image = await this.loadImage(source);
@@ -1780,7 +1854,9 @@
       exports.DynamicBackgroundFeature = DynamicBackgroundFeature;
       const react_1 = require('../react');
       const health_1 = require('../../ui/health');
-      const CANVAS_HANDOFF_GRACE_MS = 320;
+      const CANVAS_HANDOFF_GRACE_MS = 420;
+      const TRACK_TRANSITION_FAILSAFE_MS = 2400;
+      const PALETTE_AFTER_MEDIA_DELAY_MS = 140;
       function DynamicBackgroundFeature() {
         const effect = (0, react_1.useEffect)();
         const memo = (0, react_1.useMemo)();
@@ -1802,11 +1878,39 @@
         );
         const handoffDeadline = ref(0);
         const handoffTimer = ref(null);
+        const trackTransitionTimer = ref(null);
+        const paletteCommitTimer = ref(null);
+        const latestCanvasRevision = ref(canvas.revision);
+        const canvasRevisionFloor = ref(-1);
+        const latestSongImage = ref(song?.image ?? null);
+        const backgroundEnabled = ref(enabled);
+        const paletteEnabled = ref(dynamicPalette);
+        const appActiveRef = ref(appActive);
         const [handoffRevision, setHandoffRevision] = state(0);
         const clearHandoffTimer = () => {
           if (handoffTimer.current === null) return;
           window.clearTimeout(handoffTimer.current);
           handoffTimer.current = null;
+        };
+        const clearTrackTransition = () => {
+          if (trackTransitionTimer.current !== null) {
+            window.clearTimeout(trackTransitionTimer.current);
+            trackTransitionTimer.current = null;
+          }
+          document.documentElement.classList.remove('luminous-track-changing');
+        };
+        const clearPaletteCommitTimer = () => {
+          if (paletteCommitTimer.current === null) return;
+          window.clearTimeout(paletteCommitTimer.current);
+          paletteCommitTimer.current = null;
+        };
+        const markTrackTransition = () => {
+          clearTrackTransition();
+          document.documentElement.classList.add('luminous-track-changing');
+          trackTransitionTimer.current = window.setTimeout(
+            clearTrackTransition,
+            TRACK_TRANSITION_FAILSAFE_MS,
+          );
         };
         const scheduleHandoffExpiry = () => {
           clearHandoffTimer();
@@ -1825,12 +1929,20 @@
         const renderKey = memo(() => {
           if (!appActive) return 'inactive';
           if (!enabled) return 'disabled';
+          const songKey = `${song?.uri ?? ''}:${song?.image ?? ''}`;
           if (backgroundSource === 'auto' && canvas.video) {
-            return `canvas:${canvas.source ?? ''}:${canvas.revision}:${song?.image ?? ''}`;
+            return `canvas:${canvas.source ?? ''}:${canvas.revision}:${songKey}`;
           }
-          if (song?.image) return `image:${song.image}`;
-          return 'empty';
-        }, [appActive, backgroundSource, canvas, enabled, song?.image]);
+          if (song?.image) return `image:${songKey}`;
+          return `empty:${song?.uri ?? ''}`;
+        }, [
+          appActive,
+          backgroundSource,
+          canvas,
+          enabled,
+          song?.image,
+          song?.uri,
+        ]);
         effect(() => {
           let songKey = song ? `${song.uri}\u0000${song.image ?? ''}` : null;
           let canvasKey = `${canvas.mode ?? ''}\u0000${canvas.source ?? ''}\u0000${canvas.revision}`;
@@ -1838,13 +1950,35 @@
           const handleSong = (nextSong) => {
             const nextKey = `${nextSong.uri}\u0000${nextSong.image ?? ''}`;
             if (songKey === nextKey) return;
+            const isInitialSong = songKey === null;
+            const previousImage = latestSongImage.current;
             songKey = nextKey;
-            Luminous.Palette.cancel();
+            latestSongImage.current = nextSong.image;
             Luminous.Background.preloadImage(nextSong.image);
-            if (Luminous.Background.getType() === 'canvas') {
-              handoffDeadline.current =
-                performance.now() + CANVAS_HANDOFF_GRACE_MS;
-              scheduleHandoffExpiry();
+            void Luminous.Palette.warmFromImage(nextSong.image);
+            if (!isInitialSong) {
+              clearPaletteCommitTimer();
+              const visualChangeExpected =
+                Luminous.Background.getType() === 'canvas' ||
+                previousImage !== nextSong.image;
+              if (visualChangeExpected) markTrackTransition();
+              if (Luminous.Background.getType() === 'canvas') {
+                Luminous.Background.holdCurrentFrame();
+              }
+              // A Canvas object can survive a Spotify songchange event for a short
+              // time even though it still represents the previous song. Requiring a
+              // newer Canvas revision prevents that stale object from immediately
+              // cancelling the handoff grace period and causing Canvas/artwork
+              // ping-pong while Spotify replaces the media source.
+              canvasRevisionFloor.current = latestCanvasRevision.current;
+              if (Luminous.Background.getType() === 'canvas') {
+                handoffDeadline.current =
+                  performance.now() + CANVAS_HANDOFF_GRACE_MS;
+                scheduleHandoffExpiry();
+              } else {
+                handoffDeadline.current = 0;
+                clearHandoffTimer();
+              }
             }
             setSong(nextSong);
           };
@@ -1853,30 +1987,79 @@
             if (canvasKey === nextKey && canvasVideo === payload.video) return;
             canvasKey = nextKey;
             canvasVideo = payload.video;
-            if (payload.video) {
+            latestCanvasRevision.current = Math.max(
+              latestCanvasRevision.current,
+              payload.revision,
+            );
+            if (
+              payload.video &&
+              payload.revision > canvasRevisionFloor.current
+            ) {
               handoffDeadline.current = 0;
               clearHandoffTimer();
             }
             setCanvas(payload);
+          };
+          const handleBackground = (payload) => {
+            if (payload.phase !== 'settled') return;
+            clearPaletteCommitTimer();
+            const commitPalette = async () => {
+              paletteCommitTimer.current = null;
+              if (
+                backgroundEnabled.current &&
+                paletteEnabled.current &&
+                appActiveRef.current
+              ) {
+                await Luminous.Palette.applyFromImage(latestSongImage.current);
+              }
+              clearTrackTransition();
+            };
+            // Do not rebuild the large mix-blend/blur effect scene in the exact frame
+            // where the media compositor finishes a track handoff. Let the new media
+            // become fully stable first, then commit the already-warmed palette on a
+            // separate frame budget.
+            if (
+              document.documentElement.classList.contains(
+                'luminous-track-changing',
+              )
+            ) {
+              paletteCommitTimer.current = window.setTimeout(
+                () => void commitPalette(),
+                PALETTE_AFTER_MEDIA_DELAY_MS,
+              );
+            } else {
+              void commitPalette();
+            }
           };
           Luminous.Song.addEventListener('ready', handleSong);
           Luminous.Song.addEventListener('change', handleSong);
           Luminous.Canvas.addEventListener('mount', handleCanvas);
           Luminous.Canvas.addEventListener('change', handleCanvas);
           Luminous.Canvas.addEventListener('unmount', handleCanvas);
+          Luminous.Background.addEventListener('change', handleBackground);
           const unsubscribeHealth = (0, health_1.subscribeUiHealth)(
             (health) => {
-              setAppActive(health.status !== 'booting');
+              const active = health.status !== 'booting';
+              appActiveRef.current = active;
+              setAppActive(active);
             },
           );
           const unsubscribeSetting = Luminous.Settings.subscribe(
             'dynamicBackground',
-            (value) => setEnabled(value !== false),
+            (value) => {
+              const nextEnabled = value !== false;
+              backgroundEnabled.current = nextEnabled;
+              setEnabled(nextEnabled);
+            },
             { immediate: true },
           );
           const unsubscribePaletteSetting = Luminous.Settings.subscribe(
             'dynamicPalette',
-            (value) => setDynamicPalette(value !== false),
+            (value) => {
+              const nextEnabled = value !== false;
+              paletteEnabled.current = nextEnabled;
+              setDynamicPalette(nextEnabled);
+            },
             { immediate: true },
           );
           const unsubscribeSourceSetting = Luminous.Settings.subscribe(
@@ -1890,33 +2073,47 @@
             Luminous.Canvas.removeEventListener('mount', handleCanvas);
             Luminous.Canvas.removeEventListener('change', handleCanvas);
             Luminous.Canvas.removeEventListener('unmount', handleCanvas);
+            Luminous.Background.removeEventListener('change', handleBackground);
             unsubscribeHealth();
             unsubscribeSetting();
             unsubscribePaletteSetting();
             unsubscribeSourceSetting();
             clearHandoffTimer();
+            clearPaletteCommitTimer();
+            clearTrackTransition();
             handoffDeadline.current = 0;
             Luminous.Background.destroy();
             Luminous.Palette.clear();
           };
         }, []);
         effect(() => {
-          if (!appActive || !enabled || !dynamicPalette) {
+          backgroundEnabled.current = enabled;
+          paletteEnabled.current = dynamicPalette;
+          appActiveRef.current = appActive;
+          if (!enabled || !dynamicPalette) {
             Luminous.Palette.clear();
             return;
           }
-          void Luminous.Palette.applyFromImage(song?.image);
-        }, [appActive, dynamicPalette, enabled, song?.image]);
+          // Song changes deliberately do not trigger palette application here. The
+          // old palette stays frozen while media changes underneath it and the new
+          // palette is committed only after Background reports a settled layer.
+          if (!appActive || Luminous.Background.getType() === 'none') return;
+          void Luminous.Palette.applyFromImage(latestSongImage.current);
+        }, [appActive, dynamicPalette, enabled]);
         effect(() => {
-          if (!appActive) {
-            Luminous.Background.destroy();
-            return;
-          }
+          // The background root is independent from Spotify's main-view DOM. Do not
+          // destroy a perfectly valid frame when Spotify temporarily remounts its UI;
+          // lifecycle cleanup still destroys it when the feature itself unmounts.
+          if (!appActive) return;
           if (!enabled) {
             Luminous.Background.clear();
             return;
           }
-          if (backgroundSource === 'auto' && canvas.video) {
+          const hasFreshCanvas =
+            backgroundSource === 'auto' &&
+            canvas.video !== null &&
+            canvas.revision > canvasRevisionFloor.current;
+          if (hasFreshCanvas && canvas.video) {
             handoffDeadline.current = 0;
             clearHandoffTimer();
             Luminous.Background.render({
@@ -2113,8 +2310,15 @@
         const [now, setNow] = state(() => Date.now());
         const mountedAt = ref(shellPresent ? SCRIPT_STARTED_AT : null);
         const finished = ref(false);
-        effect(() => (0, health_1.subscribeUiHealth)(setHealth), []);
         effect(() => {
+          if (!visible) return;
+          return (0, health_1.subscribeUiHealth)(setHealth);
+        }, [visible]);
+        effect(() => {
+          // Shell presence matters only while the startup splash is actually alive.
+          // Disconnect the document-wide observer permanently after it finishes so
+          // song-change React commits cannot keep re-rendering a hidden boot UI.
+          if (!visible) return;
           let frameId = null;
           const syncShellPresence = () => {
             frameId = null;
@@ -2134,7 +2338,7 @@
             observer.disconnect();
             if (frameId !== null) cancelAnimationFrame(frameId);
           };
-        }, []);
+        }, [visible]);
         effect(() => {
           if (!shellPresent || finished.current) return;
           if (mountedAt.current === null) {
@@ -2231,7 +2435,6 @@
         effect(() => {
           const controllers = [
             synchronize_1.Synchronize.uiMountWatcher(),
-            synchronize_1.Synchronize.observeCinema(),
             synchronize_1.Synchronize.playlistBackground(),
             synchronize_1.Synchronize.homeHeaderHeight(),
           ];
@@ -2841,8 +3044,11 @@
       exports.markLuminousRuntimeActive = markLuminousRuntimeActive;
       const runtime_1 = require('./runtime');
       const ROOT_CLASSES = [
+        'luminous-runtime-active',
         'hideDynamicBackground',
         'luminous-dynamic-palette',
+        'luminous-palette-transitioning',
+        'luminous-track-changing',
         'luminous-glass-highlights',
         'luminous-reduce-motion',
         'luminous-runtime-suspended',
@@ -2905,6 +3111,7 @@
       }
       function markLuminousRuntimeActive() {
         destroyed = false;
+        document.documentElement.classList.add('luminous-runtime-active');
       }
     },
     'src/app/react': function (module, exports, require) {
@@ -3583,10 +3790,19 @@
         static DEFAULT_TRANSITION_MS = 420;
         static VIDEO_FRAME_TIMEOUT_MS = 1200;
         static CLEANUP_GRACE_MS = 120;
+        static LAYER_CLASS_CLEANUP_GRACE_MS = 48;
         static transitionMs = this.DEFAULT_TRANSITION_MS;
         static MAX_PRELOADED_IMAGES = 24;
         static root = null;
         static base = null;
+        static mediaStage = null;
+        static holdLayer = null;
+        static currentElement = null;
+        static stableLayer = null;
+        static transitionFrame = null;
+        static transitionCleanupTimer = null;
+        static transitionRevision = 0;
+        static layerClassCleanupTimer = null;
         static imageLayers = null;
         static activeImage = 0;
         static imageRenderId = 0;
@@ -3608,13 +3824,101 @@
           return this.currentType;
         }
         static get() {
-          if (this.currentType === 'canvas' && this.videoLayers) {
-            return this.videoLayers[this.activeVideo];
+          return this.currentType === 'none' ? null : this.currentElement;
+        }
+        static holdCurrentFrame() {
+          const current = this.currentElement;
+          if (
+            this.currentType !== 'canvas' ||
+            !(current instanceof HTMLVideoElement) ||
+            this.stableLayer !== current
+          ) {
+            return;
           }
-          if (this.currentType === 'image' && this.imageLayers) {
-            return this.imageLayers[this.activeImage];
+          // Freeze only Luminous's captured clone. Spotify's source video remains
+          // untouched. First try to rasterize the last *presented* frame into an
+          // independent canvas so source MediaStream teardown cannot black it out.
+          // If Chromium refuses the snapshot, pausing the clone is still safer than
+          // letting it follow a source that Spotify is about to replace.
+          if (this.captureHoldFrame(current)) return;
+          try {
+            current.pause();
+          } catch (error) {
+            Luminous.Logger.warn(
+              'Background',
+              'Could not hold Canvas frame',
+              error,
+            );
           }
-          return null;
+        }
+        static captureHoldFrame(video) {
+          const hold = this.holdLayer;
+          if (!hold || video.videoWidth <= 0 || video.videoHeight <= 0)
+            return false;
+          const viewportWidth = Math.max(1, window.innerWidth);
+          const viewportHeight = Math.max(1, window.innerHeight);
+          const pixelRatio = Math.min(
+            Math.max(window.devicePixelRatio || 1, 1),
+            2,
+          );
+          const maxWidth = 1920;
+          const desiredWidth = Math.round(viewportWidth * pixelRatio);
+          const scaleDown =
+            desiredWidth > maxWidth ? maxWidth / desiredWidth : 1;
+          const width = Math.max(1, Math.round(desiredWidth * scaleDown));
+          const height = Math.max(
+            1,
+            Math.round(viewportHeight * pixelRatio * scaleDown),
+          );
+          try {
+            hold.width = width;
+            hold.height = height;
+            const context = hold.getContext('2d', { alpha: false });
+            if (!context) return false;
+            const sourceWidth = video.videoWidth;
+            const sourceHeight = video.videoHeight;
+            const scale = Math.max(width / sourceWidth, height / sourceHeight);
+            const drawWidth = sourceWidth * scale;
+            const drawHeight = sourceHeight * scale;
+            const drawX = (width - drawWidth) / 2;
+            const drawY = (height - drawHeight) / 2;
+            context.drawImage(video, drawX, drawY, drawWidth, drawHeight);
+            const computed = getComputedStyle(video);
+            hold.style.translate = computed.translate;
+            hold.style.scale = computed.scale;
+            hold.style.zIndex = '1';
+            this.setOpacityImmediately(hold, '1');
+            this.setOpacityImmediately(video, '0');
+            video.style.zIndex = '0';
+            this.stableLayer = hold;
+            try {
+              video.pause();
+            } catch {
+              // The independent raster is already stable; playback state is now
+              // irrelevant and cleanup will release the stream after handoff.
+            }
+            return true;
+          } catch (error) {
+            this.clearHoldLayer();
+            Luminous.Logger.warn(
+              'Background',
+              'Could not snapshot outgoing Canvas frame',
+              error,
+            );
+            return false;
+          }
+        }
+        static clearHoldLayer() {
+          const hold = this.holdLayer;
+          if (!hold) return;
+          this.setOpacityImmediately(hold, '0');
+          hold.style.zIndex = '0';
+          hold.style.removeProperty('translate');
+          hold.style.removeProperty('scale');
+          const context = hold.getContext('2d');
+          context?.clearRect(0, 0, hold.width, hold.height);
+          hold.width = 1;
+          hold.height = 1;
         }
         static addEventListener(event, listener) {
           if (!this.listeners.has(event)) {
@@ -3625,10 +3929,11 @@
         static removeEventListener(event, listener) {
           this.listeners.get(event)?.delete(listener);
         }
-        static emit(event) {
+        static emit(event, phase = 'settled') {
           const payload = {
             type: this.currentType,
             element: this.get(),
+            phase,
           };
           this.listeners.get(event)?.forEach((listener) => {
             try {
@@ -3645,11 +3950,11 @@
             width: '120%',
             height: '120%',
             objectFit: 'cover',
-            filter: `blur(var(--luminous-background-blur)) brightness(var(--luminous-background-brightness))`,
             transform: 'scale(1.2) translateZ(0)',
             pointerEvents: 'none',
             transition: 'opacity var(--luminous-transition-duration) ease',
             opacity: '0',
+            zIndex: '0',
             willChange: 'opacity, transform',
           };
         }
@@ -3711,6 +4016,8 @@
         static ensureBackground() {
           if (this.root?.isConnected) return;
           this.cancelVideoCleanup();
+          this.cancelTransition();
+          this.cancelLayerClassCleanup();
           this.videoLayers?.forEach((video) => this.resetVideo(video));
           this.root?.remove();
           this.root = document.createElement('div');
@@ -3732,18 +4039,45 @@
             background: 'var(--spice-sidebar)',
             transition: 'opacity var(--luminous-transition-duration) ease',
             opacity: '1',
+            zIndex: '1',
+            willChange: 'opacity',
           });
+          this.mediaStage = document.createElement('div');
+          this.mediaStage.className = 'luminous-media-stage';
+          Object.assign(this.mediaStage.style, {
+            position: 'absolute',
+            inset: '0',
+            zIndex: '1',
+            overflow: 'hidden',
+            pointerEvents: 'none',
+            filter:
+              'blur(var(--luminous-background-blur)) brightness(var(--luminous-background-brightness))',
+            willChange: 'filter',
+          });
+          this.holdLayer = document.createElement('canvas');
+          this.holdLayer.className = 'luminous-background-hold';
+          Object.assign(this.holdLayer.style, this.baseStyle());
+          this.holdLayer.style.opacity = '0';
           const imageA = this.createImageLayer();
           const imageB = this.createImageLayer();
           const videoA = this.createVideoLayer();
           const videoB = this.createVideoLayer();
           const effects = this.createEffectsLayer();
-          this.root.append(this.base, imageA, imageB, videoA, videoB, effects);
+          this.mediaStage.append(
+            imageA,
+            imageB,
+            videoA,
+            videoB,
+            this.holdLayer,
+          );
+          this.root.append(this.base, this.mediaStage, effects);
           this.imageLayers = [imageA, imageB];
           this.videoLayers = [videoA, videoB];
           this.activeImage = 0;
           this.activeVideo = 0;
           this.currentType = 'none';
+          this.currentElement = null;
+          this.stableLayer = this.base;
           this.currentCanvasSource = null;
           this.currentCanvasKey = null;
           this.clearPendingCanvas();
@@ -3783,8 +4117,6 @@
         static renderImage(src) {
           this.ensureBackground();
           this.videoRenderId++;
-          this.currentCanvasSource = null;
-          this.currentCanvasKey = null;
           this.cancelPendingCanvas();
           if (!this.imageLayers) {
             Luminous.Logger.warn('Background', 'No image layers for render');
@@ -3944,8 +4276,24 @@
             .play()
             .then(async () => {
               if (!this.isPendingCanvas(renderId, next)) return;
-              await this.waitForFirstVideoFrame(next);
+              const hasFrame = await this.waitForFirstVideoFrame(next);
               if (!this.isPendingCanvas(renderId, next)) return;
+              if (!hasFrame) {
+                const currentFallback = this.pendingCanvasFallback;
+                this.clearPendingCanvas();
+                this.resetVideo(next);
+                Luminous.Logger.warn(
+                  'Background',
+                  'Canvas stream produced no presentable frame before timeout',
+                  sourceVideo,
+                );
+                if (currentFallback) {
+                  this.renderImage(currentFallback);
+                } else if (this.currentType === 'none') {
+                  this.clear();
+                }
+                return;
+              }
               requestAnimationFrame(() => {
                 if (!this.isPendingCanvas(renderId, next)) return;
                 this.clearPendingCanvas();
@@ -3966,8 +4314,10 @@
               this.clearPendingCanvas();
               this.resetVideo(next);
               if (this.isInterruptedPlayback(error)) {
-                if (this.currentType === 'none' && currentFallback) {
+                if (currentFallback) {
                   this.renderImage(currentFallback);
+                } else if (this.currentType === 'none') {
+                  this.clear();
                 }
                 return;
               }
@@ -3999,10 +4349,17 @@
           this.currentCanvasKey = null;
           this.cancelPendingCanvas();
           this.cancelVideoCleanup();
+          this.cancelTransition();
+          this.cancelLayerClassCleanup();
           this.videoLayers?.forEach((video) => this.resetVideo(video));
+          this.clearHoldLayer();
           this.root?.remove();
           this.root = null;
           this.base = null;
+          this.mediaStage = null;
+          this.holdLayer = null;
+          this.currentElement = null;
+          this.stableLayer = null;
           this.imageLayers = null;
           this.videoLayers = null;
           this.activeImage = 0;
@@ -4019,30 +4376,157 @@
           this.transitionTo('none');
         }
         static transitionTo(type, activeElement = null) {
-          if (!this.imageLayers || !this.videoLayers) return;
-          if (this.currentType === type && this.get() === activeElement) return;
-          this.currentType = type;
-          if (this.base) {
-            this.base.style.opacity = type === 'none' ? '1' : '0';
+          if (!this.imageLayers || !this.videoLayers || !this.base) return;
+          if (
+            this.currentType === type &&
+            this.currentElement === activeElement
+          ) {
+            return;
           }
-          this.imageLayers.forEach((element) => {
-            const active = type === 'image' && element === activeElement;
-            element.style.opacity = active ? '1' : '0';
-            element.classList.toggle(
-              'luminous-background-layer--active',
-              active,
-            );
+          const incomingLayer =
+            type === 'none' ? this.base : (activeElement ?? this.base);
+          const stableLayer =
+            this.stableLayer?.isConnected === true
+              ? this.stableLayer
+              : (this.currentElement ?? this.base);
+          const mediaLayers = [...this.imageLayers, ...this.videoLayers];
+          const revision = ++this.transitionRevision;
+          this.cancelTransition(false);
+          this.cancelLayerClassCleanup();
+          // A symmetric opacity cross-fade creates an alpha trough: at the midpoint
+          // two 50%-opaque layers cover only ~75% of the dark base. Because most of
+          // the Spotify UI is translucent, that luminance dip reads as a full-window
+          // flash. Keep one fully opaque stable layer underneath and reveal only the
+          // incoming layer above it. The stable layer is removed after the incoming
+          // layer reaches 100%, so every rendered frame remains fully covered.
+          mediaLayers.forEach((element) => {
+            if (element !== stableLayer && element !== incomingLayer) {
+              this.setOpacityImmediately(element, '0');
+              element.style.zIndex = '0';
+              element.classList.remove('luminous-background-layer--active');
+            }
           });
-          this.videoLayers.forEach((element) => {
-            const active = type === 'canvas' && element === activeElement;
-            element.style.opacity = active ? '1' : '0';
-            element.classList.toggle(
-              'luminous-background-layer--active',
-              active,
+          if (
+            stableLayer instanceof HTMLImageElement ||
+            stableLayer instanceof HTMLVideoElement
+          ) {
+            stableLayer.classList.add('luminous-background-layer--active');
+          }
+          if (
+            incomingLayer instanceof HTMLImageElement ||
+            incomingLayer instanceof HTMLVideoElement
+          ) {
+            incomingLayer.classList.add('luminous-background-layer--active');
+          }
+          if (stableLayer !== incomingLayer) {
+            this.setOpacityImmediately(stableLayer, '1');
+            stableLayer.style.zIndex = '1';
+            this.setOpacityImmediately(incomingLayer, '0');
+            incomingLayer.style.zIndex = '2';
+          } else {
+            this.setOpacityImmediately(incomingLayer, '1');
+            incomingLayer.style.zIndex = '1';
+          }
+          this.currentType = type;
+          this.currentElement = type === 'none' ? null : activeElement;
+          if (type !== 'canvas') {
+            this.currentCanvasSource = null;
+            this.currentCanvasKey = null;
+          }
+          if (stableLayer === incomingLayer || this.transitionMs === 0) {
+            this.finishTransition(
+              revision,
+              stableLayer,
+              incomingLayer,
+              mediaLayers,
             );
+            return;
+          }
+          // Force the 0% state into the compositor before enabling the opacity
+          // transition. A single rAF is then enough to begin the reveal without a
+          // coalesced 0 -> 1 style update.
+          void incomingLayer.offsetWidth;
+          this.restoreOpacityTransition(incomingLayer);
+          this.transitionFrame = requestAnimationFrame(() => {
+            this.transitionFrame = null;
+            if (revision !== this.transitionRevision) return;
+            incomingLayer.style.opacity = '1';
+            this.transitionCleanupTimer = window.setTimeout(() => {
+              this.transitionCleanupTimer = null;
+              this.finishTransition(
+                revision,
+                stableLayer,
+                incomingLayer,
+                mediaLayers,
+              );
+            }, this.transitionMs + this.LAYER_CLASS_CLEANUP_GRACE_MS);
           });
           this.scheduleVideoCleanup();
+          this.emit('change', 'start');
+        }
+        static finishTransition(
+          revision,
+          outgoingLayer,
+          incomingLayer,
+          mediaLayers,
+        ) {
+          if (revision !== this.transitionRevision) return;
+          this.setOpacityImmediately(incomingLayer, '1');
+          incomingLayer.style.zIndex = '1';
+          if (outgoingLayer !== incomingLayer) {
+            this.setOpacityImmediately(outgoingLayer, '0');
+            outgoingLayer.style.zIndex = '0';
+          }
+          mediaLayers.forEach((element) => {
+            if (element !== incomingLayer) {
+              this.setOpacityImmediately(element, '0');
+              element.style.zIndex = '0';
+            }
+          });
+          this.stableLayer = incomingLayer;
+          if (outgoingLayer === this.holdLayer) this.clearHoldLayer();
+          this.restoreOpacityTransition(incomingLayer);
+          this.scheduleLayerClassCleanup();
+          this.scheduleVideoCleanup();
           this.emit('change');
+        }
+        static setOpacityImmediately(element, opacity) {
+          element.style.transition = 'none';
+          element.style.opacity = opacity;
+        }
+        static restoreOpacityTransition(element) {
+          element.style.transition =
+            'opacity var(--luminous-transition-duration) ease';
+        }
+        static cancelTransition(invalidate = true) {
+          if (invalidate) this.transitionRevision++;
+          if (this.transitionFrame !== null) {
+            cancelAnimationFrame(this.transitionFrame);
+            this.transitionFrame = null;
+          }
+          if (this.transitionCleanupTimer !== null) {
+            window.clearTimeout(this.transitionCleanupTimer);
+            this.transitionCleanupTimer = null;
+          }
+        }
+        static scheduleLayerClassCleanup() {
+          this.cancelLayerClassCleanup();
+          this.layerClassCleanupTimer = window.setTimeout(() => {
+            this.layerClassCleanupTimer = null;
+            const current = this.currentElement;
+            [...(this.imageLayers ?? []), ...(this.videoLayers ?? [])].forEach(
+              (element) => {
+                if (element !== current) {
+                  element.classList.remove('luminous-background-layer--active');
+                }
+              },
+            );
+          }, this.transitionMs + this.LAYER_CLASS_CLEANUP_GRACE_MS);
+        }
+        static cancelLayerClassCleanup() {
+          if (this.layerClassCleanupTimer === null) return;
+          window.clearTimeout(this.layerClassCleanupTimer);
+          this.layerClassCleanupTimer = null;
         }
         static isCanvasLayerUsable(element) {
           if (!(element instanceof HTMLVideoElement) || !element.isConnected) {
@@ -4095,15 +4579,32 @@
           const frameVideo = video;
           if (typeof frameVideo.requestVideoFrameCallback !== 'function') {
             return new Promise((resolve) => {
-              requestAnimationFrame(() =>
-                requestAnimationFrame(() => resolve()),
-              );
+              const startedAt = performance.now();
+              const check = () => {
+                if (
+                  video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA &&
+                  video.videoWidth > 0 &&
+                  video.videoHeight > 0
+                ) {
+                  requestAnimationFrame(() => resolve(true));
+                  return;
+                }
+                if (
+                  performance.now() - startedAt >=
+                  this.VIDEO_FRAME_TIMEOUT_MS
+                ) {
+                  resolve(false);
+                  return;
+                }
+                requestAnimationFrame(check);
+              };
+              check();
             });
           }
           return new Promise((resolve) => {
             let settled = false;
             let frameHandle = null;
-            const finish = () => {
+            const finish = (presented) => {
               if (settled) return;
               settled = true;
               window.clearTimeout(timeoutId);
@@ -4113,13 +4614,15 @@
               ) {
                 frameVideo.cancelVideoFrameCallback(frameHandle);
               }
-              resolve();
+              resolve(presented);
             };
             const timeoutId = window.setTimeout(
-              finish,
+              () => finish(false),
               this.VIDEO_FRAME_TIMEOUT_MS,
             );
-            frameHandle = frameVideo.requestVideoFrameCallback(() => finish());
+            frameHandle = frameVideo.requestVideoFrameCallback(() =>
+              finish(true),
+            );
           });
         }
         static isUnsupportedCanvasSource(video, source) {
@@ -4245,6 +4748,7 @@
       const PLAYLIST_BACKGROUND_VAR = '--luminous-playlist-background-image';
       const HOME_HEADER_HEIGHT_CLASS = 'luminous-home-header-height';
       const HOME_HEADER_HEIGHT_VAR = '--luminous-home-header-height';
+      const SHELL_MISSING_GRACE_MS = 500;
       class Synchronize {
         static playlistBackground(options) {
           let root = null;
@@ -4297,11 +4801,16 @@
               ) ||
               root.querySelector('main > div > .main-entityHeader-container');
             if (!source || !target) {
+              // Spotify often detaches and reattaches header internals for a single
+              // React commit. Keep the last valid decoration while its target still
+              // exists instead of flashing back to the unstyled header for one frame.
+              if (lastTarget?.isConnected) return;
               cleanupTarget();
               return;
             }
             const background = getComputedStyle(source).backgroundImage;
             if (!background || background === 'none') {
+              if (lastTarget === target && lastBackground) return;
               cleanupTarget();
               return;
             }
@@ -4391,6 +4900,10 @@
               'section[data-testid="home-page"]:has(.view-homeShortcutsGrid-shortcuts) .main-home-content section:first-child',
             );
             if (!header || !chips || !firstSection) {
+              // Do not collapse a previously measured Home header because a nested
+              // Spotify subtree disappeared for one transient render. Route changes
+              // still clean it up once the previous header disconnects.
+              if (lastHeader?.isConnected) return;
               cleanupHeader();
               return;
             }
@@ -4434,6 +4947,7 @@
           let rafId = null;
           let disposed = false;
           let waitingSince = null;
+          let shellMissingTimer = null;
           function hasSpotifyShell() {
             return (
               document.querySelector('.Root__top-container #main-view') !== null
@@ -4446,6 +4960,27 @@
               document.querySelector('[data-testid="main-view"]')
             );
           }
+          function cancelShellMissingTimer() {
+            if (shellMissingTimer === null) return;
+            window.clearTimeout(shellMissingTimer);
+            shellMissingTimer = null;
+          }
+          function scheduleShellMissingCommit() {
+            if (shellMissingTimer !== null) return;
+            // Spotify can detach #main-view for a single React commit while changing
+            // tracks. Treat that as a transient DOM state, not a runtime reboot.
+            // Otherwise every health subscriber gets a false booting edge exactly at
+            // songchange, which is enough to remount/fade UI owned by Luminous.
+            shellMissingTimer = window.setTimeout(() => {
+              shellMissingTimer = null;
+              if (disposed || hasSpotifyShell()) return;
+              waitingSince = null;
+              (0, health_1.setUiHealth)({
+                status: 'booting',
+                brokenSince: null,
+              });
+            }, SHELL_MISSING_GRACE_MS);
+          }
           function scheduleCheck() {
             if (disposed || rafId !== null) return;
             rafId = requestAnimationFrame(() => {
@@ -4456,12 +4991,11 @@
           function check() {
             if (!hasSpotifyShell()) {
               waitingSince = null;
-              (0, health_1.setUiHealth)({
-                status: 'booting',
-                brokenSince: null,
-              });
+              if ((0, health_1.getUiHealth)().status === 'booting') return;
+              scheduleShellMissingCommit();
               return;
             }
+            cancelShellMissingTimer();
             if (hasSpotifyUi()) {
               waitingSince = null;
               (0, health_1.setUiHealth)({ status: 'ready', brokenSince: null });
@@ -4491,46 +5025,12 @@
                 cancelAnimationFrame(rafId);
                 rafId = null;
               }
+              cancelShellMissingTimer();
               waitingSince = null;
               (0, health_1.setUiHealth)({
                 status: 'booting',
                 brokenSince: null,
               });
-            },
-          };
-        }
-        static observeCinema() {
-          let observer = null;
-          function cleanupAttributes() {
-            const html = document.documentElement;
-            html.removeAttribute('data-transition');
-            [
-              'data-right-sidebar-open-preenter',
-              'data-right-sidebar-open-preexit',
-              'data-right-sidebar-open-duringexit',
-              'data-right-sidebar-open-postexit',
-            ].forEach((attribute) => {
-              html.removeAttribute(attribute);
-            });
-          }
-          observer = new MutationObserver(cleanupAttributes);
-          observer.observe(document.documentElement, {
-            attributes: true,
-            attributeFilter: [
-              'data-transition',
-              'data-right-sidebar-open-preenter',
-              'data-right-sidebar-open-duringenter',
-              'data-right-sidebar-open-postenter',
-              'data-right-sidebar-open-preexit',
-              'data-right-sidebar-open-duringexit',
-              'data-right-sidebar-open-postexit',
-            ],
-          });
-          cleanupAttributes();
-          return {
-            disconnect() {
-              observer?.disconnect();
-              observer = null;
             },
           };
         }

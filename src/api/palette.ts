@@ -1,4 +1,5 @@
 const PALETTE_CLASS = 'luminous-dynamic-palette';
+const PALETTE_TRANSITION_CLASS = 'luminous-palette-transitioning';
 const PALETTE_VARIABLES = [
   '--luminous-palette-primary',
   '--luminous-palette-secondary',
@@ -89,8 +90,10 @@ export class Palette {
   private static requestId = 0;
   private static source: string | null = null;
   private static cache = new Map<string, PaletteProfile>();
+  private static pendingProfiles = new Map<string, Promise<PaletteProfile>>();
   private static currentProfile: PaletteProfile | null = null;
   private static motionScale = 1;
+  private static transitionOwner = 0;
 
   static cancel() {
     this.requestId++;
@@ -100,6 +103,8 @@ export class Palette {
     this.cancel();
     this.source = null;
     this.currentProfile = null;
+    this.transitionOwner = 0;
+    document.documentElement.classList.remove(PALETTE_TRANSITION_CLASS);
     this.clearAppliedPalette();
   }
 
@@ -112,6 +117,18 @@ export class Palette {
 
     if (this.currentProfile) {
       this.applyDurations(this.currentProfile.baseDurations);
+    }
+  }
+
+  static async warmFromImage(image: string | null | undefined) {
+    if (!image || this.cache.has(image)) return;
+
+    try {
+      await this.loadProfile(image);
+    } catch {
+      // Warm-up is opportunistic. applyFromImage() will report a real failure
+      // if the profile is still unavailable when it is actually needed.
+      return;
     }
   }
 
@@ -131,25 +148,82 @@ export class Palette {
     const requestId = ++this.requestId;
 
     try {
-      const profile =
-        this.getCachedPalette(image) ?? (await this.extractProfile(image));
+      const profile = await this.loadProfile(image);
       if (requestId !== this.requestId) return;
 
-      this.cachePalette(image, profile);
-      this.applyProfile(profile);
-      this.source = image;
+      await this.commitProfile(profile, image, requestId);
     } catch (error) {
       if (requestId !== this.requestId) return;
 
-      this.source = null;
-      this.currentProfile = null;
-      this.clearAppliedPalette();
+      // A temporary cover/CDN/CORS failure should not blank the entire effect
+      // scene. Preserve the last known-good palette and let the next song or
+      // retry replace it normally. Explicit disable/cleanup still calls clear().
       Luminous.Logger.warn(
         'Palette',
-        'Failed to create adaptive background effects',
+        'Failed to create adaptive background effects; keeping previous palette',
         error,
       );
     }
+  }
+
+  private static loadProfile(source: string): Promise<PaletteProfile> {
+    const cached = this.getCachedPalette(source);
+    if (cached) return Promise.resolve(cached);
+
+    const pending = this.pendingProfiles.get(source);
+    if (pending) return pending;
+
+    const request = this.extractProfile(source)
+      .then((profile) => {
+        this.cachePalette(source, profile);
+        return profile;
+      })
+      .finally(() => {
+        this.pendingProfiles.delete(source);
+      });
+
+    this.pendingProfiles.set(source, request);
+    return request;
+  }
+
+  private static async commitProfile(
+    profile: PaletteProfile,
+    source: string,
+    requestId: number,
+  ): Promise<void> {
+    const root = document.documentElement;
+    const shouldSoftenSwap =
+      this.currentProfile !== null && this.source !== source;
+
+    if (shouldSoftenSwap) {
+      this.transitionOwner = requestId;
+      root.classList.add(PALETTE_TRANSITION_CLASS);
+    }
+
+    // Do not fade the effect layer to zero between songs. The effect sits
+    // underneath translucent Spotify surfaces, so a fade-to-black reads as a
+    // full-interface flash even when the media layer itself is stable. The
+    // registered palette color properties already interpolate smoothly; keep
+    // the effect luminance present and only pause its motion while the profile
+    // classes/variables are committed.
+    this.applyProfile(profile);
+    this.source = source;
+
+    if (!shouldSoftenSwap) return;
+
+    await this.nextPaint();
+    if (requestId !== this.requestId || this.transitionOwner !== requestId) {
+      return;
+    }
+
+    this.transitionOwner = 0;
+    root.classList.remove(PALETTE_TRANSITION_CLASS);
+  }
+
+  private static nextPaint(): Promise<void> {
+    return new Promise((resolve) => {
+      requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+    });
   }
 
   private static async extractProfile(source: string): Promise<PaletteProfile> {
