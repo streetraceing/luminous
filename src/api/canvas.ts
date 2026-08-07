@@ -5,42 +5,48 @@ import {
   CanvasPayload,
 } from '../types/runtime/canvas.types';
 
+const MEDIA_SOURCE_EVENTS: Array<keyof HTMLMediaElementEventMap> = [
+  'loadedmetadata',
+  'loadeddata',
+  'canplay',
+  'playing',
+  'emptied',
+  'ended',
+  'suspend',
+];
+
 export class Canvas {
-  private static readonly NPV_VIDEO_SELECTOR = '.canvasVideoContainerNPV video';
-  private static readonly NPV_LONGFORM_VIDEO_SELECTOR =
-    '#VideoPlayerNpv_ReactPortal video';
-  private static readonly CINEMA_VIDEO_SELECTOR =
-    '.Root__top-container:has(#VideoPlayerCinema_ReactPortal) video';
+  private static readonly VIDEO_CANDIDATES: ReadonlyArray<{
+    selector: string;
+    mode: Exclude<CanvasMode, null>;
+  }> = [
+    { selector: '.canvasVideoContainerNPV video', mode: 'npv' },
+    { selector: '#VideoPlayerNpv_ReactPortal video', mode: 'npv-video' },
+    {
+      selector:
+        '.Root__top-container:has(#VideoPlayerCinema_ReactPortal) video',
+      mode: 'cinema',
+    },
+  ];
 
   private static listeners = new Map<CanvasEvent, Set<CanvasListener>>();
   private static observer: MutationObserver | null = null;
   private static checkFrame: number | null = null;
-
   private static currentVideo: HTMLVideoElement | null = null;
   private static currentMode: CanvasMode = null;
   private static currentSource: string | null = null;
   private static revision = 0;
   private static observedSourceVideo: HTMLVideoElement | null = null;
   private static forceCheck = false;
+  private static initialized = false;
+  private static enabled = true;
+
   private static readonly handleVideoSourceChange = () => {
     this.forceCheck = true;
     this.scheduleCheck();
   };
-  private static initialized = false;
 
-  private static createPayload(
-    video: HTMLVideoElement | null,
-    mode: CanvasMode,
-  ): CanvasPayload {
-    return {
-      video,
-      mode,
-      source: video?.currentSrc || video?.src || null,
-      revision: this.revision,
-    };
-  }
-
-  static addEventListener(event: CanvasEvent, listener: CanvasListener) {
+  static addEventListener(event: CanvasEvent, listener: CanvasListener): void {
     this.getListeners(event).add(listener);
 
     if (
@@ -48,31 +54,33 @@ export class Canvas {
       this.currentVideo &&
       this.currentMode
     ) {
-      this.callListener(
-        listener,
-        this.createPayload(this.currentVideo, this.currentMode),
-      );
+      this.callListener(listener, this.get());
     }
 
-    if (!this.initialized) {
-      this.init();
-    }
+    if (this.enabled && !this.initialized) this.init();
   }
 
-  static removeEventListener(event: CanvasEvent, listener: CanvasListener) {
+  static removeEventListener(
+    event: CanvasEvent,
+    listener: CanvasListener,
+  ): void {
     this.listeners.get(event)?.delete(listener);
   }
 
   static get(): CanvasPayload {
-    return this.createPayload(this.currentVideo, this.currentMode);
+    return this.createPayload(
+      this.currentVideo,
+      this.currentMode,
+      this.currentSource,
+    );
   }
 
-  static getVideo() {
+  static getVideo(): HTMLVideoElement | null {
     return this.currentVideo;
   }
 
-  static init() {
-    if (this.initialized) return;
+  static init(): void {
+    if (!this.enabled || this.initialized) return;
 
     this.initialized = true;
     this.observer = new MutationObserver(() => this.scheduleCheck());
@@ -85,8 +93,71 @@ export class Canvas {
     this.check();
   }
 
-  private static scheduleCheck() {
-    if (this.checkFrame !== null) return;
+  static setEnabled(enabled: boolean): void {
+    if (this.enabled === enabled) return;
+    this.enabled = enabled;
+
+    if (enabled) {
+      this.init();
+      return;
+    }
+
+    const previousVideo = this.currentVideo;
+    const previousMode = this.currentMode;
+    const previousSource = this.currentSource;
+
+    this.observer?.disconnect();
+    this.observer = null;
+    if (this.checkFrame !== null) {
+      cancelAnimationFrame(this.checkFrame);
+      this.checkFrame = null;
+    }
+    this.observeVideoSource(null);
+    this.initialized = false;
+    this.currentVideo = null;
+    this.currentMode = null;
+    this.currentSource = null;
+    this.forceCheck = false;
+
+    if (previousVideo) {
+      this.revision++;
+      this.emit(
+        'unmount',
+        this.createPayload(null, previousMode, previousSource),
+      );
+    }
+  }
+
+  static destroy(): void {
+    this.observer?.disconnect();
+    this.observer = null;
+
+    if (this.checkFrame !== null) {
+      cancelAnimationFrame(this.checkFrame);
+      this.checkFrame = null;
+    }
+
+    this.observeVideoSource(null);
+    this.listeners.clear();
+    this.currentVideo = null;
+    this.currentMode = null;
+    this.currentSource = null;
+    this.revision = 0;
+    this.forceCheck = false;
+    this.initialized = false;
+    this.enabled = true;
+  }
+
+  private static createPayload(
+    video: HTMLVideoElement | null,
+    mode: CanvasMode,
+    source: string | null = video?.currentSrc || video?.src || null,
+  ): CanvasPayload {
+    return { video, mode, source, revision: this.revision };
+  }
+
+  private static scheduleCheck(): void {
+    if (!this.initialized || this.checkFrame !== null) return;
 
     this.checkFrame = requestAnimationFrame(() => {
       this.checkFrame = null;
@@ -95,116 +166,109 @@ export class Canvas {
   }
 
   private static detect(): CanvasPayload {
-    const npv = document.querySelector(
-      this.NPV_VIDEO_SELECTOR,
-    ) as HTMLVideoElement | null;
-
-    if (npv) {
-      return this.createPayload(npv, 'npv');
+    for (const candidate of this.VIDEO_CANDIDATES) {
+      const video = this.findBestVideo(candidate.selector);
+      if (video) return this.createPayload(video, candidate.mode);
     }
 
-    const npvLongform = this.findVisibleVideo(this.NPV_LONGFORM_VIDEO_SELECTOR);
-    if (npvLongform) {
-      return this.createPayload(npvLongform, 'npv-video');
-    }
-
-    const cinema = document.querySelector(
-      this.CINEMA_VIDEO_SELECTOR,
-    ) as HTMLVideoElement | null;
-
-    if (cinema) {
-      return this.createPayload(cinema, 'cinema');
-    }
-
-    return this.createPayload(null, null);
+    return this.createPayload(null, null, null);
   }
 
-  private static findVisibleVideo(selector: string): HTMLVideoElement | null {
-    const videos = document.querySelectorAll<HTMLVideoElement>(selector);
+  private static findBestVideo(selector: string): HTMLVideoElement | null {
+    const videos = Array.from(
+      document.querySelectorAll<HTMLVideoElement>(selector),
+    );
+
+    const visible = videos.filter((video) => this.isVisibleVideo(video));
+    if (!visible.length) return null;
 
     return (
-      Array.from(videos).find((video) => {
-        const style = getComputedStyle(video);
-        return (
-          video.isConnected &&
-          style.display !== 'none' &&
-          style.visibility !== 'hidden' &&
+      visible.find(
+        (video) =>
           !video.ended &&
-          video.getClientRects().length > 0
-        );
-      }) ?? null
+          video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA,
+      ) ??
+      visible.find((video) => !video.ended) ??
+      visible[0]
     );
   }
 
-  private static check() {
-    const { video, mode, source } = this.detect();
+  private static isVisibleVideo(video: HTMLVideoElement): boolean {
+    if (!video.isConnected || video.hidden) return false;
+
+    const style = getComputedStyle(video);
+    return (
+      style.display !== 'none' &&
+      style.visibility !== 'hidden' &&
+      Number.parseFloat(style.opacity || '1') !== 0 &&
+      video.getClientRects().length > 0
+    );
+  }
+
+  private static check(): void {
+    if (!this.initialized) return;
+
+    const detected = this.detect();
     const forced = this.forceCheck;
     this.forceCheck = false;
 
     const previousVideo = this.currentVideo;
     const previousMode = this.currentMode;
+    const previousSource = this.currentSource;
 
     if (
       !forced &&
-      previousVideo === video &&
-      previousMode === mode &&
-      this.currentSource === source
+      previousVideo === detected.video &&
+      previousMode === detected.mode &&
+      previousSource === detected.source
     ) {
       return;
     }
 
-    this.currentVideo = video;
-    this.currentMode = mode;
-    this.currentSource = source;
+    this.currentVideo = detected.video;
+    this.currentMode = detected.mode;
+    this.currentSource = detected.source;
     this.revision++;
-    this.observeVideoSource(video);
+    this.observeVideoSource(detected.video);
 
-    if (previousVideo && !video) {
-      const payload = this.createPayload(null, previousMode);
+    if (previousVideo && !detected.video) {
+      const payload = this.createPayload(null, previousMode, previousSource);
       Luminous.Logger.info('Canvas', 'Unmounted', payload);
       this.emit('unmount', payload);
       return;
     }
 
-    if (!previousVideo && video) {
-      const payload = this.createPayload(video, mode);
+    if (!previousVideo && detected.video) {
+      const payload = this.get();
       Luminous.Logger.info('Canvas', 'Mounted', payload);
       this.emit('mount', payload);
       return;
     }
 
-    const payload = this.createPayload(video, mode);
+    const payload = this.get();
     Luminous.Logger.info('Canvas', 'Changed', payload);
     this.emit('change', payload);
   }
 
-  private static emit(event: CanvasEvent, payload: CanvasPayload) {
+  private static emit(event: CanvasEvent, payload: CanvasPayload): void {
     this.getListeners(event).forEach((listener) => {
       this.callListener(listener, payload);
     });
   }
 
-  private static observeVideoSource(video: HTMLVideoElement | null) {
+  private static observeVideoSource(video: HTMLVideoElement | null): void {
     if (video === this.observedSourceVideo) return;
 
-    const events: Array<keyof HTMLMediaElementEventMap> = [
-      'loadedmetadata',
-      'loadeddata',
-      'canplay',
-      'playing',
-      'emptied',
-      'ended',
-    ];
-
-    events.forEach((event) => {
+    MEDIA_SOURCE_EVENTS.forEach((event) => {
       this.observedSourceVideo?.removeEventListener(
         event,
         this.handleVideoSourceChange,
       );
     });
+
     this.observedSourceVideo = video;
 
-    events.forEach((event) => {
+    MEDIA_SOURCE_EVENTS.forEach((event) => {
       video?.addEventListener(event, this.handleVideoSourceChange);
     });
   }
@@ -212,7 +276,7 @@ export class Canvas {
   private static callListener(
     listener: CanvasListener,
     payload: CanvasPayload,
-  ) {
+  ): void {
     try {
       listener(payload);
     } catch (error) {

@@ -20,7 +20,8 @@
     "prepare": "husky",
     "npm:patch": "npm version patch",
     "npm:minor": "npm version minor",
-    "npm:major": "npm version major"
+    "npm:major": "npm version major",
+    "check": "npm run typecheck && npm run build"
   },
   "devDependencies": {
     "@types/node": "^26.1.1",

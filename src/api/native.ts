@@ -13,7 +13,7 @@ export class Native {
 
   static focus(): void {
     if (!this.canFocus()) return;
-    Spicetify.Platform.FocusMainWindowAPI.focusMainWindow();
+    Spicetify.Platform?.FocusMainWindowAPI?.focusMainWindow?.();
   }
 
   static getZoomCapabilities() {
@@ -28,70 +28,108 @@ export class Native {
   }
 
   static async getZoomLevel(): Promise<number | null> {
+    const zoomApi = Spicetify.Platform?.ZoomAPI;
+    if (!zoomApi?.getZoomLevel) return null;
+
     try {
-      return await Spicetify.Platform.ZoomAPI.getZoomLevel();
-    } catch {
+      return await zoomApi.getZoomLevel();
+    } catch (error) {
+      Luminous.Logger.warn('Runtime', 'Failed to read Spotify zoom', error);
       return null;
     }
   }
 
-  static async setZoomLevel(level: number) {
-    const caps = this.getZoomCapabilities();
-    if (!caps.canSetZoomLevel) return;
+  static async setZoomLevel(level: number): Promise<boolean> {
+    const zoomApi = Spicetify.Platform?.ZoomAPI;
+    if (!zoomApi?.setZoomLevel || !this.getZoomCapabilities().canSetZoomLevel) {
+      return false;
+    }
 
-    await Spicetify.Platform.ZoomAPI.setZoomLevel(level);
-  }
-
-  static zoomIn() {
-    if (!this.getZoomCapabilities().canZoomIn) return;
-    Spicetify.Platform.ZoomAPI.zoomIn();
-  }
-
-  static zoomOut() {
-    if (!this.getZoomCapabilities().canZoomOut) return;
-    Spicetify.Platform.ZoomAPI.zoomOut();
-  }
-
-  static setWindowButtonsVisible(visible: boolean) {
-    Spicetify.Platform?.NativeAPI?.setWindowButtonsVisibility?.(visible);
-  }
-
-  static setFullscreen(fullscreen: boolean) {
-    if (fullscreen) {
-      document.documentElement.requestFullscreen();
-    } else {
-      document.exitFullscreen();
+    try {
+      await zoomApi.setZoomLevel(level);
+      return true;
+    } catch (error) {
+      Luminous.Logger.warn('Runtime', 'Failed to set Spotify zoom', error);
+      return false;
     }
   }
 
-  static restart() {
+  static zoomIn(): void {
+    if (!this.getZoomCapabilities().canZoomIn) return;
+    Spicetify.Platform?.ZoomAPI?.zoomIn?.();
+  }
+
+  static zoomOut(): void {
+    if (!this.getZoomCapabilities().canZoomOut) return;
+    Spicetify.Platform?.ZoomAPI?.zoomOut?.();
+  }
+
+  static setWindowButtonsVisible(visible: boolean): void {
+    Spicetify.Platform?.NativeAPI?.setWindowButtonsVisibility?.(visible);
+  }
+
+  static async setFullscreen(fullscreen: boolean): Promise<boolean> {
+    try {
+      if (fullscreen) {
+        await document.documentElement.requestFullscreen();
+      } else if (document.fullscreenElement) {
+        await document.exitFullscreen();
+      }
+      return true;
+    } catch (error) {
+      Luminous.Logger.warn(
+        'Runtime',
+        'Failed to change fullscreen state',
+        error,
+      );
+      return false;
+    }
+  }
+
+  static restart(): void {
     Spicetify.Platform?.LifecycleAPI?.restart?.();
   }
 
-  static shutdown() {
+  static shutdown(): void {
     Spicetify.Platform?.LifecycleAPI?.shutdown?.();
   }
 
-  static openNotificationSettings() {
+  static openNotificationSettings(): void {
     Spicetify.Platform?.OSNotificationsAPI?.openNotificationsSetting?.();
   }
 
-  static showToast(payload: ToastPayload, callback?: () => void) {
+  static showToast(payload: ToastPayload, callback?: () => void): void {
     Spicetify.Platform?.OSNotificationsAPI?.showToast?.(payload, callback);
   }
 
   static async getLogFolder(): Promise<string | null> {
+    const logsApi = Spicetify.Platform?.DesktopLogsAPI;
+    if (!logsApi?.getLogFolder) return null;
+
     try {
-      return await Spicetify.Platform.DesktopLogsAPI.getLogFolder();
-    } catch {
+      return await logsApi.getLogFolder();
+    } catch (error) {
+      Luminous.Logger.warn(
+        'Runtime',
+        'Failed to get Spotify log folder',
+        error,
+      );
       return null;
     }
   }
 
   static async getVersionInfo(): Promise<VersionInfo | null> {
+    const updateApi = Spicetify.Platform?.UpdateAPI;
+    if (!updateApi?.getVersionInfo) return null;
+
     try {
-      return await Spicetify.Platform.UpdateAPI.getVersionInfo();
-    } catch {
+      return await updateApi.getVersionInfo();
+    } catch (error) {
+      Luminous.Logger.warn(
+        'Runtime',
+        'Failed to get Spotify version info',
+        error,
+      );
       return null;
     }
   }

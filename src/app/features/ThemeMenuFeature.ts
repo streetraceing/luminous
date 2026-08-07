@@ -1,3 +1,9 @@
+import {
+  SettingUiDefinition,
+  settingsUi,
+  visualPresets,
+} from '../../config/settings';
+import type { SettingValue } from '../../types/runtime/settings.types';
 import { getReact, useEffect, useRef, useState } from '../react';
 
 const MENU_ITEM_LABEL = 'Luminous Settings';
@@ -12,160 +18,21 @@ const FOCUSABLE_SELECTOR = [
   '[tabindex]:not([tabindex="-1"])',
 ].join(',');
 
-type ThemeTab = 'appearance' | 'motion';
+type ThemeTab = 'appearance' | 'motion' | 'advanced';
 
-type NumericSetting = {
-  key: string;
-  label: string;
-  description: string;
-  min: number;
-  max: number;
-  step: number;
-  unit: 'px' | '%' | 's';
-  fallback: number;
-};
-
-type ToggleSetting = {
-  key: string;
-  label: string;
-  description: string;
-  fallback: boolean;
-};
-
-type ChoiceSetting = {
-  key: string;
-  label: string;
-  description: string;
-  fallback: string;
-  options: Array<{
-    value: string;
-    label: string;
-  }>;
-};
-
-const tabs: Array<{ id: ThemeTab; label: string }> = [
+const tabs: ReadonlyArray<{ id: ThemeTab; label: string }> = [
   { id: 'appearance', label: 'Appearance' },
   { id: 'motion', label: 'Motion' },
+  { id: 'advanced', label: 'Advanced' },
 ];
 
-const appearanceToggles: ToggleSetting[] = [
-  {
-    key: 'dynamicBackground',
-    label: 'Dynamic background',
-    description: 'Use the current cover or Spotify Canvas as the backdrop.',
-    fallback: true,
-  },
-  {
-    key: 'dynamicPalette',
-    label: 'Adaptive effects',
-    description: 'Build a colour scene automatically from each track cover.',
-    fallback: true,
-  },
-];
-
-const appearanceNumericSettings: NumericSetting[] = [
-  {
-    key: 'backgroundBlur',
-    label: 'Background blur',
-    description: 'Softens album art and Canvas motion behind the interface.',
-    min: 0,
-    max: 48,
-    step: 1,
-    unit: 'px',
-    fallback: 24,
-  },
-  {
-    key: 'backgroundBrightness',
-    label: 'Background brightness',
-    description: 'Controls how prominent the artwork remains behind Spotify.',
-    min: 30,
-    max: 120,
-    step: 1,
-    unit: '%',
-    fallback: 75,
-  },
-  {
-    key: 'uiOpacity',
-    label: 'Surface opacity',
-    description: 'Sets the density of the translucent interface surfaces.',
-    min: 0,
-    max: 100,
-    step: 1,
-    unit: '%',
-    fallback: 50,
-  },
-  {
-    key: 'uiBlur',
-    label: 'Surface blur',
-    description:
-      'Controls the blur applied to navigation and content surfaces.',
-    min: 0,
-    max: 32,
-    step: 1,
-    unit: 'px',
-    fallback: 16,
-  },
-  {
-    key: 'paletteStrength',
-    label: 'Effect intensity',
-    description:
-      'Controls how strongly the adaptive scene appears behind Spotify.',
-    min: 0,
-    max: 45,
-    step: 1,
-    unit: '%',
-    fallback: 24,
-  },
-];
-
-const motionChoiceSetting: ChoiceSetting = {
-  key: 'backgroundMotion',
-  label: 'Background movement',
-  description: 'Choose how the artwork, Canvas, and adaptive scene travel.',
-  fallback: 'drift',
-  options: [
-    { value: 'still', label: 'Still' },
-    { value: 'drift', label: 'Drift' },
-    { value: 'float', label: 'Float' },
-  ],
-};
-
-const motionNumericSettings: NumericSetting[] = [
-  {
-    key: 'motionDuration',
-    label: 'Motion speed',
-    description: 'Scales the media movement and the adaptive scene tempo.',
-    min: 8,
-    max: 48,
-    step: 1,
-    unit: 's',
-    fallback: 20,
-  },
-];
-
-const motionToggles: ToggleSetting[] = [
-  {
-    key: 'reduceMotion',
-    label: 'Reduce motion',
-    description: 'Stop Luminous animations and background cross-fades.',
-    fallback: false,
-  },
-];
-
-const resettableSettings = [
-  ...appearanceToggles.map((setting) => setting.key),
-  ...appearanceNumericSettings.map((setting) => setting.key),
-  motionChoiceSetting.key,
-  ...motionNumericSettings.map((setting) => setting.key),
-  ...motionToggles.map((setting) => setting.key),
-];
+const resettableSettings = settingsUi.map((setting) => setting.key);
 
 export function ThemeMenuFeature() {
   const React = getReact();
   const effect = useEffect();
   const ref = useRef();
   const state = useState();
-
   const menuItemRef = ref<Spicetify.Menu.Item | null>(null);
   const [open, setOpen] = state(false);
 
@@ -173,21 +40,12 @@ export function ThemeMenuFeature() {
     let disposed = false;
     let retryTimer: number | null = null;
 
-    const scheduleRetry = () => {
-      if (disposed || retryTimer !== null) return;
-
-      retryTimer = window.setTimeout(() => {
-        retryTimer = null;
-        registerMenuItem();
-      }, 250);
-    };
-
     const registerMenuItem = () => {
       retryTimer = null;
       if (disposed || menuItemRef.current) return;
 
       if (!Spicetify.Menu?.Item) {
-        scheduleRetry();
+        retryTimer = window.setTimeout(registerMenuItem, 250);
         return;
       }
 
@@ -197,7 +55,6 @@ export function ThemeMenuFeature() {
         () => setOpen(true),
         MENU_ITEM_ICON,
       );
-
       menuItem.register();
       menuItemRef.current = menuItem;
     };
@@ -206,9 +63,7 @@ export function ThemeMenuFeature() {
 
     return () => {
       disposed = true;
-
       if (retryTimer !== null) window.clearTimeout(retryTimer);
-
       menuItemRef.current?.deregister();
       menuItemRef.current = null;
     };
@@ -231,6 +86,7 @@ function ThemeSettingsModal({ onClose }: { onClose: () => void }) {
   const tabButtonRefs = ref<Record<ThemeTab, HTMLButtonElement | null>>({
     appearance: null,
     motion: null,
+    advanced: null,
   });
   const panelRef = ref<HTMLDivElement | null>(null);
   const panelContentRef = ref<HTMLDivElement | null>(null);
@@ -241,28 +97,24 @@ function ThemeSettingsModal({ onClose }: { onClose: () => void }) {
     if (tab === activeTab) return;
 
     const currentHeight = panelRef.current?.getBoundingClientRect().height;
-    if (currentHeight) {
-      setPanelHeight(Math.ceil(currentHeight));
-    }
+    if (currentHeight) setPanelHeight(Math.ceil(currentHeight));
 
     setActiveTab(tab);
-
-    if (focus) {
-      requestAnimationFrame(() => tabButtonRefs.current[tab]?.focus());
-    }
+    if (focus) requestAnimationFrame(() => tabButtonRefs.current[tab]?.focus());
   };
 
   effect(() => {
     const previousOverflow = document.body.style.overflow;
-    const focusFrame = requestAnimationFrame(() => {
-      closeButtonRef.current?.focus();
-    });
-
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+    const focusFrame = requestAnimationFrame(() =>
+      closeButtonRef.current?.focus(),
+    );
     document.body.style.overflow = 'hidden';
 
     return () => {
       cancelAnimationFrame(focusFrame);
       document.body.style.overflow = previousOverflow;
+      previouslyFocused?.focus?.();
     };
   }, []);
 
@@ -279,7 +131,7 @@ function ThemeSettingsModal({ onClose }: { onClose: () => void }) {
       const focusable = Array.from(
         dialogRef.current?.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR) ??
           [],
-      );
+      ).filter((element) => element.offsetParent !== null);
 
       if (!focusable.length) {
         event.preventDefault();
@@ -292,20 +144,14 @@ function ThemeSettingsModal({ onClose }: { onClose: () => void }) {
       if (event.shiftKey && document.activeElement === first) {
         event.preventDefault();
         last.focus();
-        return;
-      }
-
-      if (!event.shiftKey && document.activeElement === last) {
+      } else if (!event.shiftKey && document.activeElement === last) {
         event.preventDefault();
         first.focus();
       }
     };
 
     document.addEventListener('keydown', handleKeyDown, true);
-
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown, true);
-    };
+    return () => document.removeEventListener('keydown', handleKeyDown, true);
   }, [onClose]);
 
   effect(() => {
@@ -314,12 +160,8 @@ function ThemeSettingsModal({ onClose }: { onClose: () => void }) {
     const targetHeight = Math.ceil(
       panelContentRef.current.getBoundingClientRect().height,
     );
-    const frameId = requestAnimationFrame(() => {
-      setPanelHeight(targetHeight);
-    });
-    const resetTimer = window.setTimeout(() => {
-      setPanelHeight(null);
-    }, 220);
+    const frameId = requestAnimationFrame(() => setPanelHeight(targetHeight));
+    const resetTimer = window.setTimeout(() => setPanelHeight(null), 240);
 
     return () => {
       cancelAnimationFrame(frameId);
@@ -386,7 +228,7 @@ function ThemeSettingsModal({ onClose }: { onClose: () => void }) {
           React.createElement(
             'small',
             { id: MODAL_DESCRIPTION_ID },
-            'Theme preferences',
+            `Theme preferences · v${Luminous.version}`,
           ),
         ),
         React.createElement(
@@ -394,7 +236,10 @@ function ThemeSettingsModal({ onClose }: { onClose: () => void }) {
           {
             className: 'luminous-theme-menu__reset-button',
             type: 'button',
-            onClick: () => Luminous.Settings.resetMany(resettableSettings),
+            onClick: () => {
+              Luminous.Settings.resetMany(resettableSettings);
+              Spicetify.showNotification('Luminous settings reset');
+            },
           },
           'Reset',
         ),
@@ -410,12 +255,11 @@ function ThemeSettingsModal({ onClose }: { onClose: () => void }) {
           React.createElement('svg', {
             className: 'luminous-theme-menu__close-icon',
             'aria-hidden': 'true',
-            dangerouslySetInnerHTML: {
-              __html: Spicetify.SVGIcons?.x ?? '',
-            },
+            dangerouslySetInnerHTML: { __html: Spicetify.SVGIcons?.x ?? '' },
           }),
         ),
       ),
+      React.createElement(PresetStrip),
       React.createElement(
         'div',
         {
@@ -466,9 +310,7 @@ function ThemeSettingsModal({ onClose }: { onClose: () => void }) {
             ref: panelContentRef,
             className: 'luminous-theme-menu__panel-content',
           },
-          activeTab === 'appearance'
-            ? React.createElement(AppearanceSettings)
-            : React.createElement(MotionSettings),
+          React.createElement(SettingsSection, { section: activeTab }),
         ),
       ),
       React.createElement(
@@ -480,8 +322,61 @@ function ThemeSettingsModal({ onClose }: { onClose: () => void }) {
   );
 }
 
-function AppearanceSettings() {
+function PresetStrip() {
   const React = getReact();
+
+  return React.createElement(
+    'div',
+    {
+      className: 'luminous-theme-menu__presets',
+      'aria-label': 'Visual presets',
+    },
+    React.createElement('span', null, 'Presets'),
+    React.createElement(
+      'div',
+      { className: 'luminous-theme-menu__preset-list' },
+      visualPresets.map((preset) =>
+        React.createElement(
+          'button',
+          {
+            key: preset.id,
+            type: 'button',
+            className: 'luminous-theme-menu__preset-button',
+            title: preset.description,
+            onClick: () => {
+              Luminous.Settings.setMany(
+                preset.values as Record<string, SettingValue>,
+              );
+              Spicetify.showNotification(`Luminous preset: ${preset.label}`);
+            },
+          },
+          preset.label,
+        ),
+      ),
+    ),
+  );
+}
+
+function SettingsSection({ section }: { section: ThemeTab }) {
+  const React = getReact();
+  const headings: Record<ThemeTab, { title: string; description: string }> = {
+    appearance: {
+      title: 'Appearance',
+      description:
+        'Shape artwork, adaptive colour, and Spotify glass surfaces.',
+    },
+    motion: {
+      title: 'Motion',
+      description:
+        'Tune movement, transitions, pointer depth, and accessibility.',
+    },
+    advanced: {
+      title: 'Advanced',
+      description: 'Control rendering cost and inspect the current runtime.',
+    },
+  };
+  const heading = headings[section];
+  const rows = settingsUi.filter((setting) => setting.section === section);
 
   return React.createElement(
     React.Fragment,
@@ -489,85 +384,50 @@ function AppearanceSettings() {
     React.createElement(
       'div',
       { className: 'luminous-theme-menu__panel-heading' },
-      React.createElement('h2', null, 'Appearance'),
-      React.createElement(
-        'p',
-        null,
-        'Shape the balance between artwork, colour, and Spotify surfaces.',
-      ),
+      React.createElement('h2', null, heading.title),
+      React.createElement('p', null, heading.description),
     ),
-    appearanceToggles.map((setting) =>
-      React.createElement(ToggleSettingRow, {
-        key: setting.key,
-        setting,
-      }),
+    rows.map((setting) =>
+      React.createElement(SettingRow, { key: setting.key, setting }),
     ),
-    appearanceNumericSettings.map((setting) =>
-      React.createElement(NumericSettingRow, {
-        key: setting.key,
-        setting,
-      }),
-    ),
+    section === 'advanced' && React.createElement(RuntimeTools),
   );
 }
 
-function MotionSettings() {
-  const React = getReact();
+function SettingRow({ setting }: { setting: SettingUiDefinition }) {
+  if (setting.control === 'toggle') {
+    return getReact().createElement(ToggleSettingRow, { setting });
+  }
 
-  return React.createElement(
-    React.Fragment,
-    null,
-    React.createElement(
-      'div',
-      { className: 'luminous-theme-menu__panel-heading' },
-      React.createElement('h2', null, 'Motion'),
-      React.createElement(
-        'p',
-        null,
-        'Set the overall movement while each track keeps its own adaptive scene.',
-      ),
-    ),
-    React.createElement(ChoiceSettingRow, { setting: motionChoiceSetting }),
-    motionNumericSettings.map((setting) =>
-      React.createElement(NumericSettingRow, {
-        key: setting.key,
-        setting,
-      }),
-    ),
-    motionToggles.map((setting) =>
-      React.createElement(ToggleSettingRow, {
-        key: setting.key,
-        setting,
-      }),
-    ),
-  );
+  if (setting.control === 'range') {
+    return getReact().createElement(NumericSettingRow, { setting });
+  }
+
+  return getReact().createElement(ChoiceSettingRow, { setting });
 }
 
-function ToggleSettingRow({ setting }: { setting: ToggleSetting }) {
+function ToggleSettingRow({ setting }: { setting: SettingUiDefinition }) {
   const React = getReact();
   const effect = useEffect();
   const state = useState();
-  const [checked, setChecked] = state(() =>
-    readBooleanSetting(setting.key, setting.fallback),
+  const [checked, setChecked] = state(
+    () => Luminous.Settings.get<boolean>(setting.key) === true,
   );
 
-  effect(() => {
-    return Luminous.Settings.subscribe<boolean>(
-      setting.key,
-      (value) => setChecked(value === true),
-      { immediate: true },
-    );
-  }, [setting.key]);
+  effect(
+    () =>
+      Luminous.Settings.subscribe<boolean>(
+        setting.key,
+        (value) => setChecked(value === true),
+        { immediate: true },
+      ),
+    [setting.key],
+  );
 
   return React.createElement(
     'label',
     { className: 'luminous-theme-menu__row luminous-theme-menu__toggle' },
-    React.createElement(
-      'span',
-      { className: 'luminous-theme-menu__copy' },
-      React.createElement('span', null, setting.label),
-      React.createElement('small', null, setting.description),
-    ),
+    React.createElement(SettingCopy, { setting }),
     React.createElement(
       'span',
       { className: 'luminous-theme-menu__switch' },
@@ -585,19 +445,23 @@ function ToggleSettingRow({ setting }: { setting: ToggleSetting }) {
   );
 }
 
-function NumericSettingRow({ setting }: { setting: NumericSetting }) {
+function NumericSettingRow({ setting }: { setting: SettingUiDefinition }) {
   const React = getReact();
   const effect = useEffect();
   const state = useState();
-  const [value, setValue] = state(() => readNumericSetting(setting));
+  const [value, setValue] = state(() =>
+    Number(Luminous.Settings.get<number>(setting.key)),
+  );
 
-  effect(() => {
-    return Luminous.Settings.subscribe<number>(
-      setting.key,
-      (nextValue) => setValue(Number(nextValue)),
-      { immediate: true },
-    );
-  }, [setting.key]);
+  effect(
+    () =>
+      Luminous.Settings.subscribe<number>(
+        setting.key,
+        (nextValue) => setValue(Number(nextValue)),
+        { immediate: true },
+      ),
+    [setting.key],
+  );
 
   return React.createElement(
     'label',
@@ -605,13 +469,8 @@ function NumericSettingRow({ setting }: { setting: NumericSetting }) {
     React.createElement(
       'span',
       { className: 'luminous-theme-menu__range-header' },
-      React.createElement(
-        'span',
-        { className: 'luminous-theme-menu__copy' },
-        React.createElement('span', null, setting.label),
-        React.createElement('small', null, setting.description),
-      ),
-      React.createElement('strong', null, `${value}${setting.unit}`),
+      React.createElement(SettingCopy, { setting }),
+      React.createElement('strong', null, `${value}${setting.unit ?? ''}`),
     ),
     React.createElement(
       'span',
@@ -632,31 +491,28 @@ function NumericSettingRow({ setting }: { setting: NumericSetting }) {
   );
 }
 
-function ChoiceSettingRow({ setting }: { setting: ChoiceSetting }) {
+function ChoiceSettingRow({ setting }: { setting: SettingUiDefinition }) {
   const React = getReact();
   const effect = useEffect();
   const state = useState();
   const [value, setValue] = state(() =>
-    readStringSetting(setting.key, setting.fallback),
+    String(Luminous.Settings.get<string>(setting.key)),
   );
 
-  effect(() => {
-    return Luminous.Settings.subscribe<string>(
-      setting.key,
-      (nextValue) => setValue(String(nextValue)),
-      { immediate: true },
-    );
-  }, [setting.key]);
+  effect(
+    () =>
+      Luminous.Settings.subscribe<string>(
+        setting.key,
+        (nextValue) => setValue(String(nextValue)),
+        { immediate: true },
+      ),
+    [setting.key],
+  );
 
   return React.createElement(
     'div',
     { className: 'luminous-theme-menu__row luminous-theme-menu__choice' },
-    React.createElement(
-      'div',
-      { className: 'luminous-theme-menu__copy' },
-      React.createElement('span', null, setting.label),
-      React.createElement('small', null, setting.description),
-    ),
+    React.createElement(SettingCopy, { setting }),
     React.createElement(
       'div',
       {
@@ -664,7 +520,7 @@ function ChoiceSettingRow({ setting }: { setting: ChoiceSetting }) {
         role: 'group',
         'aria-label': setting.label,
       },
-      setting.options.map((option) =>
+      setting.options?.map((option) =>
         React.createElement(
           'button',
           {
@@ -685,19 +541,70 @@ function ChoiceSettingRow({ setting }: { setting: ChoiceSetting }) {
   );
 }
 
-function readNumericSetting(setting: NumericSetting): number {
-  const current = Luminous.Settings.get(setting.key);
-  const parsed = Number(current);
-
-  return Number.isFinite(parsed) ? parsed : setting.fallback;
+function SettingCopy({ setting }: { setting: SettingUiDefinition }) {
+  const React = getReact();
+  return React.createElement(
+    'span',
+    { className: 'luminous-theme-menu__copy' },
+    React.createElement('span', null, setting.label),
+    React.createElement('small', null, setting.description),
+  );
 }
 
-function readBooleanSetting(key: string, fallback: boolean): boolean {
-  const current = Luminous.Settings.get(key);
-  return typeof current === 'boolean' ? current : fallback;
+function RuntimeTools() {
+  const React = getReact();
+  const effect = useEffect();
+  const state = useState();
+  const [summary, setSummary] = state(() => getRuntimeSummary());
+
+  effect(() => {
+    const refresh = () => setSummary(getRuntimeSummary());
+    Luminous.Background.addEventListener('change', refresh);
+    Luminous.Canvas.addEventListener('mount', refresh);
+    Luminous.Canvas.addEventListener('change', refresh);
+    Luminous.Canvas.addEventListener('unmount', refresh);
+    Luminous.Song.addEventListener('change', refresh);
+
+    return () => {
+      Luminous.Background.removeEventListener('change', refresh);
+      Luminous.Canvas.removeEventListener('mount', refresh);
+      Luminous.Canvas.removeEventListener('change', refresh);
+      Luminous.Canvas.removeEventListener('unmount', refresh);
+      Luminous.Song.removeEventListener('change', refresh);
+    };
+  }, []);
+
+  return React.createElement(
+    'div',
+    { className: 'luminous-theme-menu__runtime' },
+    React.createElement(
+      'div',
+      { className: 'luminous-theme-menu__runtime-copy' },
+      React.createElement('strong', null, 'Runtime'),
+      React.createElement('small', null, summary),
+    ),
+    React.createElement(
+      'button',
+      {
+        type: 'button',
+        className: 'luminous-theme-menu__tool-button',
+        onClick: async () => {
+          const copied = await Luminous.Diagnostics.copy();
+          Spicetify.showNotification(
+            copied
+              ? 'Luminous diagnostics copied'
+              : 'Could not copy diagnostics',
+            !copied,
+          );
+        },
+      },
+      'Copy diagnostics',
+    ),
+  );
 }
 
-function readStringSetting(key: string, fallback: string): string {
-  const current = Luminous.Settings.get(key);
-  return typeof current === 'string' ? current : fallback;
+function getRuntimeSummary(): string {
+  const diagnostics = Luminous.Diagnostics.get();
+  const canvas = diagnostics.runtime.canvasMode ?? 'none';
+  return `Background: ${diagnostics.runtime.background} · Canvas: ${canvas} · UI: ${diagnostics.runtime.uiHealth}`;
 }

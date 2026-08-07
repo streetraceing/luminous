@@ -1,12 +1,13 @@
 import {
   SettingDefinition,
   SettingListener,
+  SettingSnapshot,
   SettingValue,
 } from '../types/runtime/settings.types';
 
 export class Settings {
   private static readonly STORAGE_KEY = 'luminous-settings';
-  private static readonly PERSIST_DELAY_MS = 200;
+  private static readonly PERSIST_DELAY_MS = 180;
 
   private static registry = new Map<string, SettingDefinition>();
   private static values = new Map<string, SettingValue>();
@@ -14,13 +15,20 @@ export class Settings {
   private static savedValues = new Map<string, unknown>();
   private static persistTimer: number | null = null;
   private static initialized = false;
+  private static batchDepth = 0;
+  private static persistQueued = false;
 
-  static init() {
+  private static readonly handlePageHide = () => {
+    this.flushPersist();
+  };
+
+  static init(): void {
     if (this.initialized) return;
 
     this.initialized = true;
-    const savedValues = this.readSavedValues();
-    Object.entries(savedValues).forEach(([key, value]) => {
+    this.savedValues.clear();
+
+    Object.entries(this.readSavedValues()).forEach(([key, value]) => {
       this.savedValues.set(key, value);
     });
 
@@ -31,68 +39,101 @@ export class Settings {
       this.apply(key, definition, value);
     });
 
-    window.addEventListener('pagehide', () => this.flushPersist());
+    window.addEventListener('pagehide', this.handlePageHide);
     this.persistNow();
   }
 
-  static register(key: string, definition: SettingDefinition) {
-    this.registry.set(key, definition);
+  static destroy(): void {
+    if (this.persistTimer !== null) {
+      window.clearTimeout(this.persistTimer);
+      this.persistTimer = null;
+    }
+
+    if (this.initialized) {
+      this.persistNow();
+      window.removeEventListener('pagehide', this.handlePageHide);
+    }
+
+    this.listeners.clear();
+    this.values.clear();
+    this.savedValues.clear();
+    this.registry.clear();
+    this.batchDepth = 0;
+    this.persistQueued = false;
+    this.initialized = false;
+  }
+
+  static register<T extends SettingValue>(
+    key: string,
+    definition: SettingDefinition<T>,
+  ): void {
+    this.registry.set(key, definition as unknown as SettingDefinition);
 
     if (!this.initialized) return;
 
     const value = this.normalizeValue(
-      definition,
+      definition as unknown as SettingDefinition,
       this.values.get(key) ?? this.savedValues.get(key),
     );
     this.values.set(key, value);
     this.savedValues.set(key, value);
-    this.apply(key, definition, value);
+    this.apply(key, definition as unknown as SettingDefinition, value);
     this.schedulePersist();
   }
 
   static get<T extends SettingValue>(key: string): T {
-    return this.values.get(key) as T;
-  }
+    if (this.values.has(key)) return this.values.get(key) as T;
 
-  static set(key: string, value: SettingValue) {
     const definition = this.registry.get(key);
-
-    if (!definition) {
-      Luminous.Logger.warn('Main', `Unknown setting: ${key}`);
-      return;
-    }
-
-    const normalized = this.normalizeValue(definition, value);
-
-    if (this.values.get(key) === normalized) return;
-
-    this.values.set(key, normalized);
-    this.savedValues.set(key, normalized);
-    this.apply(key, definition, normalized);
-    this.emit(key, normalized);
-    this.schedulePersist();
+    return definition?.default as T;
   }
 
-  static reset(key: string) {
+  static has(key: string): boolean {
+    return this.registry.has(key);
+  }
+
+  static set(key: string, value: SettingValue): void {
+    this.setInternal(key, value, true);
+  }
+
+  static setMany(values: Record<string, SettingValue>): void {
+    this.batch(() => {
+      Object.entries(values).forEach(([key, value]) => {
+        this.setInternal(key, value, true);
+      });
+    });
+  }
+
+  static reset(key: string): void {
     const definition = this.registry.get(key);
     if (!definition) return;
 
     this.set(key, definition.default);
   }
 
-  static resetMany(keys: string[]) {
-    keys.forEach((key) => {
-      const definition = this.registry.get(key);
-      if (!definition) return;
+  static resetMany(keys: readonly string[]): void {
+    this.batch(() => {
+      keys.forEach((key) => {
+        const definition = this.registry.get(key);
+        if (!definition) return;
 
-      const value = this.normalizeValue(definition, definition.default);
-      this.values.set(key, value);
-      this.savedValues.set(key, value);
-      this.apply(key, definition, value);
-      this.emit(key, value);
+        this.setInternal(key, definition.default, true);
+      });
+    });
+  }
+
+  static resetAll(): void {
+    this.resetMany([...this.registry.keys()]);
+  }
+
+  static snapshot(): SettingSnapshot {
+    const snapshot: SettingSnapshot = {};
+
+    this.registry.forEach((definition, key) => {
+      snapshot[key] = this.values.get(key) ?? definition.default;
     });
 
-    this.schedulePersist();
+    return snapshot;
   }
 
   static subscribe<T extends SettingValue>(
@@ -102,17 +143,75 @@ export class Settings {
   ): () => void {
     this.getListeners(key).add(listener as SettingListener);
 
-    if (options.immediate && this.values.has(key)) {
-      this.callListener(
-        key,
-        listener as SettingListener,
-        this.values.get(key)!,
-      );
+    if (options.immediate) {
+      const value = this.values.get(key) ?? this.registry.get(key)?.default;
+      if (value !== undefined) {
+        this.callListener(key, listener as SettingListener, value);
+      }
     }
 
     return () => {
       this.listeners.get(key)?.delete(listener as SettingListener);
     };
+  }
+
+  static getVar(name: string): string {
+    return getComputedStyle(document.documentElement)
+      .getPropertyValue(name)
+      .trim();
+  }
+
+  static setVar(name: string, value: string): void {
+    document.documentElement.style.setProperty(name, value);
+  }
+
+  static removeVar(name: string): void {
+    document.documentElement.style.removeProperty(name);
+  }
+
+  static toggleClass(className: string, force?: boolean): void {
+    document.documentElement.classList.toggle(className, force);
+  }
+
+  static hasClass(className: string): boolean {
+    return document.documentElement.classList.contains(className);
+  }
+
+  private static setInternal(
+    key: string,
+    value: SettingValue,
+    notify: boolean,
+  ): void {
+    const definition = this.registry.get(key);
+
+    if (!definition) {
+      Luminous.Logger.warn('Settings', `Unknown setting: ${key}`);
+      return;
+    }
+
+    const normalized = this.normalizeValue(definition, value);
+    if (Object.is(this.values.get(key), normalized)) return;
+
+    this.values.set(key, normalized);
+    this.savedValues.set(key, normalized);
+    this.apply(key, definition, normalized);
+    if (notify) this.emit(key, normalized);
+    this.schedulePersist();
+  }
+
+  private static batch(callback: () => void): void {
+    this.batchDepth++;
+
+    try {
+      callback();
+    } finally {
+      this.batchDepth--;
+
+      if (this.batchDepth === 0 && this.persistQueued) {
+        this.persistQueued = false;
+        this.schedulePersist();
+      }
+    }
   }
 
   private static readSavedValues(): Record<string, unknown> {
@@ -121,7 +220,6 @@ export class Settings {
       if (!saved) return {};
 
       const parsed: unknown = JSON.parse(saved);
-
       if (
         typeof parsed === 'object' &&
         parsed !== null &&
@@ -130,7 +228,7 @@ export class Settings {
         return parsed as Record<string, unknown>;
       }
     } catch (error) {
-      Luminous.Logger.warn('Main', 'Failed to read saved settings', error);
+      Luminous.Logger.warn('Settings', 'Failed to read saved settings', error);
     }
 
     return {};
@@ -140,14 +238,14 @@ export class Settings {
     definition: SettingDefinition,
     value: unknown,
   ): SettingValue {
-    let normalized = value;
+    let normalized = value ?? definition.default;
 
     if (definition.normalize) {
       try {
-        normalized = definition.normalize(value);
+        normalized = definition.normalize(normalized);
       } catch (error) {
         Luminous.Logger.warn(
-          'Main',
+          'Settings',
           'Failed to normalize setting value',
           error,
         );
@@ -161,7 +259,7 @@ export class Settings {
       }
     }
 
-    Luminous.Logger.warn('Main', 'Invalid setting value, using default');
+    Luminous.Logger.warn('Settings', 'Invalid setting value, using default');
     return definition.default;
   }
 
@@ -169,15 +267,24 @@ export class Settings {
     key: string,
     definition: SettingDefinition,
     value: SettingValue,
-  ) {
+  ): void {
     try {
       definition.apply?.(value);
     } catch (error) {
-      Luminous.Logger.error('Main', `Failed to apply setting: ${key}`, error);
+      Luminous.Logger.error(
+        'Settings',
+        `Failed to apply setting: ${key}`,
+        error,
+      );
     }
   }
 
-  private static schedulePersist() {
+  private static schedulePersist(): void {
+    if (this.batchDepth > 0) {
+      this.persistQueued = true;
+      return;
+    }
+
     if (this.persistTimer !== null) {
       window.clearTimeout(this.persistTimer);
     }
@@ -188,16 +295,17 @@ export class Settings {
     }, this.PERSIST_DELAY_MS);
   }
 
-  private static flushPersist() {
+  private static flushPersist(): void {
     if (this.persistTimer !== null) {
       window.clearTimeout(this.persistTimer);
       this.persistTimer = null;
     }
 
+    this.persistQueued = false;
     this.persistNow();
   }
 
-  private static persistNow() {
+  private static persistNow(): void {
     const saved: Record<string, SettingValue> = {};
 
     this.savedValues.forEach((value, key) => {
@@ -210,41 +318,18 @@ export class Settings {
       }
     });
 
-    this.registry.forEach((_definition, key) => {
-      const value = this.values.get(key);
-      if (value !== undefined) saved[key] = value;
+    this.registry.forEach((definition, key) => {
+      saved[key] = this.values.get(key) ?? definition.default;
     });
 
     try {
       Spicetify.LocalStorage.set(this.STORAGE_KEY, JSON.stringify(saved));
     } catch (error) {
-      Luminous.Logger.error('Main', 'Failed to persist settings', error);
+      Luminous.Logger.error('Settings', 'Failed to persist settings', error);
     }
   }
 
-  static getVar(name: string): string {
-    return getComputedStyle(document.documentElement)
-      .getPropertyValue(name)
-      .trim();
-  }
-
-  static setVar(name: string, value: string) {
-    document.documentElement.style.setProperty(name, value);
-  }
-
-  static removeVar(name: string) {
-    document.documentElement.style.removeProperty(name);
-  }
-
-  static toggleClass(className: string, force?: boolean) {
-    document.documentElement.classList.toggle(className, force);
-  }
-
-  static hasClass(className: string): boolean {
-    return document.documentElement.classList.contains(className);
-  }
-
-  private static emit(key: string, value: SettingValue) {
+  private static emit(key: string, value: SettingValue): void {
     this.listeners.get(key)?.forEach((listener) => {
       this.callListener(key, listener, value);
     });
@@ -254,11 +339,15 @@ export class Settings {
     key: string,
     listener: SettingListener,
     value: SettingValue,
-  ) {
+  ): void {
     try {
       listener(value, key);
     } catch (error) {
-      Luminous.Logger.error('Main', `Setting listener failed: ${key}`, error);
+      Luminous.Logger.error(
+        'Settings',
+        `Setting listener failed: ${key}`,
+        error,
+      );
     }
   }
 

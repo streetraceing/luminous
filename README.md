@@ -1,86 +1,32 @@
 # Luminous
 
-> A lightweight dynamic [Spicetify](https://spicetify.app/) theme with glass surfaces, adaptive album-art effects, and Spotify Canvas support.
+Dynamic glass theme for Spotify + Spicetify. Album artwork builds an adaptive light scene; Spotify Canvas/Now Playing video can become the backdrop when capture is available.
 
-<p align="center">
-  <img src="./assets/preview.png" alt="Luminous theme preview" width="900" />
-</p>
+## Русский
 
-<p align="center">
-  <a href="https://spicetify.app/docs/customization/marketplace">Spicetify Marketplace</a>
-  ·
-  <a href="https://youtu.be/S-2u6xTFZCs">Video preview</a>
-  ·
-  <a href="./docs/README.md">Documentation</a>
-</p>
+Установите **Luminous** через Spicetify Marketplace. Настройки темы: профиль Spotify → **Luminous Settings**.
 
-Luminous transforms Spotify's default interface into a softly lit, translucent workspace. The current cover automatically shapes a matching colour scene, while Spotify Canvas or a visible Now Playing video can replace the static artwork when available.
+Быстрый выбор: **Balanced** — универсально, **Cinematic** — ярче и глубже, **Calm** — спокойно, **Performance** — минимум нагрузки.
 
-<details>
-  <summary><strong>Animated preview</strong></summary>
-  <br />
-  <img src="./assets/preview-compressed.gif" alt="Luminous animated preview" />
-</details>
+Краткая инструкция: [docs/user.ru.md](./docs/user.ru.md).
 
-## Highlights
+## English
 
-- Dynamic backgrounds from cover art, Canvas, and Spotify NPV videos.
-- Adaptive effects derived from each cover's colours, contrast, and brightness.
-- Smooth colour morphing with automatic scene character and tempo.
-- Adjustable backdrop, glass surfaces, movement, intensity, and reduced motion.
-- A focused settings dialog in Spotify's top bar.
-- Graceful fallbacks when artwork, video capture, or Spotify UI elements are unavailable.
-- No runtime dependencies bundled with the theme.
+Install **Luminous** from Spicetify Marketplace. Open Spotify profile menu → **Luminous Settings**.
 
-## Install
+Presets: **Balanced** for everyday use, **Cinematic** for richer motion, **Calm** for a quieter look, and **Performance** for lower GPU use.
 
-The simplest option is to install **Luminous** from the [Spicetify Marketplace](https://spicetify.app/marketplace/). For local development or manual installation, use the workflow below.
-
-### Requirements
-
-- [Spicetify](https://spicetify.app/) 2.44.0 or later.
-- Node.js 25.9.0 and npm 11.18.0 for building from source.
-- Spotify desktop app with Spicetify already configured.
-
-### Build from source
-
-```bash
-git clone https://github.com/streetraceing/luminous.git
-cd luminous
-npm install
-npm run build
-```
-
-### Apply the local build
-
-```bash
-npm run apply
-```
-
-This builds the theme, selects `Luminous` as the current Spicetify theme, and applies it to Spotify.
-
-### Revert to the Marketplace theme
-
-```bash
-npm run revert
-```
+Quick guide: [docs/user.en.md](./docs/user.en.md).
 
 ## Development
 
-| Command                  | Purpose                                    |
-| ------------------------ | ------------------------------------------ |
-| `npm run typecheck`      | Validate TypeScript without writing files. |
-| `npm run build`          | Create the distributable files in `dist/`. |
-| `npm run watch`          | Ask Spicetify to watch the active theme.   |
-| `npm run prettier:write` | Format project files with Prettier.        |
-| `npm run release`        | Build and create the release artifacts.    |
+```bash
+npm install
+npm run typecheck
+npm run build
+npm run apply
+```
 
-## Documentation
+Developer documentation: [docs/technical/README.md](./docs/technical/README.md).
 
-- [Using and customising Luminous](./docs/customization.md)
-- [Technical architecture](./docs/architecture.md)
-- [Troubleshooting](./docs/troubleshooting.md)
-
-## License
-
-Distributed under the [MIT License](./LICENSE).
+MIT licensed.

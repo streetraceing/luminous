@@ -6,16 +6,42 @@ const REACT_READY_TIMEOUT = 15000;
 
 let root: { render: (element: unknown) => void; unmount?: () => void } | null =
   null;
+let mountRevision = 0;
+let reactWaitFrame: number | null = null;
 
-export function mountLuminousApp() {
-  waitForReactRuntime()
-    .then(renderApp)
+export function mountLuminousApp(): void {
+  const revision = ++mountRevision;
+  cancelReactWait();
+
+  waitForReactRuntime(revision)
+    .then(() => {
+      if (revision !== mountRevision) return;
+      renderApp();
+    })
     .catch((error) => {
-      Luminous.Logger.error('Main', error);
+      if (revision !== mountRevision) return;
+      Luminous.Logger.error('Runtime', 'Failed to mount application', error);
     });
 }
 
-function renderApp() {
+export function unmountLuminousApp(): void {
+  mountRevision++;
+  cancelReactWait();
+
+  if (root?.unmount) {
+    root.unmount();
+    root = null;
+  } else if (typeof Spicetify !== 'undefined' && Spicetify.ReactDOM) {
+    const container = document.getElementById(ROOT_ID);
+    if (container && Spicetify.ReactDOM.unmountComponentAtNode) {
+      Spicetify.ReactDOM.unmountComponentAtNode(container);
+    }
+  }
+
+  document.getElementById(ROOT_ID)?.remove();
+}
+
+function renderApp(): void {
   const React = getReact();
   const { ReactDOM } = Spicetify;
   const container = ensureRoot();
@@ -31,11 +57,17 @@ function renderApp() {
   ReactDOM.render(element, container);
 }
 
-function waitForReactRuntime(): Promise<void> {
+function waitForReactRuntime(revision: number): Promise<void> {
   return new Promise((resolve, reject) => {
-    const start = Date.now();
+    const start = performance.now();
 
     const check = () => {
+      reactWaitFrame = null;
+      if (revision !== mountRevision) {
+        reject(new Error('Luminous mount superseded'));
+        return;
+      }
+
       if (
         typeof Spicetify !== 'undefined' &&
         Spicetify.React &&
@@ -46,30 +78,22 @@ function waitForReactRuntime(): Promise<void> {
         return;
       }
 
-      if (Date.now() - start > REACT_READY_TIMEOUT) {
+      if (performance.now() - start > REACT_READY_TIMEOUT) {
         reject(new Error('Spicetify React runtime not available'));
         return;
       }
 
-      requestAnimationFrame(check);
+      reactWaitFrame = requestAnimationFrame(check);
     };
 
     check();
   });
 }
 
-export function unmountLuminousApp() {
-  if (root?.unmount) {
-    root.unmount();
-    root = null;
-    return;
-  }
-
-  const { ReactDOM } = Spicetify;
-  const container = document.getElementById(ROOT_ID);
-  if (container && ReactDOM.unmountComponentAtNode) {
-    ReactDOM.unmountComponentAtNode(container);
-  }
+function cancelReactWait(): void {
+  if (reactWaitFrame === null) return;
+  cancelAnimationFrame(reactWaitFrame);
+  reactWaitFrame = null;
 }
 
 function ensureRoot(): HTMLDivElement {

@@ -448,3 +448,112 @@ html.luminous-reduce-motion
   ) {
   animation: none;
 }
+
+.luminous-theme-menu__presets {
+  display: grid;
+  gap: 8px;
+  padding: 10px 22px 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.luminous-theme-menu__presets > span {
+  color: var(--spice-subtext);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.luminous-theme-menu__preset-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.luminous-theme-menu__preset-button,
+.luminous-theme-menu__tool-button {
+  color: var(--spice-text);
+  background: rgba(255, 255, 255, 0.065);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  cursor: pointer;
+}
+
+.luminous-theme-menu__preset-button {
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 650;
+  transition:
+    background-color 140ms ease,
+    border-color 140ms ease,
+    transform 140ms ease;
+}
+
+.luminous-theme-menu__preset-button:hover {
+  background: rgba(255, 255, 255, 0.11);
+  border-color: rgba(255, 255, 255, 0.18);
+  transform: translateY(-1px);
+}
+
+.luminous-theme-menu__runtime {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  padding: 15px 0 2px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.luminous-theme-menu__runtime-copy {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.luminous-theme-menu__runtime-copy strong {
+  font-size: 13px;
+}
+
+.luminous-theme-menu__runtime-copy small {
+  overflow: hidden;
+  color: var(--spice-subtext);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.luminous-theme-menu__tool-button {
+  padding: 7px 10px;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.luminous-theme-menu__tool-button:hover {
+  background: rgba(255, 255, 255, 0.11);
+}
+
+.luminous-theme-menu__preset-button:focus-visible,
+.luminous-theme-menu__tool-button:focus-visible {
+  outline: 2px solid var(--luminous-accent);
+  outline-offset: 3px;
+}
+
+@media (max-width: 560px) {
+  .luminous-theme-menu__presets {
+    padding-inline: 16px;
+  }
+
+  .luminous-theme-menu__runtime {
+    grid-template-columns: 1fr;
+  }
+
+  .luminous-theme-menu__tool-button {
+    justify-self: start;
+  }
+}
+
+html.luminous-reduce-motion
+  :is(.luminous-theme-menu__preset-button, .luminous-theme-menu__tool-button) {
+  transition: none;
+}

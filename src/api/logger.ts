@@ -11,11 +11,15 @@ export class Logger {
   };
 
   private static channelStyles: Record<LoggerChannel, string> = {
+    Runtime: 'color:#38bdf8',
     Main: 'color:#68c4e8',
     Background: 'color:#60a5fa',
     Canvas: 'color:#a78bfa',
     Palette: 'color:#f472b6',
     Song: 'color:#34d399',
+    Settings: 'color:#fbbf24',
+    Motion: 'color:#22d3ee',
+    UI: 'color:#c084fc',
   };
 
   private static baseStyle = 'color:#888';
@@ -34,7 +38,7 @@ export class Logger {
     return `Luminous/${channel}`;
   }
 
-  static log(level: LoggerLevel, channel: LoggerChannel, ...data: any[]) {
+  static log(level: LoggerLevel, channel: LoggerChannel, ...data: unknown[]) {
     if (!this.shouldLog(level, channel)) return;
 
     console.log(
@@ -46,15 +50,15 @@ export class Logger {
     );
   }
 
-  static info(channel: LoggerChannel, ...data: any[]) {
+  static info(channel: LoggerChannel, ...data: unknown[]) {
     this.log('INFO', channel, ...data);
   }
 
-  static warn(channel: LoggerChannel, ...data: any[]) {
+  static warn(channel: LoggerChannel, ...data: unknown[]) {
     this.log('WARN', channel, ...data);
   }
 
-  static error(channel: LoggerChannel, ...data: any[]) {
+  static error(channel: LoggerChannel, ...data: unknown[]) {
     this.log('ERROR', channel, ...data);
   }
 

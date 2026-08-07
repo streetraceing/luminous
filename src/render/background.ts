@@ -15,7 +15,9 @@ type CapturableVideo = HTMLVideoElement & {
 };
 
 export class Background {
-  private static readonly TRANSITION_MS = 250;
+  private static readonly DEFAULT_TRANSITION_MS = 420;
+  private static transitionMs = this.DEFAULT_TRANSITION_MS;
+  private static suspended = false;
   private static readonly MAX_PRELOADED_IMAGES = 24;
 
   private static root: HTMLDivElement | null = null;
@@ -38,7 +40,10 @@ export class Background {
   private static pendingCanvasVideo: HTMLVideoElement | null = null;
   private static pendingCanvasFallback: string | null = null;
   private static videoCleanupTimer: number | null = null;
-  private static unsupportedCanvasSources = new WeakSet<HTMLVideoElement>();
+  private static unsupportedCanvasSources = new WeakMap<
+    HTMLVideoElement,
+    Set<string>
+  >();
 
   private static currentType: BackgroundType = 'none';
 
@@ -106,7 +111,7 @@ export class Background {
       filter: `blur(var(--luminous-background-blur)) brightness(var(--luminous-background-brightness))`,
       transform: 'scale(1.2) translateZ(0)',
       pointerEvents: 'none',
-      transition: `opacity ${this.TRANSITION_MS}ms linear`,
+      transition: 'opacity var(--luminous-transition-duration) ease',
       opacity: '0',
       willChange: 'opacity, transform',
     };
@@ -159,7 +164,28 @@ export class Background {
       return blob;
     });
 
-    effects.append(mesh, halo, ...ribbons, ...blobs);
+    const shimmer = document.createElement('span');
+    shimmer.className = 'luminous-background-shimmer';
+
+    const sparkles = document.createElement('span');
+    sparkles.className = 'luminous-background-sparkles';
+
+    const vignette = document.createElement('span');
+    vignette.className = 'luminous-background-vignette';
+
+    const grain = document.createElement('span');
+    grain.className = 'luminous-background-grain';
+
+    effects.append(
+      mesh,
+      halo,
+      ...ribbons,
+      ...blobs,
+      shimmer,
+      sparkles,
+      vignette,
+      grain,
+    );
     return effects;
   }
 
@@ -189,7 +215,7 @@ export class Background {
       position: 'absolute',
       inset: '0',
       background: 'var(--spice-sidebar)',
-      transition: `opacity ${this.TRANSITION_MS}ms linear`,
+      transition: 'opacity var(--luminous-transition-duration) ease',
       opacity: '1',
     });
 
@@ -397,9 +423,7 @@ export class Background {
       this.resetVideo(pendingVideo);
     }
 
-    if (this.unsupportedCanvasSources.has(sourceVideo)) {
-      return false;
-    }
+    if (this.isUnsupportedCanvasSource(sourceVideo, canvasKey)) return false;
 
     if (
       !sourceVideo.isConnected ||
@@ -411,7 +435,7 @@ export class Background {
 
     const captureStream = (sourceVideo as CapturableVideo).captureStream;
     if (typeof captureStream !== 'function') {
-      this.unsupportedCanvasSources.add(sourceVideo);
+      this.markUnsupportedCanvasSource(sourceVideo, canvasKey);
       return false;
     }
 
@@ -421,7 +445,7 @@ export class Background {
       stream = captureStream.call(sourceVideo);
     } catch (error) {
       if (this.isPermanentCanvasError(error)) {
-        this.unsupportedCanvasSources.add(sourceVideo);
+        this.markUnsupportedCanvasSource(sourceVideo, canvasKey);
       }
       return false;
     }
@@ -460,6 +484,7 @@ export class Background {
           this.currentCanvasSource = sourceVideo;
           this.currentCanvasKey = canvasKey;
           this.transitionTo('canvas', next);
+          if (this.suspended) next.pause();
           Luminous.Logger.info(
             'Background',
             'Rendering canvas layer',
@@ -482,7 +507,7 @@ export class Background {
         }
 
         if (this.isPermanentCanvasError(error)) {
-          this.unsupportedCanvasSources.add(sourceVideo);
+          this.markUnsupportedCanvasSource(sourceVideo, canvasKey);
         }
 
         Luminous.Logger.warn(
@@ -499,6 +524,39 @@ export class Background {
       });
 
     return true;
+  }
+
+  static setTransitionDuration(duration: number): void {
+    this.transitionMs = Number.isFinite(duration)
+      ? Math.min(1200, Math.max(0, duration))
+      : this.DEFAULT_TRANSITION_MS;
+  }
+
+  static setSuspended(suspended: boolean): void {
+    if (this.suspended === suspended) return;
+    this.suspended = suspended;
+
+    const active =
+      this.currentType === 'canvas' && this.videoLayers
+        ? this.videoLayers[this.activeVideo]
+        : null;
+
+    if (!active) return;
+
+    if (suspended) {
+      active.pause();
+      return;
+    }
+
+    void active.play().catch((error) => {
+      if (!this.isInterruptedPlayback(error)) {
+        Luminous.Logger.warn(
+          'Background',
+          'Failed to resume canvas stream',
+          error,
+        );
+      }
+    });
   }
 
   static destroy() {
@@ -519,6 +577,7 @@ export class Background {
     this.activeImage = 0;
     this.activeVideo = 0;
     this.currentType = 'none';
+    this.suspended = false;
     this.emit('change');
   }
 
@@ -604,7 +663,7 @@ export class Background {
           this.resetVideo(video);
         }
       });
-    }, this.TRANSITION_MS);
+    }, this.transitionMs);
   }
 
   private static cancelVideoCleanup() {
@@ -612,6 +671,29 @@ export class Background {
 
     window.clearTimeout(this.videoCleanupTimer);
     this.videoCleanupTimer = null;
+  }
+
+  private static isUnsupportedCanvasSource(
+    video: HTMLVideoElement,
+    source: string | null,
+  ): boolean {
+    if (!source) return false;
+    return this.unsupportedCanvasSources.get(video)?.has(source) ?? false;
+  }
+
+  private static markUnsupportedCanvasSource(
+    video: HTMLVideoElement,
+    source: string | null,
+  ): void {
+    if (!source) return;
+
+    let sources = this.unsupportedCanvasSources.get(video);
+    if (!sources) {
+      sources = new Set();
+      this.unsupportedCanvasSources.set(video, sources);
+    }
+
+    sources.add(source);
   }
 
   private static getErrorName(error: unknown): string | null {

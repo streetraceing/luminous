@@ -12,19 +12,23 @@ export class Song {
   private static current: Spicetify.PlayerTrack | null = null;
   private static currentSignature: string | null = null;
   private static listeners = new Map<SongEvent, Set<SongListener>>();
-
   private static ready = false;
   private static eventsBound = false;
   private static initPromise: Promise<void> | null = null;
   private static initialTrackTimer: number | null = null;
+  private static readyPromise: Promise<void> = Promise.resolve();
+  private static readyResolve: () => void = () => undefined;
 
-  private static readyPromise: Promise<void>;
-  private static readyResolve: () => void;
+  private static readonly handleSongChange = (event?: Event) => {
+    const playerEvent = event as
+      (Event & { data?: Spicetify.PlayerState }) | undefined;
+    this.handleTrack(
+      playerEvent?.data?.item ?? Spicetify.Player.data?.item ?? null,
+    );
+  };
 
   static {
-    this.readyPromise = new Promise<void>((resolve) => {
-      this.readyResolve = resolve;
-    });
+    this.resetReadyPromise();
   }
 
   static init(timeout = 15000): Promise<void> {
@@ -38,78 +42,33 @@ export class Song {
     return this.initPromise;
   }
 
-  private static async initialize(timeout: number): Promise<void> {
-    await this.waitForPlayer(timeout);
-    this.bindEvents();
-
-    if (!this.syncCurrentTrack()) {
-      this.startInitialTrackSync(timeout);
+  static destroy(): void {
+    if (this.eventsBound) {
+      try {
+        Spicetify.Player.removeEventListener(
+          'songchange',
+          this.handleSongChange,
+        );
+      } catch (error) {
+        Luminous.Logger.warn('Song', 'Failed to remove player listener', error);
+      }
     }
-  }
 
-  private static waitForPlayer(timeout: number): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const start = Date.now();
-
-      const check = () => {
-        if (
-          typeof Spicetify !== 'undefined' &&
-          typeof Spicetify.Player?.addEventListener === 'function'
-        ) {
-          resolve();
-          return;
-        }
-
-        if (Date.now() - start > timeout) {
-          reject(new Error(this.PLAYER_TIMEOUT_MESSAGE));
-          return;
-        }
-
-        requestAnimationFrame(check);
-      };
-
-      check();
-    });
-  }
-
-  private static bindEvents() {
-    if (this.eventsBound) return;
-
-    this.eventsBound = true;
-    Spicetify.Player.addEventListener('songchange', (event) => {
-      this.handleTrack(
-        event?.data?.item ?? Spicetify.Player.data?.item ?? null,
-      );
-    });
-  }
-
-  private static syncCurrentTrack(): boolean {
-    const track = Spicetify.Player.data?.item ?? null;
-    this.handleTrack(track);
-    return track !== null;
-  }
-
-  private static startInitialTrackSync(timeout: number) {
-    if (this.initialTrackTimer !== null || this.ready) return;
-
-    const deadline = Date.now() + timeout;
-
-    const sync = () => {
+    if (this.initialTrackTimer !== null) {
+      window.clearTimeout(this.initialTrackTimer);
       this.initialTrackTimer = null;
+    }
 
-      if (this.ready || this.syncCurrentTrack()) return;
-      if (Date.now() >= deadline) return;
-
-      this.initialTrackTimer = window.setTimeout(
-        sync,
-        this.INITIAL_TRACK_SYNC_INTERVAL,
-      );
-    };
-
-    sync();
+    this.listeners.clear();
+    this.current = null;
+    this.currentSignature = null;
+    this.ready = false;
+    this.eventsBound = false;
+    this.initPromise = null;
+    this.resetReadyPromise();
   }
 
-  static addEventListener(event: SongEvent, listener: SongListener) {
+  static addEventListener(event: SongEvent, listener: SongListener): void {
     this.getListeners(event).add(listener);
 
     if (!this.eventsBound && !this.initPromise) {
@@ -118,16 +77,15 @@ export class Song {
       });
     }
 
-    if (event === 'ready' && this.ready && this.current) {
-      this.callListener(listener, this.createPayload(this.current));
-    }
-
-    if (event === 'change' && this.current) {
+    if (
+      this.current &&
+      (event === 'change' || (event === 'ready' && this.ready))
+    ) {
       this.callListener(listener, this.createPayload(this.current));
     }
   }
 
-  static removeEventListener(event: SongEvent, listener: SongListener) {
+  static removeEventListener(event: SongEvent, listener: SongListener): void {
     this.listeners.get(event)?.delete(listener);
   }
 
@@ -144,11 +102,78 @@ export class Song {
 
     if (!this.ready) {
       const remaining = Math.max(0, timeout - (Date.now() - startedAt));
-      const becameReady = await this.waitForReady(remaining);
-      if (!becameReady) return null;
+      if (!(await this.waitForReady(remaining))) return null;
     }
 
     return this.current ? this.createPayload(this.current) : null;
+  }
+
+  static getSync(): SongPayload | null {
+    return this.current ? this.createPayload(this.current) : null;
+  }
+
+  private static async initialize(timeout: number): Promise<void> {
+    await this.waitForPlayer(timeout);
+    this.bindEvents();
+
+    if (!this.syncCurrentTrack()) this.startInitialTrackSync(timeout);
+  }
+
+  private static waitForPlayer(timeout: number): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const start = performance.now();
+
+      const check = () => {
+        if (
+          typeof Spicetify !== 'undefined' &&
+          typeof Spicetify.Player?.addEventListener === 'function'
+        ) {
+          resolve();
+          return;
+        }
+
+        if (performance.now() - start > timeout) {
+          reject(new Error(this.PLAYER_TIMEOUT_MESSAGE));
+          return;
+        }
+
+        requestAnimationFrame(check);
+      };
+
+      check();
+    });
+  }
+
+  private static bindEvents(): void {
+    if (this.eventsBound) return;
+
+    this.eventsBound = true;
+    Spicetify.Player.addEventListener('songchange', this.handleSongChange);
+  }
+
+  private static syncCurrentTrack(): boolean {
+    const track = Spicetify.Player.data?.item ?? null;
+    this.handleTrack(track);
+    return track !== null;
+  }
+
+  private static startInitialTrackSync(timeout: number): void {
+    if (this.initialTrackTimer !== null || this.ready) return;
+
+    const deadline = Date.now() + timeout;
+
+    const sync = () => {
+      this.initialTrackTimer = null;
+      if (this.ready || this.syncCurrentTrack() || Date.now() >= deadline)
+        return;
+
+      this.initialTrackTimer = window.setTimeout(
+        sync,
+        this.INITIAL_TRACK_SYNC_INTERVAL,
+      );
+    };
+
+    sync();
   }
 
   private static waitForReady(timeout: number): Promise<boolean> {
@@ -156,20 +181,19 @@ export class Song {
     if (timeout <= 0) return Promise.resolve(false);
 
     return new Promise((resolve) => {
-      const timeoutId = window.setTimeout(() => resolve(false), timeout);
-
-      void this.readyPromise.then(() => {
+      let settled = false;
+      const finish = (value: boolean) => {
+        if (settled) return;
+        settled = true;
         window.clearTimeout(timeoutId);
-        resolve(true);
-      });
+        resolve(value);
+      };
+      const timeoutId = window.setTimeout(() => finish(false), timeout);
+      void this.readyPromise.then(() => finish(true));
     });
   }
 
-  static getSync(): SongPayload | null {
-    return this.current ? this.createPayload(this.current) : null;
-  }
-
-  private static handleTrack(track: Spicetify.PlayerTrack | null) {
+  private static handleTrack(track: Spicetify.PlayerTrack | null): void {
     if (!track) return;
 
     const signature = this.createTrackSignature(track);
@@ -191,12 +215,12 @@ export class Song {
     if (!this.ready) {
       this.ready = true;
       this.readyResolve();
-      Luminous.Logger.info('Song', 'Ready, current is', track);
+      Luminous.Logger.info('Song', 'Ready', this.createPayload(track));
       this.emit('ready');
       return;
     }
 
-    Luminous.Logger.info('Song', 'Changed to', track);
+    Luminous.Logger.info('Song', 'Changed', this.createPayload(track));
     this.emit('change');
   }
 
@@ -214,7 +238,6 @@ export class Song {
 
   private static createPayload(track: Spicetify.PlayerTrack): SongPayload {
     const artists = track.artists?.map((artist) => artist.name) ?? [];
-
     const image = normalizeImageUrl(
       track.images?.[0]?.url ??
         track.album?.images?.[0]?.url ??
@@ -234,7 +257,7 @@ export class Song {
     };
   }
 
-  private static emit(event: SongEvent) {
+  private static emit(event: SongEvent): void {
     if (!this.current) return;
 
     const payload = this.createPayload(this.current);
@@ -243,7 +266,10 @@ export class Song {
     });
   }
 
-  private static callListener(listener: SongListener, payload: SongPayload) {
+  private static callListener(
+    listener: SongListener,
+    payload: SongPayload,
+  ): void {
     try {
       listener(payload);
     } catch (error) {
@@ -260,6 +286,12 @@ export class Song {
     }
 
     return listeners;
+  }
+
+  private static resetReadyPromise(): void {
+    this.readyPromise = new Promise<void>((resolve) => {
+      this.readyResolve = resolve;
+    });
   }
 }
 

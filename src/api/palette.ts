@@ -20,6 +20,7 @@ const EFFECT_CLASSES = [
   'luminous-effect-bloom',
   'luminous-effect-prism',
   'luminous-effect-halo',
+  'luminous-effect-nebula',
   'luminous-effect-energy-soft',
   'luminous-effect-energy-flow',
   'luminous-effect-energy-vivid',
@@ -31,7 +32,7 @@ const SAMPLE_SIZE = 48;
 const MAX_CACHED_PALETTES = 24;
 const DEFAULT_MOTION_DURATION = 20;
 
-type EffectScene = 'aurora' | 'ember' | 'bloom' | 'prism' | 'halo';
+type EffectScene = 'aurora' | 'ember' | 'bloom' | 'prism' | 'halo' | 'nebula';
 type EffectEnergy = 'soft' | 'flow' | 'vivid';
 type EffectTone = 'dark' | 'balanced' | 'light';
 
@@ -445,6 +446,7 @@ export class Palette {
       ember: [0.08, 0.14],
       bloom: [0.1, 0.2],
       prism: [0.33, 0.66],
+      nebula: [0.12, -0.12],
     };
     const [secondaryOffset, accentOffset] = harmonyOffsets[scene];
     const secondarySource =
@@ -495,6 +497,14 @@ export class Palette {
     }
 
     const hueDegrees = dominantHue * 360;
+    if (
+      hueDegrees >= 252 &&
+      hueDegrees < 334 &&
+      visualChroma > 0.32 &&
+      metrics.averageLightness < 0.72
+    ) {
+      return 'nebula';
+    }
     if (hueDegrees >= 68 && hueDegrees < 166) return 'bloom';
 
     if (metrics.warmth > 0.08 || hueDegrees < 58 || hueDegrees >= 334) {

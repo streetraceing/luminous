@@ -1,4 +1,5 @@
 import { Canvas } from '../../api/canvas';
+import { Diagnostics } from '../../api/diagnostics';
 import { Logger } from '../../api/logger';
 import { Native } from '../../api/native';
 import { Palette } from '../../api/palette';
@@ -10,11 +11,17 @@ declare global {
   const Luminous: Readonly<{
     Background: typeof Background;
     Canvas: typeof Canvas;
+    Diagnostics: typeof Diagnostics;
     Song: typeof Song;
     Native: typeof Native;
     Palette: typeof Palette;
     Settings: typeof Settings;
     Logger: typeof Logger;
+    destroy: () => void;
     version: string;
   }>;
+
+  interface Window {
+    Luminous: typeof Luminous;
+  }
 }

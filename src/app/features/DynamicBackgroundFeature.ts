@@ -18,6 +18,9 @@ export function DynamicBackgroundFeature() {
   const [dynamicPalette, setDynamicPalette] = state(
     () => Luminous.Settings.get('dynamicPalette') !== false,
   );
+  const [backgroundSource, setBackgroundSource] = state(() =>
+    String(Luminous.Settings.get('backgroundSource') ?? 'auto'),
+  );
   const [appActive, setAppActive] = state(
     () => getUiHealth().status !== 'booting',
   );
@@ -25,12 +28,12 @@ export function DynamicBackgroundFeature() {
   const renderKey = memo(() => {
     if (!appActive) return 'inactive';
     if (!enabled) return 'disabled';
-    if (canvas.video) {
+    if (backgroundSource === 'auto' && canvas.video) {
       return `canvas:${canvas.source ?? ''}:${canvas.revision}:${song?.image ?? ''}`;
     }
     if (song?.image) return `image:${song.image}`;
     return 'empty';
-  }, [appActive, canvas, enabled, song?.image]);
+  }, [appActive, backgroundSource, canvas, enabled, song?.image]);
 
   effect(() => {
     let songKey = song ? `${song.uri}\u0000${song.image ?? ''}` : null;
@@ -76,6 +79,11 @@ export function DynamicBackgroundFeature() {
       (value) => setDynamicPalette(value !== false),
       { immediate: true },
     );
+    const unsubscribeSourceSetting = Luminous.Settings.subscribe<string>(
+      'backgroundSource',
+      (value) => setBackgroundSource(String(value)),
+      { immediate: true },
+    );
 
     return () => {
       Luminous.Song.removeEventListener('ready', handleSong);
@@ -86,6 +94,7 @@ export function DynamicBackgroundFeature() {
       unsubscribeHealth();
       unsubscribeSetting();
       unsubscribePaletteSetting();
+      unsubscribeSourceSetting();
       Luminous.Background.destroy();
       Luminous.Palette.clear();
     };
@@ -111,7 +120,7 @@ export function DynamicBackgroundFeature() {
       return;
     }
 
-    if (canvas.video) {
+    if (backgroundSource === 'auto' && canvas.video) {
       Luminous.Background.render({
         canvas: canvas.video,
         canvasSource: canvas.source,

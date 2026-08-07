@@ -1,6 +1,6 @@
 {
   "name": "Luminous",
-  "description": "Lightweight dynamic Spicetify theme",
+  "description": "Adaptive glass Spicetify theme with Canvas, presets, and performance controls",
   "readme": "README.md",
   "preview": "assets/luminous.png",
   "usercss": "https://streetraceing.github.io/luminous/release/user.css?version=2.1.2",
@@ -8,7 +8,15 @@
   "include": [
     "https://streetraceing.github.io/luminous/release/theme.js?version=2.1.2"
   ],
-  "tags": ["dynamic", "canvas", "background", "spicetify", "spotify"],
+  "tags": [
+    "dynamic",
+    "canvas",
+    "adaptive",
+    "glass",
+    "animated",
+    "spicetify",
+    "spotify"
+  ],
   "authors": [
     {
       "name": "streetraceing",
