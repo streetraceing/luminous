@@ -1986,7 +1986,6 @@
           const syncVisibility = () => {
             const suspended = pauseWhenHidden && document.hidden;
             root.classList.toggle('luminous-runtime-suspended', suspended);
-            Luminous.Background.setSuspended(suspended);
           };
           const animateParallax = () => {
             frameId = null;
@@ -2086,7 +2085,6 @@
             root.classList.remove('luminous-runtime-suspended');
             root.style.removeProperty('--luminous-parallax-x');
             root.style.removeProperty('--luminous-parallax-y');
-            Luminous.Background.setSuspended(false);
           };
         }, []);
         return null;
@@ -3993,12 +3991,6 @@
           this.transitionMs = Number.isFinite(duration)
             ? Math.min(1200, Math.max(0, duration))
             : this.DEFAULT_TRANSITION_MS;
-        }
-        static setSuspended(_suspended) {
-          // Do not pause/play MediaStream-backed video here. Chromium can expose a
-          // blank compositor frame immediately after resuming a captured stream,
-          // which presents as a flash after Alt+Tab. The browser already throttles
-          // hidden documents; Luminous only pauses its CSS motion via the root class.
         }
         static destroy() {
           this.imageRenderId++;

@@ -552,13 +552,6 @@ export class Background {
       : this.DEFAULT_TRANSITION_MS;
   }
 
-  static setSuspended(_suspended: boolean): void {
-    // Do not pause/play MediaStream-backed video here. Chromium can expose a
-    // blank compositor frame immediately after resuming a captured stream,
-    // which presents as a flash after Alt+Tab. The browser already throttles
-    // hidden documents; Luminous only pauses its CSS motion via the root class.
-  }
-
   static destroy() {
     this.imageRenderId++;
     this.videoRenderId++;

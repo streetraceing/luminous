@@ -22,8 +22,7 @@ Quick guide: [docs/user.en.md](./docs/user.en.md).
 
 ```bash
 npm install
-npm run typecheck
-npm run build
+npm run check
 npm run apply
 ```
 

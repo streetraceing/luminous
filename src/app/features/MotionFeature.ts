@@ -44,7 +44,6 @@ export function MotionFeature() {
     const syncVisibility = () => {
       const suspended = pauseWhenHidden && document.hidden;
       root.classList.toggle('luminous-runtime-suspended', suspended);
-      Luminous.Background.setSuspended(suspended);
     };
 
     const animateParallax = () => {
@@ -151,7 +150,6 @@ export function MotionFeature() {
       root.classList.remove('luminous-runtime-suspended');
       root.style.removeProperty('--luminous-parallax-x');
       root.style.removeProperty('--luminous-parallax-y');
-      Luminous.Background.setSuspended(false);
     };
   }, []);
 

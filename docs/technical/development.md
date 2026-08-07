@@ -10,13 +10,21 @@ Important commands:
 npm install
 npm run prettier:write
 npm run typecheck
+npm run lint:check
 npm run build
+npm run check
 npm run release
 npm run apply
 npm run revert
 ```
 
 `npm run release` rebuilds and recreates `release/`, copies `color.ini`, synchronizes the version query used by `manifest.json`, then best-effort stages the repository and creates a Git commit whose message is exactly the current package version (for example `2.2.0`). A missing Git repository, missing Git executable, no staged changes, or a failed commit is reported but does not make release generation itself throw.
+
+### Linting ambient Spicetify declarations
+
+`src/types/**/*.d.ts` describes the external Spotify/Spicetify runtime rather than Luminous implementation code. Some upstream-compatible surfaces are intentionally open-ended and therefore use `any`. ESLint disables only `@typescript-eslint/no-explicit-any` for those ambient declaration files; application and build TypeScript remain under the recommended rule set and must not introduce explicit `any`.
+
+`npm run check` is intentionally non-mutating. Use `npm run lint:fix` when you explicitly want ESLint autofixes.
 
 ## Expected outputs
 
@@ -38,10 +46,11 @@ The Marketplace manifest references the release JS/CSS with `?version=<package v
 For source changes:
 
 1. format;
-2. `npm run typecheck`;
-3. `npm run build`;
-4. if release files changed, verify release generation/version URLs;
-5. manually test track changes, no-track startup, Canvas appear/disappear, reused Canvas source, settings persistence, reduced motion, hide/show Spotify, settings modal keyboard behavior, and hot reinjection.
+2. run `npm run check` (typecheck + non-mutating lint + build);
+3. if release files changed, verify release generation/version URLs;
+4. manually test track changes, no-track startup, Canvas appear/disappear, reused Canvas source, settings persistence, reduced motion, hide/show Spotify, settings modal keyboard behavior, and hot reinjection.
+
+For narrower debugging, run `npm run typecheck`, `npm run lint:check`, and `npm run build` independently. The package post-apply workflow also runs `lint:check` after formatting and typechecking.
 
 For package handoff archives, additionally validate `.packagemanifest.json` and `.packageshift` with `@streetraceing/package` when available. Reserved metadata must not be listed as project payload.
 
