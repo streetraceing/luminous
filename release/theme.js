@@ -2,7 +2,7 @@
 (() => {
   const __APP_VERSION__ = '2.2.0';
   const __APP_AUTHOR__ = 'streetraceing';
-  const __BUILD_TIME__ = '07/08/2026 20:07:31 UTC+00:00';
+  const __BUILD_TIME__ = '07/08/2026 20:59:37 UTC+00:00';
   const modules = {
     'src/api/canvas': function (module, exports, require) {
       'use strict';
@@ -1780,9 +1780,11 @@
       exports.DynamicBackgroundFeature = DynamicBackgroundFeature;
       const react_1 = require('../react');
       const health_1 = require('../../ui/health');
+      const CANVAS_HANDOFF_GRACE_MS = 320;
       function DynamicBackgroundFeature() {
         const effect = (0, react_1.useEffect)();
         const memo = (0, react_1.useMemo)();
+        const ref = (0, react_1.useRef)();
         const state = (0, react_1.useState)();
         const [song, setSong] = state(() => Luminous.Song.getSync());
         const [canvas, setCanvas] = state(() => Luminous.Canvas.get());
@@ -1798,6 +1800,28 @@
         const [appActive, setAppActive] = state(
           () => (0, health_1.getUiHealth)().status !== 'booting',
         );
+        const handoffDeadline = ref(0);
+        const handoffTimer = ref(null);
+        const [handoffRevision, setHandoffRevision] = state(0);
+        const clearHandoffTimer = () => {
+          if (handoffTimer.current === null) return;
+          window.clearTimeout(handoffTimer.current);
+          handoffTimer.current = null;
+        };
+        const scheduleHandoffExpiry = () => {
+          clearHandoffTimer();
+          const remaining = handoffDeadline.current - performance.now();
+          if (remaining <= 0) {
+            handoffDeadline.current = 0;
+            setHandoffRevision((value) => value + 1);
+            return;
+          }
+          handoffTimer.current = window.setTimeout(() => {
+            handoffTimer.current = null;
+            handoffDeadline.current = 0;
+            setHandoffRevision((value) => value + 1);
+          }, remaining);
+        };
         const renderKey = memo(() => {
           if (!appActive) return 'inactive';
           if (!enabled) return 'disabled';
@@ -1817,6 +1841,11 @@
             songKey = nextKey;
             Luminous.Palette.cancel();
             Luminous.Background.preloadImage(nextSong.image);
+            if (Luminous.Background.getType() === 'canvas') {
+              handoffDeadline.current =
+                performance.now() + CANVAS_HANDOFF_GRACE_MS;
+              scheduleHandoffExpiry();
+            }
             setSong(nextSong);
           };
           const handleCanvas = (payload) => {
@@ -1824,6 +1853,10 @@
             if (canvasKey === nextKey && canvasVideo === payload.video) return;
             canvasKey = nextKey;
             canvasVideo = payload.video;
+            if (payload.video) {
+              handoffDeadline.current = 0;
+              clearHandoffTimer();
+            }
             setCanvas(payload);
           };
           Luminous.Song.addEventListener('ready', handleSong);
@@ -1861,6 +1894,8 @@
             unsubscribeSetting();
             unsubscribePaletteSetting();
             unsubscribeSourceSetting();
+            clearHandoffTimer();
+            handoffDeadline.current = 0;
             Luminous.Background.destroy();
             Luminous.Palette.clear();
           };
@@ -1882,6 +1917,8 @@
             return;
           }
           if (backgroundSource === 'auto' && canvas.video) {
+            handoffDeadline.current = 0;
+            clearHandoffTimer();
             Luminous.Background.render({
               canvas: canvas.video,
               canvasSource: canvas.source,
@@ -1889,12 +1926,20 @@
             });
             return;
           }
+          if (
+            backgroundSource === 'auto' &&
+            Luminous.Background.getType() === 'canvas' &&
+            handoffDeadline.current > performance.now()
+          ) {
+            scheduleHandoffExpiry();
+            return;
+          }
           if (song?.image) {
             Luminous.Background.render({ image: song.image });
             return;
           }
           Luminous.Background.render();
-        }, [renderKey]);
+        }, [handoffRevision, renderKey]);
         return null;
       }
     },
@@ -1968,6 +2013,7 @@
             if (
               !parallax ||
               isReduced() ||
+              root.classList.contains('luminous-settings-open') ||
               (pauseWhenHidden && document.hidden)
             ) {
               return;
@@ -2216,10 +2262,12 @@
         '[tabindex]:not([tabindex="-1"])',
       ].join(',');
       const tabs = [
+        { id: 'presets', label: 'Presets' },
         { id: 'appearance', label: 'Appearance' },
         { id: 'motion', label: 'Motion' },
         { id: 'advanced', label: 'Advanced' },
       ];
+      const SLIDER_APPLY_INTERVAL_MS = 32;
       const resettableSettings = settings_1.settingsUi.map(
         (setting) => setting.key,
       );
@@ -2270,19 +2318,14 @@
         const dialogRef = ref(null);
         const closeButtonRef = ref(null);
         const tabButtonRefs = ref({
+          presets: null,
           appearance: null,
           motion: null,
           advanced: null,
         });
-        const panelRef = ref(null);
-        const panelContentRef = ref(null);
         const [activeTab, setActiveTab] = state('appearance');
-        const [panelHeight, setPanelHeight] = state(null);
         const selectTab = (tab, focus = false) => {
           if (tab === activeTab) return;
-          const currentHeight =
-            panelRef.current?.getBoundingClientRect().height;
-          if (currentHeight) setPanelHeight(Math.ceil(currentHeight));
           setActiveTab(tab);
           if (focus)
             requestAnimationFrame(() => tabButtonRefs.current[tab]?.focus());
@@ -2290,13 +2333,16 @@
         effect(() => {
           const previousOverflow = document.body.style.overflow;
           const previouslyFocused = document.activeElement;
+          const root = document.documentElement;
           const focusFrame = requestAnimationFrame(() =>
             closeButtonRef.current?.focus(),
           );
           document.body.style.overflow = 'hidden';
+          root.classList.add('luminous-settings-open');
           return () => {
             cancelAnimationFrame(focusFrame);
             document.body.style.overflow = previousOverflow;
+            root.classList.remove('luminous-settings-open');
             previouslyFocused?.focus?.();
           };
         }, []);
@@ -2329,20 +2375,6 @@
           return () =>
             document.removeEventListener('keydown', handleKeyDown, true);
         }, [onClose]);
-        effect(() => {
-          if (panelHeight === null || !panelContentRef.current) return;
-          const targetHeight = Math.ceil(
-            panelContentRef.current.getBoundingClientRect().height,
-          );
-          const frameId = requestAnimationFrame(() =>
-            setPanelHeight(targetHeight),
-          );
-          const resetTimer = window.setTimeout(() => setPanelHeight(null), 240);
-          return () => {
-            cancelAnimationFrame(frameId);
-            window.clearTimeout(resetTimer);
-          };
-        }, [activeTab]);
         const handleTabKeyDown = (event, tab) => {
           const currentIndex = tabs.findIndex((item) => item.id === tab);
           let nextIndex = null;
@@ -2432,7 +2464,6 @@
                 }),
               ),
             ),
-            React.createElement(PresetStrip),
             React.createElement(
               'div',
               {
@@ -2465,13 +2496,8 @@
             React.createElement(
               'div',
               {
-                ref: panelRef,
                 id: `${MODAL_ID}-${activeTab}-panel`,
                 className: 'luminous-theme-menu__panel',
-                style:
-                  panelHeight === null
-                    ? undefined
-                    : { height: `${panelHeight}px` },
                 role: 'tabpanel',
                 'aria-labelledby': `${MODAL_ID}-${activeTab}-tab`,
               },
@@ -2479,7 +2505,6 @@
                 'div',
                 {
                   key: activeTab,
-                  ref: panelContentRef,
                   className: 'luminous-theme-menu__panel-content',
                 },
                 React.createElement(SettingsSection, { section: activeTab }),
@@ -2493,26 +2518,31 @@
           ),
         );
       }
-      function PresetStrip() {
+      function PresetsSection() {
         const React = (0, react_1.getReact)();
         return React.createElement(
-          'div',
-          {
-            className: 'luminous-theme-menu__presets',
-            'aria-label': 'Visual presets',
-          },
-          React.createElement('span', null, 'Presets'),
+          React.Fragment,
+          null,
           React.createElement(
             'div',
-            { className: 'luminous-theme-menu__preset-list' },
+            { className: 'luminous-theme-menu__panel-heading' },
+            React.createElement('h2', null, 'Presets'),
+            React.createElement(
+              'p',
+              null,
+              'Apply a complete visual and performance profile in one click.',
+            ),
+          ),
+          React.createElement(
+            'div',
+            { className: 'luminous-theme-menu__preset-grid' },
             settings_1.visualPresets.map((preset) =>
               React.createElement(
                 'button',
                 {
                   key: preset.id,
                   type: 'button',
-                  className: 'luminous-theme-menu__preset-button',
-                  title: preset.description,
+                  className: 'luminous-theme-menu__preset-card',
                   onClick: () => {
                     Luminous.Settings.setMany(preset.values);
                     Spicetify.showNotification(
@@ -2520,7 +2550,9 @@
                     );
                   },
                 },
-                preset.label,
+                React.createElement('strong', null, preset.label),
+                React.createElement('small', null, preset.description),
+                React.createElement('span', { 'aria-hidden': 'true' }, 'Apply'),
               ),
             ),
           ),
@@ -2528,6 +2560,9 @@
       }
       function SettingsSection({ section }) {
         const React = (0, react_1.getReact)();
+        if (section === 'presets') {
+          return React.createElement(PresetsSection);
+        }
         const headings = {
           appearance: {
             title: 'Appearance',
@@ -2615,19 +2650,50 @@
       function NumericSettingRow({ setting }) {
         const React = (0, react_1.getReact)();
         const effect = (0, react_1.useEffect)();
+        const ref = (0, react_1.useRef)();
         const state = (0, react_1.useState)();
         const [value, setValue] = state(() =>
           Number(Luminous.Settings.get(setting.key)),
         );
+        const pendingValue = ref(value);
+        const applyTimer = ref(null);
+        const flushValue = () => {
+          if (applyTimer.current !== null) {
+            window.clearTimeout(applyTimer.current);
+            applyTimer.current = null;
+          }
+          Luminous.Settings.set(setting.key, pendingValue.current);
+        };
+        const scheduleValue = (nextValue) => {
+          pendingValue.current = nextValue;
+          setValue(nextValue);
+          if (applyTimer.current !== null) return;
+          applyTimer.current = window.setTimeout(() => {
+            applyTimer.current = null;
+            Luminous.Settings.set(setting.key, pendingValue.current);
+          }, SLIDER_APPLY_INTERVAL_MS);
+        };
         effect(
           () =>
             Luminous.Settings.subscribe(
               setting.key,
-              (nextValue) => setValue(Number(nextValue)),
+              (nextValue) => {
+                const normalized = Number(nextValue);
+                pendingValue.current = normalized;
+                setValue(normalized);
+              },
               { immediate: true },
             ),
           [setting.key],
         );
+        effect(() => {
+          return () => {
+            if (applyTimer.current !== null) {
+              window.clearTimeout(applyTimer.current);
+              Luminous.Settings.set(setting.key, pendingValue.current);
+            }
+          };
+        }, [setting.key]);
         return React.createElement(
           'label',
           { className: 'luminous-theme-menu__row luminous-theme-menu__range' },
@@ -2650,11 +2716,11 @@
               max: setting.max,
               step: setting.step,
               value,
-              onChange: (event) =>
-                Luminous.Settings.set(
-                  setting.key,
-                  Number(event.currentTarget.value),
-                ),
+              onInput: (event) =>
+                scheduleValue(Number(event.currentTarget.value)),
+              onPointerUp: flushValue,
+              onKeyUp: flushValue,
+              onBlur: flushValue,
             }),
           ),
         );
@@ -2782,6 +2848,7 @@
         'luminous-glass-highlights',
         'luminous-reduce-motion',
         'luminous-runtime-suspended',
+        'luminous-settings-open',
         'luminous-parallax-enabled',
         'luminous-source-auto',
         'luminous-source-artwork',
@@ -3381,8 +3448,7 @@
         {
           key: 'pauseWhenHidden',
           label: 'Pause when hidden',
-          description:
-            'Pause cloned video and custom animation when Spotify is hidden.',
+          description: 'Pause custom Luminous motion while Spotify is hidden.',
           section: 'advanced',
           control: 'toggle',
         },
@@ -3517,8 +3583,9 @@
       exports.Background = void 0;
       class Background {
         static DEFAULT_TRANSITION_MS = 420;
+        static VIDEO_FRAME_TIMEOUT_MS = 1200;
+        static CLEANUP_GRACE_MS = 120;
         static transitionMs = this.DEFAULT_TRANSITION_MS;
-        static suspended = false;
         static MAX_PRELOADED_IMAGES = 24;
         static root = null;
         static base = null;
@@ -3720,7 +3787,7 @@
           this.videoRenderId++;
           this.currentCanvasSource = null;
           this.currentCanvasKey = null;
-          this.clearPendingCanvas();
+          this.cancelPendingCanvas();
           if (!this.imageLayers) {
             Luminous.Logger.warn('Background', 'No image layers for render');
             return;
@@ -3735,6 +3802,7 @@
           const current = this.imageLayers[this.activeImage];
           const next = this.imageLayers[nextIndex];
           if (
+            this.currentType === 'image' &&
             current.src === src &&
             current.complete &&
             current.naturalWidth > 0
@@ -3743,9 +3811,30 @@
             return;
           }
           const preload = this.getPreloadedImage(src);
-          const showImage = () => {
+          const keepCurrentOrClear = () => {
+            if (renderId !== this.imageRenderId) return;
+            Luminous.Logger.warn('Background', 'Failed to load image', src);
+            if (this.currentType !== 'none' && this.get()?.isConnected) return;
+            this.clear();
+          };
+          const prepareLayer = async () => {
             if (renderId !== this.imageRenderId) return;
             next.src = src;
+            try {
+              await next.decode();
+            } catch {
+              if (!next.complete || next.naturalWidth === 0) {
+                keepCurrentOrClear();
+                return;
+              }
+            }
+            if (
+              renderId !== this.imageRenderId ||
+              !next.complete ||
+              next.naturalWidth === 0
+            ) {
+              return;
+            }
             requestAnimationFrame(() => {
               if (renderId !== this.imageRenderId) return;
               this.activeImage = nextIndex;
@@ -3754,27 +3843,13 @@
             });
           };
           if (preload.complete && preload.naturalWidth > 0) {
-            showImage();
+            void prepareLayer();
             return;
           }
-          preload.addEventListener('load', showImage, { once: true });
-          preload.addEventListener(
-            'error',
-            () => {
-              if (renderId !== this.imageRenderId) return;
-              Luminous.Logger.warn('Background', 'Failed to load image', src);
-              if (
-                this.currentType === 'image' &&
-                current.complete &&
-                current.naturalWidth > 0
-              ) {
-                this.transitionTo('image', current);
-                return;
-              }
-              this.clear();
-            },
-            { once: true },
-          );
+          preload.addEventListener('load', () => void prepareLayer(), {
+            once: true,
+          });
+          preload.addEventListener('error', keepCurrentOrClear, { once: true });
         }
         static getPreloadedImage(src) {
           let image = this.preloadedImages.get(src);
@@ -3826,9 +3901,7 @@
           }
           if (this.pendingCanvasVideo) {
             this.videoRenderId++;
-            const pendingVideo = this.pendingCanvasVideo;
-            this.clearPendingCanvas();
-            this.resetVideo(pendingVideo);
+            this.cancelPendingCanvas();
           }
           if (this.isUnsupportedCanvasSource(sourceVideo, canvasKey))
             return false;
@@ -3871,7 +3944,9 @@
           this.pendingCanvasFallback = fallbackImage ?? null;
           void next
             .play()
-            .then(() => {
+            .then(async () => {
+              if (!this.isPendingCanvas(renderId, next)) return;
+              await this.waitForFirstVideoFrame(next);
               if (!this.isPendingCanvas(renderId, next)) return;
               requestAnimationFrame(() => {
                 if (!this.isPendingCanvas(renderId, next)) return;
@@ -3880,7 +3955,6 @@
                 this.currentCanvasSource = sourceVideo;
                 this.currentCanvasKey = canvasKey;
                 this.transitionTo('canvas', next);
-                if (this.suspended) next.pause();
                 Luminous.Logger.info(
                   'Background',
                   'Rendering canvas layer',
@@ -3920,34 +3994,18 @@
             ? Math.min(1200, Math.max(0, duration))
             : this.DEFAULT_TRANSITION_MS;
         }
-        static setSuspended(suspended) {
-          if (this.suspended === suspended) return;
-          this.suspended = suspended;
-          const active =
-            this.currentType === 'canvas' && this.videoLayers
-              ? this.videoLayers[this.activeVideo]
-              : null;
-          if (!active) return;
-          if (suspended) {
-            active.pause();
-            return;
-          }
-          void active.play().catch((error) => {
-            if (!this.isInterruptedPlayback(error)) {
-              Luminous.Logger.warn(
-                'Background',
-                'Failed to resume canvas stream',
-                error,
-              );
-            }
-          });
+        static setSuspended(_suspended) {
+          // Do not pause/play MediaStream-backed video here. Chromium can expose a
+          // blank compositor frame immediately after resuming a captured stream,
+          // which presents as a flash after Alt+Tab. The browser already throttles
+          // hidden documents; Luminous only pauses its CSS motion via the root class.
         }
         static destroy() {
           this.imageRenderId++;
           this.videoRenderId++;
           this.currentCanvasSource = null;
           this.currentCanvasKey = null;
-          this.clearPendingCanvas();
+          this.cancelPendingCanvas();
           this.cancelVideoCleanup();
           this.videoLayers?.forEach((video) => this.resetVideo(video));
           this.root?.remove();
@@ -3958,7 +4016,6 @@
           this.activeImage = 0;
           this.activeVideo = 0;
           this.currentType = 'none';
-          this.suspended = false;
           this.emit('change');
         }
         static clear() {
@@ -3966,11 +4023,12 @@
           this.videoRenderId++;
           this.currentCanvasSource = null;
           this.currentCanvasKey = null;
-          this.clearPendingCanvas();
+          this.cancelPendingCanvas();
           this.transitionTo('none');
         }
         static transitionTo(type, activeElement = null) {
           if (!this.imageLayers || !this.videoLayers) return;
+          if (this.currentType === type && this.get() === activeElement) return;
           this.currentType = type;
           if (this.base) {
             this.base.style.opacity = type === 'none' ? '1' : '0';
@@ -4015,6 +4073,11 @@
           this.pendingCanvasVideo = null;
           this.pendingCanvasFallback = null;
         }
+        static cancelPendingCanvas() {
+          const pendingVideo = this.pendingCanvasVideo;
+          this.clearPendingCanvas();
+          if (pendingVideo) this.resetVideo(pendingVideo);
+        }
         static scheduleVideoCleanup() {
           this.cancelVideoCleanup();
           this.videoCleanupTimer = window.setTimeout(() => {
@@ -4029,12 +4092,43 @@
                 this.resetVideo(video);
               }
             });
-          }, this.transitionMs);
+          }, this.transitionMs + this.CLEANUP_GRACE_MS);
         }
         static cancelVideoCleanup() {
           if (this.videoCleanupTimer === null) return;
           window.clearTimeout(this.videoCleanupTimer);
           this.videoCleanupTimer = null;
+        }
+        static waitForFirstVideoFrame(video) {
+          const frameVideo = video;
+          if (typeof frameVideo.requestVideoFrameCallback !== 'function') {
+            return new Promise((resolve) => {
+              requestAnimationFrame(() =>
+                requestAnimationFrame(() => resolve()),
+              );
+            });
+          }
+          return new Promise((resolve) => {
+            let settled = false;
+            let frameHandle = null;
+            const finish = () => {
+              if (settled) return;
+              settled = true;
+              window.clearTimeout(timeoutId);
+              if (
+                frameHandle !== null &&
+                typeof frameVideo.cancelVideoFrameCallback === 'function'
+              ) {
+                frameVideo.cancelVideoFrameCallback(frameHandle);
+              }
+              resolve();
+            };
+            const timeoutId = window.setTimeout(
+              finish,
+              this.VIDEO_FRAME_TIMEOUT_MS,
+            );
+            frameHandle = frameVideo.requestVideoFrameCallback(() => finish());
+          });
         }
         static isUnsupportedCanvasSource(video, source) {
           if (!source) return false;

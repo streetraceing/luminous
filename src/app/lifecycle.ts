@@ -6,6 +6,7 @@ const ROOT_CLASSES = [
   'luminous-glass-highlights',
   'luminous-reduce-motion',
   'luminous-runtime-suspended',
+  'luminous-settings-open',
   'luminous-parallax-enabled',
   'luminous-source-auto',
   'luminous-source-artwork',

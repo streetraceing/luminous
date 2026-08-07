@@ -18,13 +18,16 @@ const FOCUSABLE_SELECTOR = [
   '[tabindex]:not([tabindex="-1"])',
 ].join(',');
 
-type ThemeTab = 'appearance' | 'motion' | 'advanced';
+type ThemeTab = 'presets' | 'appearance' | 'motion' | 'advanced';
 
 const tabs: ReadonlyArray<{ id: ThemeTab; label: string }> = [
+  { id: 'presets', label: 'Presets' },
   { id: 'appearance', label: 'Appearance' },
   { id: 'motion', label: 'Motion' },
   { id: 'advanced', label: 'Advanced' },
 ];
+
+const SLIDER_APPLY_INTERVAL_MS = 32;
 
 const resettableSettings = settingsUi.map((setting) => setting.key);
 
@@ -84,20 +87,15 @@ function ThemeSettingsModal({ onClose }: { onClose: () => void }) {
   const dialogRef = ref<HTMLDivElement | null>(null);
   const closeButtonRef = ref<HTMLButtonElement | null>(null);
   const tabButtonRefs = ref<Record<ThemeTab, HTMLButtonElement | null>>({
+    presets: null,
     appearance: null,
     motion: null,
     advanced: null,
   });
-  const panelRef = ref<HTMLDivElement | null>(null);
-  const panelContentRef = ref<HTMLDivElement | null>(null);
   const [activeTab, setActiveTab] = state<ThemeTab>('appearance');
-  const [panelHeight, setPanelHeight] = state<number | null>(null);
 
   const selectTab = (tab: ThemeTab, focus = false) => {
     if (tab === activeTab) return;
-
-    const currentHeight = panelRef.current?.getBoundingClientRect().height;
-    if (currentHeight) setPanelHeight(Math.ceil(currentHeight));
 
     setActiveTab(tab);
     if (focus) requestAnimationFrame(() => tabButtonRefs.current[tab]?.focus());
@@ -106,14 +104,18 @@ function ThemeSettingsModal({ onClose }: { onClose: () => void }) {
   effect(() => {
     const previousOverflow = document.body.style.overflow;
     const previouslyFocused = document.activeElement as HTMLElement | null;
+    const root = document.documentElement;
     const focusFrame = requestAnimationFrame(() =>
       closeButtonRef.current?.focus(),
     );
+
     document.body.style.overflow = 'hidden';
+    root.classList.add('luminous-settings-open');
 
     return () => {
       cancelAnimationFrame(focusFrame);
       document.body.style.overflow = previousOverflow;
+      root.classList.remove('luminous-settings-open');
       previouslyFocused?.focus?.();
     };
   }, []);
@@ -153,21 +155,6 @@ function ThemeSettingsModal({ onClose }: { onClose: () => void }) {
     document.addEventListener('keydown', handleKeyDown, true);
     return () => document.removeEventListener('keydown', handleKeyDown, true);
   }, [onClose]);
-
-  effect(() => {
-    if (panelHeight === null || !panelContentRef.current) return;
-
-    const targetHeight = Math.ceil(
-      panelContentRef.current.getBoundingClientRect().height,
-    );
-    const frameId = requestAnimationFrame(() => setPanelHeight(targetHeight));
-    const resetTimer = window.setTimeout(() => setPanelHeight(null), 240);
-
-    return () => {
-      cancelAnimationFrame(frameId);
-      window.clearTimeout(resetTimer);
-    };
-  }, [activeTab]);
 
   const handleTabKeyDown = (event: KeyboardEvent, tab: ThemeTab) => {
     const currentIndex = tabs.findIndex((item) => item.id === tab);
@@ -259,7 +246,6 @@ function ThemeSettingsModal({ onClose }: { onClose: () => void }) {
           }),
         ),
       ),
-      React.createElement(PresetStrip),
       React.createElement(
         'div',
         {
@@ -295,11 +281,8 @@ function ThemeSettingsModal({ onClose }: { onClose: () => void }) {
       React.createElement(
         'div',
         {
-          ref: panelRef,
           id: `${MODAL_ID}-${activeTab}-panel`,
           className: 'luminous-theme-menu__panel',
-          style:
-            panelHeight === null ? undefined : { height: `${panelHeight}px` },
           role: 'tabpanel',
           'aria-labelledby': `${MODAL_ID}-${activeTab}-tab`,
         },
@@ -307,7 +290,6 @@ function ThemeSettingsModal({ onClose }: { onClose: () => void }) {
           'div',
           {
             key: activeTab,
-            ref: panelContentRef,
             className: 'luminous-theme-menu__panel-content',
           },
           React.createElement(SettingsSection, { section: activeTab }),
@@ -322,27 +304,32 @@ function ThemeSettingsModal({ onClose }: { onClose: () => void }) {
   );
 }
 
-function PresetStrip() {
+function PresetsSection() {
   const React = getReact();
 
   return React.createElement(
-    'div',
-    {
-      className: 'luminous-theme-menu__presets',
-      'aria-label': 'Visual presets',
-    },
-    React.createElement('span', null, 'Presets'),
+    React.Fragment,
+    null,
     React.createElement(
       'div',
-      { className: 'luminous-theme-menu__preset-list' },
+      { className: 'luminous-theme-menu__panel-heading' },
+      React.createElement('h2', null, 'Presets'),
+      React.createElement(
+        'p',
+        null,
+        'Apply a complete visual and performance profile in one click.',
+      ),
+    ),
+    React.createElement(
+      'div',
+      { className: 'luminous-theme-menu__preset-grid' },
       visualPresets.map((preset) =>
         React.createElement(
           'button',
           {
             key: preset.id,
             type: 'button',
-            className: 'luminous-theme-menu__preset-button',
-            title: preset.description,
+            className: 'luminous-theme-menu__preset-card',
             onClick: () => {
               Luminous.Settings.setMany(
                 preset.values as Record<string, SettingValue>,
@@ -350,7 +337,9 @@ function PresetStrip() {
               Spicetify.showNotification(`Luminous preset: ${preset.label}`);
             },
           },
-          preset.label,
+          React.createElement('strong', null, preset.label),
+          React.createElement('small', null, preset.description),
+          React.createElement('span', { 'aria-hidden': 'true' }, 'Apply'),
         ),
       ),
     ),
@@ -359,7 +348,15 @@ function PresetStrip() {
 
 function SettingsSection({ section }: { section: ThemeTab }) {
   const React = getReact();
-  const headings: Record<ThemeTab, { title: string; description: string }> = {
+
+  if (section === 'presets') {
+    return React.createElement(PresetsSection);
+  }
+
+  const headings: Record<
+    Exclude<ThemeTab, 'presets'>,
+    { title: string; description: string }
+  > = {
     appearance: {
       title: 'Appearance',
       description:
@@ -448,20 +445,57 @@ function ToggleSettingRow({ setting }: { setting: SettingUiDefinition }) {
 function NumericSettingRow({ setting }: { setting: SettingUiDefinition }) {
   const React = getReact();
   const effect = useEffect();
+  const ref = useRef();
   const state = useState();
   const [value, setValue] = state(() =>
     Number(Luminous.Settings.get<number>(setting.key)),
   );
+  const pendingValue = ref(value);
+  const applyTimer = ref<number | null>(null);
+
+  const flushValue = () => {
+    if (applyTimer.current !== null) {
+      window.clearTimeout(applyTimer.current);
+      applyTimer.current = null;
+    }
+
+    Luminous.Settings.set(setting.key, pendingValue.current);
+  };
+
+  const scheduleValue = (nextValue: number) => {
+    pendingValue.current = nextValue;
+    setValue(nextValue);
+
+    if (applyTimer.current !== null) return;
+
+    applyTimer.current = window.setTimeout(() => {
+      applyTimer.current = null;
+      Luminous.Settings.set(setting.key, pendingValue.current);
+    }, SLIDER_APPLY_INTERVAL_MS);
+  };
 
   effect(
     () =>
       Luminous.Settings.subscribe<number>(
         setting.key,
-        (nextValue) => setValue(Number(nextValue)),
+        (nextValue) => {
+          const normalized = Number(nextValue);
+          pendingValue.current = normalized;
+          setValue(normalized);
+        },
         { immediate: true },
       ),
     [setting.key],
   );
+
+  effect(() => {
+    return () => {
+      if (applyTimer.current !== null) {
+        window.clearTimeout(applyTimer.current);
+        Luminous.Settings.set(setting.key, pendingValue.current);
+      }
+    };
+  }, [setting.key]);
 
   return React.createElement(
     'label',
@@ -481,11 +515,13 @@ function NumericSettingRow({ setting }: { setting: SettingUiDefinition }) {
         max: setting.max,
         step: setting.step,
         value,
-        onChange: (event: Event) =>
-          Luminous.Settings.set(
-            setting.key,
+        onInput: (event: Event) =>
+          scheduleValue(
             Number((event.currentTarget as HTMLInputElement).value),
           ),
+        onPointerUp: flushValue,
+        onKeyUp: flushValue,
+        onBlur: flushValue,
       }),
     ),
   );

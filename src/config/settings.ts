@@ -439,8 +439,7 @@ export const settingsUi: readonly SettingUiDefinition[] = [
   {
     key: 'pauseWhenHidden',
     label: 'Pause when hidden',
-    description:
-      'Pause cloned video and custom animation when Spotify is hidden.',
+    description: 'Pause custom Luminous motion while Spotify is hidden.',
     section: 'advanced',
     control: 'toggle',
   },

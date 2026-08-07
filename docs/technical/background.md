@@ -17,13 +17,13 @@ Two image and two video layers provide double buffering. Incoming media is prepa
 
 Artwork sources are converted/loaded without blocking Spotify. `preloadImage()` warms a bounded insertion-ordered cache (`MAX_PRELOADED_IMAGES = 24`). Broken cached images are removed if they report `complete` with zero natural width.
 
-Image rendering uses a monotonically increasing render identifier. If a newer request arrives before an older image finishes, the old callback cannot become active. The inactive image is faded in only after successful load/decode; failure either leaves the already-valid background alone or clears to the base state.
+Image rendering uses a monotonically increasing render identifier. If a newer request arrives before an older image finishes, the old callback cannot become active. The inactive display image itself is assigned and decoded before opacity changes; successful preload alone is not considered enough. Failure leaves an already-valid background untouched and only falls back to the neutral base when no valid layer exists.
 
 ## Video capture
 
 Canvas/NPV video is mirrored with `HTMLVideoElement.captureStream()`. The original element remains where Spotify placed it and is never paused, moved, re-parented, assigned a source, or otherwise controlled by Luminous.
 
-Capture proceeds only when the source video is connected, not ended, and has at least `HAVE_CURRENT_DATA`. The captured stream must contain a video track. The stream is assigned to the inactive clone and `play()` is awaited before transition.
+Capture proceeds only when the source video is connected, not ended, and has at least `HAVE_CURRENT_DATA`. The captured stream must contain a video track. The stream is assigned to the inactive clone, `play()` is awaited, and the renderer waits for the clone's first presented video frame (using `requestVideoFrameCallback()` when available) before transition. This prevents a black/empty compositor frame from becoming visible during Canvas handoff.
 
 If capture/play fails and artwork is known, artwork becomes the fallback. `AbortError` is treated as an interrupted transition rather than a permanent failure.
 
@@ -43,7 +43,7 @@ The renderer tracks:
 - `pendingCanvasSource` + `pendingCanvasKey` + pending clone for an in-flight transition;
 - `videoRenderId` to invalidate superseded asynchronous `play()` continuations.
 
-A repeat render request for the exact active usable source is a no-op. A repeat request for the exact pending source updates only its artwork fallback. A different request invalidates and releases the pending clone first.
+A repeat render request for the exact active usable source is a no-op. A repeat request for the exact pending source updates only its artwork fallback. A different request invalidates and releases the pending clone first. Cancelling a pending render also stops its MediaStream immediately, preventing invisible orphan streams after rapid source changes.
 
 ## Stream cleanup
 
@@ -54,13 +54,13 @@ When a video clone is no longer active after the configured cross-fade, `resetVi
 3. clears `srcObject` and `src`;
 4. calls `load()` to reset the media element.
 
-The delay equals the current transition duration so the outgoing clone remains alive for the fade but not longer. `destroy()` invalidates all render IDs, clears pending state, stops both clones immediately, removes the root, and returns type to `none`.
+Cleanup happens after the current transition duration plus a short compositor grace period, so the outgoing clone stays alive through the entire visual fade and is not torn down on the exact transition boundary. `destroy()` invalidates all render IDs, clears pending state, stops both clones immediately, removes the root, and returns type to `none`.
 
 ## Suspension
 
-`MotionFeature` calls `Background.setSuspended(true)` when Spotify is hidden and `pauseWhenHidden` is enabled. The active cloned video pauses; CSS receives `luminous-runtime-suspended` and pauses custom animations. On visibility return, the clone is resumed defensively. Spotify's own playback source is never paused.
+When Spotify is hidden and `pauseWhenHidden` is enabled, CSS receives `luminous-runtime-suspended` and pauses Luminous-owned motion/effect animations. The captured Canvas clone is deliberately **not** force-paused or force-resumed.
 
-If a new clone becomes active while suspended, it is paused immediately after transition readiness.
+This is a stability decision: Chromium can expose an empty compositor frame immediately after resuming a `MediaStream`-backed video, which appears as a flash after Alt+Tab. Hidden documents are already throttled by the browser, so avoiding manual `pause()`/`play()` provides a better visual result without touching Spotify's source video.
 
 ## Transitions
 
@@ -87,3 +87,7 @@ Pointer parallax translates the whole backdrop by small CSS custom-property offs
 ## Quality policy
 
 `full` keeps all layers. `balanced` removes sparkles and the fourth blob. `lite` removes ribbons, shimmer, sparkles, grain, and additional blobs and simplifies blur/saturation. The Performance preset also forces artwork-only and still motion, which disables Canvas observation and video capture entirely.
+
+## Track-change handoff
+
+When auto Canvas mode is active and a song changes while a Canvas background is visible, `DynamicBackgroundFeature` gives the next Canvas source a short handoff grace window (320 ms). During that window the old valid background remains visible instead of immediately switching Canvas → artwork → Canvas. If no new Canvas arrives, the already-preloaded artwork becomes the next background normally.

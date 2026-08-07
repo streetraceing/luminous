@@ -16,7 +16,7 @@ npm run apply
 npm run revert
 ```
 
-`npm run release` rebuilds and recreates `release/`, copies `color.ini`, and synchronizes the version query used by `manifest.json`.
+`npm run release` rebuilds and recreates `release/`, copies `color.ini`, synchronizes the version query used by `manifest.json`, then best-effort stages the repository and creates a Git commit whose message is exactly the current package version (for example `2.2.0`). A missing Git repository, missing Git executable, no staged changes, or a failed commit is reported but does not make release generation itself throw.
 
 ## Expected outputs
 
@@ -97,7 +97,7 @@ If tuning manually, the largest expected reductions are usually:
 3. still movement;
 4. parallax off;
 5. grain at 0;
-6. keep `pauseWhenHidden` enabled.
+6. keep `pauseWhenHidden` enabled; it pauses Luminous CSS motion while hidden without force-pausing the captured Canvas clone.
 
 Avoid permanent `will-change` on static elements. Luminous applies it only under motion selectors.
 

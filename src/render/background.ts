@@ -14,10 +14,18 @@ type CapturableVideo = HTMLVideoElement & {
   captureStream?: () => MediaStream;
 };
 
+type FrameAwareVideo = HTMLVideoElement & {
+  requestVideoFrameCallback?: (
+    callback: (...args: unknown[]) => void,
+  ) => number;
+  cancelVideoFrameCallback?: (handle: number) => void;
+};
+
 export class Background {
   private static readonly DEFAULT_TRANSITION_MS = 420;
+  private static readonly VIDEO_FRAME_TIMEOUT_MS = 1200;
+  private static readonly CLEANUP_GRACE_MS = 120;
   private static transitionMs = this.DEFAULT_TRANSITION_MS;
-  private static suspended = false;
   private static readonly MAX_PRELOADED_IMAGES = 24;
 
   private static root: HTMLDivElement | null = null;
@@ -285,7 +293,8 @@ export class Background {
     this.videoRenderId++;
     this.currentCanvasSource = null;
     this.currentCanvasKey = null;
-    this.clearPendingCanvas();
+    this.cancelPendingCanvas();
+
     if (!this.imageLayers) {
       Luminous.Logger.warn('Background', 'No image layers for render');
       return;
@@ -302,17 +311,47 @@ export class Background {
     const current = this.imageLayers[this.activeImage];
     const next = this.imageLayers[nextIndex];
 
-    if (current.src === src && current.complete && current.naturalWidth > 0) {
+    if (
+      this.currentType === 'image' &&
+      current.src === src &&
+      current.complete &&
+      current.naturalWidth > 0
+    ) {
       this.transitionTo('image', current);
       return;
     }
 
     const preload = this.getPreloadedImage(src);
 
-    const showImage = () => {
+    const keepCurrentOrClear = () => {
+      if (renderId !== this.imageRenderId) return;
+
+      Luminous.Logger.warn('Background', 'Failed to load image', src);
+      if (this.currentType !== 'none' && this.get()?.isConnected) return;
+      this.clear();
+    };
+
+    const prepareLayer = async () => {
       if (renderId !== this.imageRenderId) return;
 
       next.src = src;
+
+      try {
+        await next.decode();
+      } catch {
+        if (!next.complete || next.naturalWidth === 0) {
+          keepCurrentOrClear();
+          return;
+        }
+      }
+
+      if (
+        renderId !== this.imageRenderId ||
+        !next.complete ||
+        next.naturalWidth === 0
+      ) {
+        return;
+      }
 
       requestAnimationFrame(() => {
         if (renderId !== this.imageRenderId) return;
@@ -324,31 +363,12 @@ export class Background {
     };
 
     if (preload.complete && preload.naturalWidth > 0) {
-      showImage();
+      void prepareLayer();
       return;
     }
 
-    preload.addEventListener('load', showImage, { once: true });
-    preload.addEventListener(
-      'error',
-      () => {
-        if (renderId !== this.imageRenderId) return;
-
-        Luminous.Logger.warn('Background', 'Failed to load image', src);
-
-        if (
-          this.currentType === 'image' &&
-          current.complete &&
-          current.naturalWidth > 0
-        ) {
-          this.transitionTo('image', current);
-          return;
-        }
-
-        this.clear();
-      },
-      { once: true },
-    );
+    preload.addEventListener('load', () => void prepareLayer(), { once: true });
+    preload.addEventListener('error', keepCurrentOrClear, { once: true });
   }
 
   private static getPreloadedImage(src: string): HTMLImageElement {
@@ -418,9 +438,7 @@ export class Background {
 
     if (this.pendingCanvasVideo) {
       this.videoRenderId++;
-      const pendingVideo = this.pendingCanvasVideo;
-      this.clearPendingCanvas();
-      this.resetVideo(pendingVideo);
+      this.cancelPendingCanvas();
     }
 
     if (this.isUnsupportedCanvasSource(sourceVideo, canvasKey)) return false;
@@ -473,7 +491,10 @@ export class Background {
 
     void next
       .play()
-      .then(() => {
+      .then(async () => {
+        if (!this.isPendingCanvas(renderId, next)) return;
+
+        await this.waitForFirstVideoFrame(next);
         if (!this.isPendingCanvas(renderId, next)) return;
 
         requestAnimationFrame(() => {
@@ -484,7 +505,6 @@ export class Background {
           this.currentCanvasSource = sourceVideo;
           this.currentCanvasKey = canvasKey;
           this.transitionTo('canvas', next);
-          if (this.suspended) next.pause();
           Luminous.Logger.info(
             'Background',
             'Rendering canvas layer',
@@ -532,31 +552,11 @@ export class Background {
       : this.DEFAULT_TRANSITION_MS;
   }
 
-  static setSuspended(suspended: boolean): void {
-    if (this.suspended === suspended) return;
-    this.suspended = suspended;
-
-    const active =
-      this.currentType === 'canvas' && this.videoLayers
-        ? this.videoLayers[this.activeVideo]
-        : null;
-
-    if (!active) return;
-
-    if (suspended) {
-      active.pause();
-      return;
-    }
-
-    void active.play().catch((error) => {
-      if (!this.isInterruptedPlayback(error)) {
-        Luminous.Logger.warn(
-          'Background',
-          'Failed to resume canvas stream',
-          error,
-        );
-      }
-    });
+  static setSuspended(_suspended: boolean): void {
+    // Do not pause/play MediaStream-backed video here. Chromium can expose a
+    // blank compositor frame immediately after resuming a captured stream,
+    // which presents as a flash after Alt+Tab. The browser already throttles
+    // hidden documents; Luminous only pauses its CSS motion via the root class.
   }
 
   static destroy() {
@@ -564,7 +564,7 @@ export class Background {
     this.videoRenderId++;
     this.currentCanvasSource = null;
     this.currentCanvasKey = null;
-    this.clearPendingCanvas();
+    this.cancelPendingCanvas();
 
     this.cancelVideoCleanup();
     this.videoLayers?.forEach((video) => this.resetVideo(video));
@@ -577,7 +577,6 @@ export class Background {
     this.activeImage = 0;
     this.activeVideo = 0;
     this.currentType = 'none';
-    this.suspended = false;
     this.emit('change');
   }
 
@@ -586,7 +585,7 @@ export class Background {
     this.videoRenderId++;
     this.currentCanvasSource = null;
     this.currentCanvasKey = null;
-    this.clearPendingCanvas();
+    this.cancelPendingCanvas();
     this.transitionTo('none');
   }
 
@@ -595,6 +594,7 @@ export class Background {
     activeElement: BackgroundElement | null = null,
   ) {
     if (!this.imageLayers || !this.videoLayers) return;
+    if (this.currentType === type && this.get() === activeElement) return;
 
     this.currentType = type;
 
@@ -646,6 +646,13 @@ export class Background {
     this.pendingCanvasFallback = null;
   }
 
+  private static cancelPendingCanvas() {
+    const pendingVideo = this.pendingCanvasVideo;
+    this.clearPendingCanvas();
+
+    if (pendingVideo) this.resetVideo(pendingVideo);
+  }
+
   private static scheduleVideoCleanup() {
     this.cancelVideoCleanup();
 
@@ -663,7 +670,7 @@ export class Background {
           this.resetVideo(video);
         }
       });
-    }, this.transitionMs);
+    }, this.transitionMs + this.CLEANUP_GRACE_MS);
   }
 
   private static cancelVideoCleanup() {
@@ -671,6 +678,41 @@ export class Background {
 
     window.clearTimeout(this.videoCleanupTimer);
     this.videoCleanupTimer = null;
+  }
+
+  private static waitForFirstVideoFrame(
+    video: HTMLVideoElement,
+  ): Promise<void> {
+    const frameVideo = video as FrameAwareVideo;
+
+    if (typeof frameVideo.requestVideoFrameCallback !== 'function') {
+      return new Promise((resolve) => {
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+      });
+    }
+
+    return new Promise((resolve) => {
+      let settled = false;
+      let frameHandle: number | null = null;
+
+      const finish = () => {
+        if (settled) return;
+        settled = true;
+        window.clearTimeout(timeoutId);
+
+        if (
+          frameHandle !== null &&
+          typeof frameVideo.cancelVideoFrameCallback === 'function'
+        ) {
+          frameVideo.cancelVideoFrameCallback(frameHandle);
+        }
+
+        resolve();
+      };
+
+      const timeoutId = window.setTimeout(finish, this.VIDEO_FRAME_TIMEOUT_MS);
+      frameHandle = frameVideo.requestVideoFrameCallback(() => finish());
+    });
   }
 
   private static isUnsupportedCanvasSource(

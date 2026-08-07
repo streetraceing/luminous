@@ -1,11 +1,14 @@
-import { useEffect, useMemo, useState } from '../react';
+import { useEffect, useMemo, useRef, useState } from '../react';
 import { CanvasPayload } from '../../types/runtime/canvas.types';
 import { SongPayload } from '../../types/runtime/song.types';
 import { getUiHealth, subscribeUiHealth } from '../../ui/health';
 
+const CANVAS_HANDOFF_GRACE_MS = 320;
+
 export function DynamicBackgroundFeature() {
   const effect = useEffect();
   const memo = useMemo();
+  const ref = useRef();
   const state = useState();
 
   const [song, setSong] = state<SongPayload | null>(() =>
@@ -24,6 +27,32 @@ export function DynamicBackgroundFeature() {
   const [appActive, setAppActive] = state(
     () => getUiHealth().status !== 'booting',
   );
+  const handoffDeadline = ref(0);
+  const handoffTimer = ref<number | null>(null);
+  const [handoffRevision, setHandoffRevision] = state(0);
+
+  const clearHandoffTimer = () => {
+    if (handoffTimer.current === null) return;
+    window.clearTimeout(handoffTimer.current);
+    handoffTimer.current = null;
+  };
+
+  const scheduleHandoffExpiry = () => {
+    clearHandoffTimer();
+
+    const remaining = handoffDeadline.current - performance.now();
+    if (remaining <= 0) {
+      handoffDeadline.current = 0;
+      setHandoffRevision((value) => value + 1);
+      return;
+    }
+
+    handoffTimer.current = window.setTimeout(() => {
+      handoffTimer.current = null;
+      handoffDeadline.current = 0;
+      setHandoffRevision((value) => value + 1);
+    }, remaining);
+  };
 
   const renderKey = memo(() => {
     if (!appActive) return 'inactive';
@@ -47,6 +76,12 @@ export function DynamicBackgroundFeature() {
       songKey = nextKey;
       Luminous.Palette.cancel();
       Luminous.Background.preloadImage(nextSong.image);
+
+      if (Luminous.Background.getType() === 'canvas') {
+        handoffDeadline.current = performance.now() + CANVAS_HANDOFF_GRACE_MS;
+        scheduleHandoffExpiry();
+      }
+
       setSong(nextSong);
     };
 
@@ -56,6 +91,12 @@ export function DynamicBackgroundFeature() {
 
       canvasKey = nextKey;
       canvasVideo = payload.video;
+
+      if (payload.video) {
+        handoffDeadline.current = 0;
+        clearHandoffTimer();
+      }
+
       setCanvas(payload);
     };
 
@@ -95,6 +136,8 @@ export function DynamicBackgroundFeature() {
       unsubscribeSetting();
       unsubscribePaletteSetting();
       unsubscribeSourceSetting();
+      clearHandoffTimer();
+      handoffDeadline.current = 0;
       Luminous.Background.destroy();
       Luminous.Palette.clear();
     };
@@ -121,11 +164,22 @@ export function DynamicBackgroundFeature() {
     }
 
     if (backgroundSource === 'auto' && canvas.video) {
+      handoffDeadline.current = 0;
+      clearHandoffTimer();
       Luminous.Background.render({
         canvas: canvas.video,
         canvasSource: canvas.source,
         image: song?.image,
       });
+      return;
+    }
+
+    if (
+      backgroundSource === 'auto' &&
+      Luminous.Background.getType() === 'canvas' &&
+      handoffDeadline.current > performance.now()
+    ) {
+      scheduleHandoffExpiry();
       return;
     }
 
@@ -135,7 +189,7 @@ export function DynamicBackgroundFeature() {
     }
 
     Luminous.Background.render();
-  }, [renderKey]);
+  }, [handoffRevision, renderKey]);
 
   return null;
 }

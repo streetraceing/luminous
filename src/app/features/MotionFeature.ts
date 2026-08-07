@@ -73,7 +73,12 @@ export function MotionFeature() {
     };
 
     const handlePointerMove = (event: PointerEvent) => {
-      if (!parallax || isReduced() || (pauseWhenHidden && document.hidden)) {
+      if (
+        !parallax ||
+        isReduced() ||
+        root.classList.contains('luminous-settings-open') ||
+        (pauseWhenHidden && document.hidden)
+      ) {
         return;
       }
 

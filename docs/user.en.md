@@ -2,7 +2,7 @@
 
 Luminous turns Spotify into a translucent interface and adapts the background lighting to each cover. When Spotify Canvas/video is available and capturable, it can replace static artwork.
 
-Open Spotify profile menu → **Luminous Settings**.
+Open Spotify profile menu → **Luminous Settings**. Presets are in the dedicated **Presets** tab.
 
 - **Balanced** — recommended default.
 - **Cinematic** — richer colour, depth, and motion.

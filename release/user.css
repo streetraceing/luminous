@@ -187,8 +187,7 @@ body:has(.Root__top-container #main-view):not(:has(.luminous-splash))::after {
   inset: 0;
   display: grid;
   padding: clamp(16px, 5vw, 72px);
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(14px) saturate(1.05);
+  background: rgba(0, 0, 0, 0.68);
   overscroll-behavior: contain;
   place-items: center;
   animation: luminous-theme-modal-backdrop-in 140ms ease-out;
@@ -198,11 +197,12 @@ body:has(.Root__top-container #main-view):not(:has(.luminous-splash))::after {
   width: min(100%, 680px);
   max-height: min(760px, calc(100dvh - 32px));
   color: var(--spice-text);
-  background: color-mix(in srgb, var(--luminous-ui-base) 96%, transparent);
+  background: color-mix(in srgb, var(--luminous-ui-base) 98%, #0b0b0b 2%);
   border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 16px;
   box-shadow: 0 24px 72px rgba(0, 0, 0, 0.5);
   overflow: auto;
+  contain: layout style;
   overscroll-behavior: contain;
   scrollbar-width: thin;
   animation: luminous-theme-modal-panel-in 180ms
@@ -210,12 +210,17 @@ body:has(.Root__top-container #main-view):not(:has(.luminous-splash))::after {
 }
 
 .luminous-theme-menu__header {
+  position: sticky;
+  z-index: 6;
+  top: 0;
   display: grid;
   grid-template-columns: auto 1fr auto auto;
   align-items: center;
   gap: 12px;
   min-height: 52px;
   padding: 20px 22px 16px;
+  background: color-mix(in srgb, var(--luminous-ui-base) 98%, #0b0b0b 2%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .luminous-theme-menu__mark {
@@ -308,10 +313,16 @@ body:has(.Root__top-container #main-view):not(:has(.luminous-splash))::after {
 
 .luminous-theme-menu__tabs {
   display: flex;
+  overflow-x: auto;
+  scrollbar-width: none;
   gap: 20px;
   padding: 0 22px;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.luminous-theme-menu__tabs::-webkit-scrollbar {
+  display: none;
 }
 
 .luminous-theme-menu__tab {
@@ -345,12 +356,13 @@ body:has(.Root__top-container #main-view):not(:has(.luminous-splash))::after {
 
 .luminous-theme-menu__panel {
   box-sizing: border-box;
-  overflow: hidden;
-  transition: height 220ms cubic-bezier(0.2, 0.75, 0.25, 1);
+  overflow: visible;
+  contain: layout style;
 }
 
 .luminous-theme-menu__panel-content {
   padding: 22px;
+  contain: layout style;
   animation: luminous-theme-tab-in 180ms cubic-bezier(0.2, 0.75, 0.25, 1);
 }
 
@@ -377,6 +389,9 @@ body:has(.Root__top-container #main-view):not(:has(.luminous-splash))::after {
   padding: 15px 0;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
   font-size: 14px;
+  contain: layout style;
+  content-visibility: auto;
+  contain-intrinsic-size: 72px;
 }
 
 .luminous-theme-menu__copy > span {
@@ -632,28 +647,13 @@ html.luminous-reduce-motion
   animation: none;
 }
 
-.luminous-theme-menu__presets {
+.luminous-theme-menu__preset-grid {
   display: grid;
-  gap: 8px;
-  padding: 10px 22px 14px;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
 }
 
-.luminous-theme-menu__presets > span {
-  color: var(--spice-subtext);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-.luminous-theme-menu__preset-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 7px;
-}
-
-.luminous-theme-menu__preset-button,
+.luminous-theme-menu__preset-card,
 .luminous-theme-menu__tool-button {
   color: var(--spice-text);
   background: rgba(255, 255, 255, 0.065);
@@ -661,18 +661,40 @@ html.luminous-reduce-motion
   cursor: pointer;
 }
 
-.luminous-theme-menu__preset-button {
-  padding: 6px 10px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 650;
+.luminous-theme-menu__preset-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 5px 12px;
+  min-height: 92px;
+  padding: 14px;
+  border-radius: 10px;
+  text-align: left;
+  contain: layout paint style;
   transition:
     background-color 140ms ease,
     border-color 140ms ease,
     transform 140ms ease;
 }
 
-.luminous-theme-menu__preset-button:hover {
+.luminous-theme-menu__preset-card strong {
+  font-size: 14px;
+}
+
+.luminous-theme-menu__preset-card small {
+  grid-column: 1 / -1;
+  color: var(--spice-subtext);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.luminous-theme-menu__preset-card > span {
+  align-self: start;
+  color: var(--luminous-accent);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.luminous-theme-menu__preset-card:hover {
   background: rgba(255, 255, 255, 0.11);
   border-color: rgba(255, 255, 255, 0.18);
   transform: translateY(-1px);
@@ -716,15 +738,15 @@ html.luminous-reduce-motion
   background: rgba(255, 255, 255, 0.11);
 }
 
-.luminous-theme-menu__preset-button:focus-visible,
+.luminous-theme-menu__preset-card:focus-visible,
 .luminous-theme-menu__tool-button:focus-visible {
   outline: 2px solid var(--luminous-accent);
   outline-offset: 3px;
 }
 
 @media (max-width: 560px) {
-  .luminous-theme-menu__presets {
-    padding-inline: 16px;
+  .luminous-theme-menu__preset-grid {
+    grid-template-columns: 1fr;
   }
 
   .luminous-theme-menu__runtime {
@@ -737,8 +759,22 @@ html.luminous-reduce-motion
 }
 
 html.luminous-reduce-motion
-  :is(.luminous-theme-menu__preset-button, .luminous-theme-menu__tool-button) {
+  :is(.luminous-theme-menu__preset-card, .luminous-theme-menu__tool-button) {
   transition: none;
+}
+
+/* Settings performance mode: keep the underlying scene visually stable while editing. */
+html.luminous-settings-open
+  :is(
+    #luminous-dynamic-background .luminous-background-layer--active,
+    .luminous-background-effects,
+    .luminous-background-effects > span
+  ) {
+  animation-play-state: paused !important;
+}
+
+html.luminous-settings-open #luminous-dynamic-background {
+  transition: none !important;
 }
 
 /* src/styles/luminous.css */
