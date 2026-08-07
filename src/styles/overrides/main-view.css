@@ -34,6 +34,16 @@
   display: none;
 }
 
+/* Hide when left-sidebar expanded */
+
+.Root__top-container:has(#Desktop_LeftSidebar_Id:not([class='Root__nav-bar']))
+  #main-view {
+  visibility: hidden;
+  opacity: 0;
+  transition: none;
+  pointer-events: none;
+}
+
 /* Playlist page */
 
 #main-view:has(.playlist-playlist-page, .main-trackList-trackListContainer)
@@ -48,7 +58,7 @@
 }
 
 #main-view .main-trackList-trackListHeader {
-  box-sizing: border-box;
+  box-sizing: none;
 }
 
 /* Marketplace */

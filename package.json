@@ -1,6 +1,6 @@
 {
   "name": "luminous",
-  "version": "2.2.0",
+  "version": "2.2.1",
   "type": "module",
   "author": {
     "name": "streetraceing",
@@ -19,7 +19,7 @@
     "prettier:check": "prettier . --check",
     "lint:check": "eslint .",
     "lint:fix": "eslint . --fix",
-    "check": "npm run typecheck && npm run lint:fix && npm run build",
+    "check": "npm run typecheck && npm run lint:check && npm run build",
     "build": "vite build",
     "release": "npm run build && tsx vite/releaseScript.ts",
     "watch": "spicetify watch -s",

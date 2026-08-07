@@ -97,16 +97,14 @@ The neutral base while Spotify has not supplied metadata is intentional.
 
 ## Performance troubleshooting
 
-Start with the **Performance** preset. It changes several independent cost centers at once: disables Canvas observation/capture through artwork-only mode, uses still motion, removes parallax/grain/highlights, and switches to lite effect detail.
+Start with the **Performance** preset. In 2.2.1 it forces artwork-only mode, still motion, higher surface opacity, and lower glass blur without enabling experimental compositor layers.
 
 If tuning manually, the largest expected reductions are usually:
 
 1. artwork source instead of auto Canvas;
 2. lite quality;
 3. still movement;
-4. parallax off;
-5. grain at 0;
-6. keep `pauseWhenHidden` enabled; it pauses Luminous CSS motion while hidden without force-pausing the captured Canvas clone.
+4. keep `pauseWhenHidden` enabled; it pauses Luminous CSS motion while hidden without force-pausing the captured Canvas clone.
 
 Avoid permanent `will-change` on static elements. Luminous applies it only under motion selectors.
 
@@ -132,3 +130,7 @@ The top-level `destroy()` path should remain safe to call more than once.
 Spotify DOM is an unstable dependency. Prefer graceful degradation to version-specific hard failure. Keep source modules small enough that a selector change in synchronization, a Canvas change, or a palette issue can be fixed independently.
 
 Native APIs are optional. If `Spicetify.Platform` or a native bridge is missing/changed, wrappers should return failure and log rather than assume availability.
+
+## Track-change regression policy
+
+2.2.1 deliberately restores the pre-refactor rendering core. When changing Background, Palette, Canvas discovery, Splash, UI health, or shell overrides, test track changes before combining that change with another visual subsystem. Do not compensate a renderer flash by adding global Spotify shell opacity/visibility rules.

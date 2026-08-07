@@ -3,14 +3,11 @@ import type {
   SettingValue,
 } from '../types/runtime/settings.types';
 
-export const motionModes = ['still', 'drift', 'float', 'orbit'] as const;
+export const motionModes = ['still', 'drift', 'float'] as const;
 export type MotionMode = (typeof motionModes)[number];
 
 export const backgroundSources = ['auto', 'artwork'] as const;
 export type BackgroundSource = (typeof backgroundSources)[number];
-
-export const effectQualities = ['full', 'balanced', 'lite'] as const;
-export type EffectQuality = (typeof effectQualities)[number];
 
 export type LuminousSettingValues = {
   dynamicBackground: boolean;
@@ -21,18 +18,9 @@ export type LuminousSettingValues = {
   uiOpacity: number;
   uiBlur: number;
   paletteStrength: number;
-  vignetteStrength: number;
-  grainStrength: number;
-  glassHighlights: boolean;
   backgroundMotion: MotionMode;
   motionDuration: number;
-  transitionDuration: number;
-  parallax: boolean;
-  parallaxStrength: number;
   reduceMotion: boolean;
-  respectSystemMotion: boolean;
-  pauseWhenHidden: boolean;
-  effectQuality: EffectQuality;
   backgroundEnergy: 'adaptive';
 };
 
@@ -123,24 +111,6 @@ export const settingDefinitions: {
       );
     },
   },
-  vignetteStrength: {
-    default: 28,
-    normalize: numberNormalizer(28, 0, 70),
-    apply: (value) =>
-      Luminous.Settings.setVar('--luminous-vignette-opacity', `${value}%`),
-  },
-  grainStrength: {
-    default: 5,
-    normalize: numberNormalizer(5, 0, 20),
-    apply: (value) =>
-      Luminous.Settings.setVar('--luminous-grain-opacity', `${value}%`),
-  },
-  glassHighlights: {
-    default: true,
-    normalize: booleanNormalizer(true),
-    apply: (value) =>
-      Luminous.Settings.toggleClass('luminous-glass-highlights', value),
-  },
   backgroundEnergy: {
     default: 'adaptive',
     normalize: () => 'adaptive',
@@ -207,43 +177,11 @@ export const settingDefinitions: {
       Luminous.Palette.setMotionDuration(value);
     },
   },
-  transitionDuration: {
-    default: 420,
-    normalize: numberNormalizer(420, 0, 1200),
-    apply: (value) => {
-      Luminous.Settings.setVar('--luminous-transition-duration', `${value}ms`);
-      Luminous.Background.setTransitionDuration(value);
-    },
-  },
-  parallax: {
-    default: true,
-    normalize: booleanNormalizer(true),
-    apply: (value) =>
-      Luminous.Settings.toggleClass('luminous-parallax-enabled', value),
-  },
-  parallaxStrength: {
-    default: 8,
-    normalize: numberNormalizer(8, 0, 20),
-    apply: (value) =>
-      Luminous.Settings.setVar('--luminous-parallax-strength', `${value}px`),
-  },
   reduceMotion: {
     default: false,
     normalize: booleanNormalizer(false),
-  },
-  respectSystemMotion: {
-    default: true,
-    normalize: booleanNormalizer(true),
-  },
-  pauseWhenHidden: {
-    default: true,
-    normalize: booleanNormalizer(true),
-  },
-  effectQuality: {
-    default: 'full',
-    normalize: choiceNormalizer(effectQualities, 'full'),
     apply: (value) =>
-      toggleExclusiveClasses('luminous-quality-', effectQualities, value),
+      Luminous.Settings.toggleClass('luminous-reduce-motion', value),
   },
 };
 
@@ -329,51 +267,21 @@ export const settingsUi: readonly SettingUiDefinition[] = [
     unit: '%',
   },
   {
-    key: 'vignetteStrength',
-    label: 'Edge vignette',
-    description: 'Darkens the edges for stronger foreground contrast.',
-    section: 'appearance',
-    control: 'range',
-    min: 0,
-    max: 70,
-    step: 1,
-    unit: '%',
-  },
-  {
-    key: 'grainStrength',
-    label: 'Film grain',
-    description: 'Adds subtle animated texture to the lighting.',
-    section: 'appearance',
-    control: 'range',
-    min: 0,
-    max: 20,
-    step: 1,
-    unit: '%',
-  },
-  {
-    key: 'glassHighlights',
-    label: 'Glass highlights',
-    description: 'Adds a faint light edge to the main glass surfaces.',
-    section: 'appearance',
-    control: 'toggle',
-  },
-  {
     key: 'backgroundMotion',
     label: 'Background movement',
-    description: 'Choose the motion path used by media and light.',
+    description: 'Choose the stable media/light motion path.',
     section: 'motion',
     control: 'choice',
     options: [
       { value: 'still', label: 'Still' },
       { value: 'drift', label: 'Drift' },
       { value: 'float', label: 'Float' },
-      { value: 'orbit', label: 'Orbit' },
     ],
   },
   {
     key: 'motionDuration',
     label: 'Motion speed',
-    description: 'Scales the media movement and adaptive scene tempo.',
+    description: 'Scales media movement and adaptive scene tempo.',
     section: 'motion',
     control: 'range',
     min: 8,
@@ -382,65 +290,10 @@ export const settingsUi: readonly SettingUiDefinition[] = [
     unit: 's',
   },
   {
-    key: 'transitionDuration',
-    label: 'Cross-fade',
-    description: 'Sets how quickly backgrounds and lighting morph.',
-    section: 'motion',
-    control: 'range',
-    min: 0,
-    max: 1200,
-    step: 20,
-    unit: 'ms',
-  },
-  {
-    key: 'parallax',
-    label: 'Pointer parallax',
-    description: 'Lets the lighting follow the pointer with gentle depth.',
-    section: 'motion',
-    control: 'toggle',
-  },
-  {
-    key: 'parallaxStrength',
-    label: 'Parallax depth',
-    description: 'Controls how far the ambient background follows the pointer.',
-    section: 'motion',
-    control: 'range',
-    min: 0,
-    max: 20,
-    step: 1,
-    unit: 'px',
-  },
-  {
     key: 'reduceMotion',
     label: 'Reduce motion',
     description: 'Stops Luminous animation regardless of system preference.',
     section: 'motion',
-    control: 'toggle',
-  },
-  {
-    key: 'respectSystemMotion',
-    label: 'Respect system motion',
-    description: 'Also reduce motion when the operating system asks for it.',
-    section: 'motion',
-    control: 'toggle',
-  },
-  {
-    key: 'effectQuality',
-    label: 'Effect detail',
-    description: 'Trade richer animated lighting for lower GPU work.',
-    section: 'advanced',
-    control: 'choice',
-    options: [
-      { value: 'full', label: 'Full' },
-      { value: 'balanced', label: 'Balanced' },
-      { value: 'lite', label: 'Lite' },
-    ],
-  },
-  {
-    key: 'pauseWhenHidden',
-    label: 'Pause when hidden',
-    description: 'Pause custom Luminous motion while Spotify is hidden.',
-    section: 'advanced',
     control: 'toggle',
   },
 ] as const;
@@ -458,7 +311,7 @@ export const visualPresets: readonly VisualPreset[] = [
   {
     id: 'balanced',
     label: 'Balanced',
-    description: 'The default Luminous balance of clarity, colour, and motion.',
+    description: 'Stable default balance of clarity, colour, and motion.',
     values: {
       dynamicBackground: true,
       backgroundSource: 'auto',
@@ -468,22 +321,15 @@ export const visualPresets: readonly VisualPreset[] = [
       uiOpacity: 50,
       uiBlur: 16,
       paletteStrength: 24,
-      vignetteStrength: 28,
-      grainStrength: 5,
-      glassHighlights: true,
       backgroundMotion: 'drift',
       motionDuration: 20,
-      transitionDuration: 420,
-      parallax: true,
-      parallaxStrength: 8,
-      effectQuality: 'full',
     },
   },
   {
     id: 'cinematic',
     label: 'Cinematic',
     description:
-      'Brighter media, deeper colour, slower transitions, more depth.',
+      'Brighter media and stronger colour without extra compositor layers.',
     values: {
       dynamicBackground: true,
       backgroundSource: 'auto',
@@ -493,21 +339,14 @@ export const visualPresets: readonly VisualPreset[] = [
       uiOpacity: 38,
       uiBlur: 20,
       paletteStrength: 36,
-      vignetteStrength: 36,
-      grainStrength: 7,
-      glassHighlights: true,
-      backgroundMotion: 'orbit',
+      backgroundMotion: 'float',
       motionDuration: 26,
-      transitionDuration: 620,
-      parallax: true,
-      parallaxStrength: 11,
-      effectQuality: 'full',
     },
   },
   {
     id: 'calm',
     label: 'Calm',
-    description: 'Soft, subdued lighting with minimal movement.',
+    description: 'Artwork-only mode with soft lighting and no movement.',
     values: {
       dynamicBackground: true,
       backgroundSource: 'artwork',
@@ -517,19 +356,13 @@ export const visualPresets: readonly VisualPreset[] = [
       uiOpacity: 68,
       uiBlur: 18,
       paletteStrength: 14,
-      vignetteStrength: 22,
-      grainStrength: 2,
-      glassHighlights: false,
       backgroundMotion: 'still',
-      transitionDuration: 360,
-      parallax: false,
-      effectQuality: 'balanced',
     },
   },
   {
     id: 'performance',
     label: 'Performance',
-    description: 'Artwork-only mode with reduced effect complexity and motion.',
+    description: 'Artwork-only mode with minimal motion and lower glass cost.',
     values: {
       dynamicBackground: true,
       backgroundSource: 'artwork',
@@ -539,14 +372,7 @@ export const visualPresets: readonly VisualPreset[] = [
       uiOpacity: 72,
       uiBlur: 10,
       paletteStrength: 10,
-      vignetteStrength: 20,
-      grainStrength: 0,
-      glassHighlights: false,
       backgroundMotion: 'still',
-      transitionDuration: 220,
-      parallax: false,
-      effectQuality: 'lite',
-      pauseWhenHidden: true,
     },
   },
 ] as const;

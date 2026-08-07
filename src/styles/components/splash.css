@@ -1,7 +1,5 @@
-html:not(.luminous-runtime-active)
-  body:has(.Root__top-container #main-view):not(:has(.luminous-splash))::before,
-html:not(.luminous-runtime-active)
-  body:has(.Root__top-container #main-view):not(:has(.luminous-splash))::after {
+body:has(.Root__top-container #main-view):not(:has(.luminous-splash))::before,
+body:has(.Root__top-container #main-view):not(:has(.luminous-splash))::after {
   position: fixed;
   z-index: 9999;
   pointer-events: none;
@@ -9,10 +7,7 @@ html:not(.luminous-runtime-active)
   animation: luminous-bootstrap-splash-failsafe 1ms linear 3s forwards;
 }
 
-html:not(.luminous-runtime-active)
-  body:has(.Root__top-container #main-view):not(
-    :has(.luminous-splash)
-  )::before {
+body:has(.Root__top-container #main-view):not(:has(.luminous-splash))::before {
   inset: 0;
   background: var(--spice-main, #121212);
   background: color-mix(
@@ -22,8 +17,7 @@ html:not(.luminous-runtime-active)
   );
 }
 
-html:not(.luminous-runtime-active)
-  body:has(.Root__top-container #main-view):not(:has(.luminous-splash))::after {
+body:has(.Root__top-container #main-view):not(:has(.luminous-splash))::after {
   top: 50%;
   left: 50%;
   width: 42px;
@@ -179,10 +173,7 @@ html:not(.luminous-runtime-active)
 }
 
 @media (prefers-reduced-motion: reduce) {
-  html:not(.luminous-runtime-active)
-    body:has(.Root__top-container #main-view):not(
-      :has(.luminous-splash)
-    )::after,
+  body:has(.Root__top-container #main-view):not(:has(.luminous-splash))::after,
   .luminous-splash__loader span {
     animation-duration: 1.8s;
   }

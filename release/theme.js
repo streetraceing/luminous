@@ -1,31 +1,19 @@
-/* Luminous 2.2.0 | streetraceing */
+/* Luminous 2.2.1 | streetraceing */
 (() => {
-  const __APP_VERSION__ = '2.2.0';
+  const __APP_VERSION__ = '2.2.1';
   const __APP_AUTHOR__ = 'streetraceing';
-  const __BUILD_TIME__ = '07/08/2026 23:27:49 UTC+00:00';
+  const __BUILD_TIME__ = '2026-08-07 23:44:00.144 UTC';
   const modules = {
     'src/api/canvas': function (module, exports, require) {
       'use strict';
       Object.defineProperty(exports, '__esModule', { value: true });
       exports.Canvas = void 0;
-      const MEDIA_SOURCE_EVENTS = [
-        'loadedmetadata',
-        'loadeddata',
-        'canplay',
-        'playing',
-        'emptied',
-        'ended',
-      ];
       class Canvas {
-        static VIDEO_CANDIDATES = [
-          { selector: '.canvasVideoContainerNPV video', mode: 'npv' },
-          { selector: '#VideoPlayerNpv_ReactPortal video', mode: 'npv-video' },
-          {
-            selector:
-              '.Root__top-container:has(#VideoPlayerCinema_ReactPortal) video',
-            mode: 'cinema',
-          },
-        ];
+        static NPV_VIDEO_SELECTOR = '.canvasVideoContainerNPV video';
+        static NPV_LONGFORM_VIDEO_SELECTOR =
+          '#VideoPlayerNpv_ReactPortal video';
+        static CINEMA_VIDEO_SELECTOR =
+          '.Root__top-container:has(#VideoPlayerCinema_ReactPortal) video';
         static listeners = new Map();
         static observer = null;
         static checkFrame = null;
@@ -34,11 +22,21 @@
         static currentSource = null;
         static revision = 0;
         static observedSourceVideo = null;
-        static initialized = false;
-        static enabled = true;
+        static forceCheck = false;
         static handleVideoSourceChange = () => {
+          this.forceCheck = true;
           this.scheduleCheck();
         };
+        static initialized = false;
+        static enabled = true;
+        static createPayload(video, mode) {
+          return {
+            video,
+            mode,
+            source: video?.currentSrc || video?.src || null,
+            revision: this.revision,
+          };
+        }
         static addEventListener(event, listener) {
           this.getListeners(event).add(listener);
           if (
@@ -46,25 +44,26 @@
             this.currentVideo &&
             this.currentMode
           ) {
-            this.callListener(listener, this.get());
+            this.callListener(
+              listener,
+              this.createPayload(this.currentVideo, this.currentMode),
+            );
           }
-          if (this.enabled && !this.initialized) this.init();
+          if (!this.initialized) {
+            this.init();
+          }
         }
         static removeEventListener(event, listener) {
           this.listeners.get(event)?.delete(listener);
         }
         static get() {
-          return this.createPayload(
-            this.currentVideo,
-            this.currentMode,
-            this.currentSource,
-          );
+          return this.createPayload(this.currentVideo, this.currentMode);
         }
         static getVideo() {
           return this.currentVideo;
         }
         static init() {
-          if (!this.enabled || this.initialized) return;
+          if (this.initialized || !this.enabled) return;
           this.initialized = true;
           this.observer = new MutationObserver(() => this.scheduleCheck());
           this.observer.observe(document.documentElement, {
@@ -78,13 +77,19 @@
         static setEnabled(enabled) {
           if (this.enabled === enabled) return;
           this.enabled = enabled;
-          if (enabled) {
-            this.init();
+          if (!enabled) {
+            const previousVideo = this.currentVideo;
+            const previousMode = this.currentMode;
+            this.destroy(false);
+            if (previousVideo) {
+              this.revision++;
+              this.emit('unmount', this.createPayload(null, previousMode));
+            }
             return;
           }
-          const previousVideo = this.currentVideo;
-          const previousMode = this.currentMode;
-          const previousSource = this.currentSource;
+          this.init();
+        }
+        static destroy(clearListeners = true) {
           this.observer?.disconnect();
           this.observer = null;
           if (this.checkFrame !== null) {
@@ -92,137 +97,84 @@
             this.checkFrame = null;
           }
           this.observeVideoSource(null);
-          this.initialized = false;
           this.currentVideo = null;
           this.currentMode = null;
           this.currentSource = null;
-          if (previousVideo) {
-            this.revision++;
-            this.emit(
-              'unmount',
-              this.createPayload(null, previousMode, previousSource),
-            );
-          }
-        }
-        static destroy() {
-          this.observer?.disconnect();
-          this.observer = null;
-          if (this.checkFrame !== null) {
-            cancelAnimationFrame(this.checkFrame);
-            this.checkFrame = null;
-          }
-          this.observeVideoSource(null);
-          this.listeners.clear();
-          this.currentVideo = null;
-          this.currentMode = null;
-          this.currentSource = null;
-          this.revision = 0;
+          this.forceCheck = false;
           this.initialized = false;
-          this.enabled = true;
-        }
-        static createPayload(
-          video,
-          mode,
-          source = video?.currentSrc || video?.src || null,
-        ) {
-          return { video, mode, source, revision: this.revision };
+          if (clearListeners) this.listeners.clear();
         }
         static scheduleCheck() {
-          if (!this.initialized || this.checkFrame !== null) return;
+          if (this.checkFrame !== null) return;
           this.checkFrame = requestAnimationFrame(() => {
             this.checkFrame = null;
             this.check();
           });
         }
         static detect() {
-          let observedVideo = null;
-          for (const candidate of this.VIDEO_CANDIDATES) {
-            const videos = Array.from(
-              document.querySelectorAll(candidate.selector),
-            );
-            const visible = videos.filter((video) =>
-              this.isVisibleVideo(video),
-            );
-            if (!observedVideo) {
-              observedVideo =
-                visible.find((video) => !video.ended) ?? visible[0] ?? null;
-            }
-            const playable = this.findBestPlayableVideo(visible);
-            if (playable) {
-              return {
-                payload: this.createPayload(playable, candidate.mode),
-                observedVideo: playable,
-              };
-            }
+          const npv = document.querySelector(this.NPV_VIDEO_SELECTOR);
+          if (npv) {
+            return this.createPayload(npv, 'npv');
           }
-          return {
-            payload: this.createPayload(null, null, null),
-            observedVideo,
-          };
-        }
-        static findBestPlayableVideo(videos) {
-          const playable = videos.filter(
-            (video) =>
-              !video.ended &&
-              video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA &&
-              video.videoWidth > 0 &&
-              video.videoHeight > 0,
+          const npvLongform = this.findVisibleVideo(
+            this.NPV_LONGFORM_VIDEO_SELECTOR,
           );
-          if (!playable.length) return null;
-          return (
-            playable.find((video) => !video.paused) ??
-            playable.find(
-              (video) => video.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA,
-            ) ??
-            playable[0]
-          );
+          if (npvLongform) {
+            return this.createPayload(npvLongform, 'npv-video');
+          }
+          const cinema = document.querySelector(this.CINEMA_VIDEO_SELECTOR);
+          if (cinema) {
+            return this.createPayload(cinema, 'cinema');
+          }
+          return this.createPayload(null, null);
         }
-        static isVisibleVideo(video) {
-          if (!video.isConnected || video.hidden) return false;
-          const style = getComputedStyle(video);
+        static findVisibleVideo(selector) {
+          const videos = document.querySelectorAll(selector);
           return (
-            style.display !== 'none' &&
-            style.visibility !== 'hidden' &&
-            Number.parseFloat(style.opacity || '1') !== 0 &&
-            video.getClientRects().length > 0
+            Array.from(videos).find((video) => {
+              const style = getComputedStyle(video);
+              return (
+                video.isConnected &&
+                style.display !== 'none' &&
+                style.visibility !== 'hidden' &&
+                !video.ended &&
+                video.getClientRects().length > 0
+              );
+            }) ?? null
           );
         }
         static check() {
-          if (!this.initialized) return;
-          const detection = this.detect();
-          const detected = detection.payload;
-          this.observeVideoSource(detection.observedVideo);
+          const { video, mode, source } = this.detect();
+          const forced = this.forceCheck;
+          this.forceCheck = false;
           const previousVideo = this.currentVideo;
           const previousMode = this.currentMode;
-          const previousSource = this.currentSource;
           if (
-            previousVideo === detected.video &&
-            previousMode === detected.mode &&
-            previousSource === detected.source
+            !forced &&
+            previousVideo === video &&
+            previousMode === mode &&
+            this.currentSource === source
           ) {
             return;
           }
-          this.currentVideo = detected.video;
-          this.currentMode = detected.mode;
-          this.currentSource = detected.source;
+          this.currentVideo = video;
+          this.currentMode = mode;
+          this.currentSource = source;
           this.revision++;
-          if (previousVideo && !detected.video) {
-            const payload = this.createPayload(
-              null,
-              previousMode,
-              previousSource,
-            );
+          this.observeVideoSource(video);
+          if (previousVideo && !video) {
+            const payload = this.createPayload(null, previousMode);
             Luminous.Logger.info('Canvas', 'Unmounted', payload);
             this.emit('unmount', payload);
             return;
           }
-          if (!previousVideo && detected.video) {
-            const payload = this.get();
+          if (!previousVideo && video) {
+            const payload = this.createPayload(video, mode);
             Luminous.Logger.info('Canvas', 'Mounted', payload);
             this.emit('mount', payload);
             return;
           }
-          const payload = this.get();
+          const payload = this.createPayload(video, mode);
           Luminous.Logger.info('Canvas', 'Changed', payload);
           this.emit('change', payload);
         }
@@ -233,14 +185,22 @@
         }
         static observeVideoSource(video) {
           if (video === this.observedSourceVideo) return;
-          MEDIA_SOURCE_EVENTS.forEach((event) => {
+          const events = [
+            'loadedmetadata',
+            'loadeddata',
+            'canplay',
+            'playing',
+            'emptied',
+            'ended',
+          ];
+          events.forEach((event) => {
             this.observedSourceVideo?.removeEventListener(
               event,
               this.handleVideoSourceChange,
             );
           });
           this.observedSourceVideo = video;
-          MEDIA_SOURCE_EVENTS.forEach((event) => {
+          events.forEach((event) => {
             video?.addEventListener(event, this.handleVideoSourceChange);
           });
         }
@@ -572,7 +532,6 @@
       Object.defineProperty(exports, '__esModule', { value: true });
       exports.Palette = void 0;
       const PALETTE_CLASS = 'luminous-dynamic-palette';
-      const PALETTE_TRANSITION_CLASS = 'luminous-palette-transitioning';
       const PALETTE_VARIABLES = [
         '--luminous-palette-primary',
         '--luminous-palette-secondary',
@@ -594,7 +553,6 @@
         'luminous-effect-bloom',
         'luminous-effect-prism',
         'luminous-effect-halo',
-        'luminous-effect-nebula',
         'luminous-effect-energy-soft',
         'luminous-effect-energy-flow',
         'luminous-effect-energy-vivid',
@@ -609,10 +567,8 @@
         static requestId = 0;
         static source = null;
         static cache = new Map();
-        static pendingProfiles = new Map();
         static currentProfile = null;
         static motionScale = 1;
-        static transitionOwner = 0;
         static cancel() {
           this.requestId++;
         }
@@ -620,8 +576,6 @@
           this.cancel();
           this.source = null;
           this.currentProfile = null;
-          this.transitionOwner = 0;
-          document.documentElement.classList.remove(PALETTE_TRANSITION_CLASS);
           this.clearAppliedPalette();
         }
         static setMotionDuration(duration) {
@@ -631,16 +585,6 @@
           this.motionScale = normalized / DEFAULT_MOTION_DURATION;
           if (this.currentProfile) {
             this.applyDurations(this.currentProfile.baseDurations);
-          }
-        }
-        static async warmFromImage(image) {
-          if (!image || this.cache.has(image)) return;
-          try {
-            await this.loadProfile(image);
-          } catch {
-            // Warm-up is opportunistic. applyFromImage() will report a real failure
-            // if the profile is still unavailable when it is actually needed.
-            return;
           }
         }
         static async applyFromImage(image) {
@@ -656,68 +600,24 @@
           }
           const requestId = ++this.requestId;
           try {
-            const profile = await this.loadProfile(image);
+            const profile =
+              this.getCachedPalette(image) ??
+              (await this.extractProfile(image));
             if (requestId !== this.requestId) return;
-            await this.commitProfile(profile, image, requestId);
+            this.cachePalette(image, profile);
+            this.applyProfile(profile);
+            this.source = image;
           } catch (error) {
             if (requestId !== this.requestId) return;
-            // A temporary cover/CDN/CORS failure should not blank the entire effect
-            // scene. Preserve the last known-good palette and let the next song or
-            // retry replace it normally. Explicit disable/cleanup still calls clear().
+            this.source = null;
+            this.currentProfile = null;
+            this.clearAppliedPalette();
             Luminous.Logger.warn(
               'Palette',
-              'Failed to create adaptive background effects; keeping previous palette',
+              'Failed to create adaptive background effects',
               error,
             );
           }
-        }
-        static loadProfile(source) {
-          const cached = this.getCachedPalette(source);
-          if (cached) return Promise.resolve(cached);
-          const pending = this.pendingProfiles.get(source);
-          if (pending) return pending;
-          const request = this.extractProfile(source)
-            .then((profile) => {
-              this.cachePalette(source, profile);
-              return profile;
-            })
-            .finally(() => {
-              this.pendingProfiles.delete(source);
-            });
-          this.pendingProfiles.set(source, request);
-          return request;
-        }
-        static async commitProfile(profile, source, requestId) {
-          const root = document.documentElement;
-          const shouldSoftenSwap =
-            this.currentProfile !== null && this.source !== source;
-          if (shouldSoftenSwap) {
-            this.transitionOwner = requestId;
-            root.classList.add(PALETTE_TRANSITION_CLASS);
-          }
-          // Do not fade the effect layer to zero between songs. The effect sits
-          // underneath translucent Spotify surfaces, so a fade-to-black reads as a
-          // full-interface flash even when the media layer itself is stable. The
-          // registered palette color properties already interpolate smoothly; keep
-          // the effect luminance present and only pause its motion while the profile
-          // classes/variables are committed.
-          this.applyProfile(profile);
-          this.source = source;
-          if (!shouldSoftenSwap) return;
-          await this.nextPaint();
-          if (
-            requestId !== this.requestId ||
-            this.transitionOwner !== requestId
-          ) {
-            return;
-          }
-          this.transitionOwner = 0;
-          root.classList.remove(PALETTE_TRANSITION_CLASS);
-        }
-        static nextPaint() {
-          return new Promise((resolve) => {
-            requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
-          });
         }
         static async extractProfile(source) {
           const image = await this.loadImage(source);
@@ -997,7 +897,6 @@
             ember: [0.08, 0.14],
             bloom: [0.1, 0.2],
             prism: [0.33, 0.66],
-            nebula: [0.12, -0.12],
           };
           const [secondaryOffset, accentOffset] = harmonyOffsets[scene];
           const secondarySource =
@@ -1048,14 +947,6 @@
             return 'prism';
           }
           const hueDegrees = dominantHue * 360;
-          if (
-            hueDegrees >= 252 &&
-            hueDegrees < 334 &&
-            visualChroma > 0.32 &&
-            metrics.averageLightness < 0.72
-          ) {
-            return 'nebula';
-          }
           if (hueDegrees >= 68 && hueDegrees < 166) return 'bloom';
           if (metrics.warmth > 0.08 || hueDegrees < 58 || hueDegrees >= 334) {
             return 'ember';
@@ -1827,7 +1718,6 @@
       const SplashFeature_1 = require('./features/SplashFeature');
       const ThemeMenuFeature_1 = require('./features/ThemeMenuFeature');
       const SynchronizeFeature_1 = require('./features/SynchronizeFeature');
-      const MotionFeature_1 = require('./features/MotionFeature');
       const react_1 = require('./react');
       function App() {
         const React = (0, react_1.getReact)();
@@ -1836,7 +1726,6 @@
           null,
           React.createElement(SplashFeature_1.SplashFeature),
           React.createElement(SynchronizeFeature_1.SynchronizeFeature),
-          React.createElement(MotionFeature_1.MotionFeature),
           React.createElement(
             DynamicBackgroundFeature_1.DynamicBackgroundFeature,
           ),
@@ -1854,13 +1743,9 @@
       exports.DynamicBackgroundFeature = DynamicBackgroundFeature;
       const react_1 = require('../react');
       const health_1 = require('../../ui/health');
-      const CANVAS_HANDOFF_GRACE_MS = 420;
-      const TRACK_TRANSITION_FAILSAFE_MS = 2400;
-      const PALETTE_AFTER_MEDIA_DELAY_MS = 140;
       function DynamicBackgroundFeature() {
         const effect = (0, react_1.useEffect)();
         const memo = (0, react_1.useMemo)();
-        const ref = (0, react_1.useRef)();
         const state = (0, react_1.useState)();
         const [song, setSong] = state(() => Luminous.Song.getSync());
         const [canvas, setCanvas] = state(() => Luminous.Canvas.get());
@@ -1870,79 +1755,18 @@
         const [dynamicPalette, setDynamicPalette] = state(
           () => Luminous.Settings.get('dynamicPalette') !== false,
         );
-        const [backgroundSource, setBackgroundSource] = state(() =>
-          String(Luminous.Settings.get('backgroundSource') ?? 'auto'),
-        );
         const [appActive, setAppActive] = state(
           () => (0, health_1.getUiHealth)().status !== 'booting',
         );
-        const handoffDeadline = ref(0);
-        const handoffTimer = ref(null);
-        const trackTransitionTimer = ref(null);
-        const paletteCommitTimer = ref(null);
-        const latestCanvasRevision = ref(canvas.revision);
-        const canvasRevisionFloor = ref(-1);
-        const latestSongImage = ref(song?.image ?? null);
-        const backgroundEnabled = ref(enabled);
-        const paletteEnabled = ref(dynamicPalette);
-        const appActiveRef = ref(appActive);
-        const [handoffRevision, setHandoffRevision] = state(0);
-        const clearHandoffTimer = () => {
-          if (handoffTimer.current === null) return;
-          window.clearTimeout(handoffTimer.current);
-          handoffTimer.current = null;
-        };
-        const clearTrackTransition = () => {
-          if (trackTransitionTimer.current !== null) {
-            window.clearTimeout(trackTransitionTimer.current);
-            trackTransitionTimer.current = null;
-          }
-          document.documentElement.classList.remove('luminous-track-changing');
-        };
-        const clearPaletteCommitTimer = () => {
-          if (paletteCommitTimer.current === null) return;
-          window.clearTimeout(paletteCommitTimer.current);
-          paletteCommitTimer.current = null;
-        };
-        const markTrackTransition = () => {
-          clearTrackTransition();
-          document.documentElement.classList.add('luminous-track-changing');
-          trackTransitionTimer.current = window.setTimeout(
-            clearTrackTransition,
-            TRACK_TRANSITION_FAILSAFE_MS,
-          );
-        };
-        const scheduleHandoffExpiry = () => {
-          clearHandoffTimer();
-          const remaining = handoffDeadline.current - performance.now();
-          if (remaining <= 0) {
-            handoffDeadline.current = 0;
-            setHandoffRevision((value) => value + 1);
-            return;
-          }
-          handoffTimer.current = window.setTimeout(() => {
-            handoffTimer.current = null;
-            handoffDeadline.current = 0;
-            setHandoffRevision((value) => value + 1);
-          }, remaining);
-        };
         const renderKey = memo(() => {
           if (!appActive) return 'inactive';
           if (!enabled) return 'disabled';
-          const songKey = `${song?.uri ?? ''}:${song?.image ?? ''}`;
-          if (backgroundSource === 'auto' && canvas.video) {
-            return `canvas:${canvas.source ?? ''}:${canvas.revision}:${songKey}`;
+          if (canvas.video) {
+            return `canvas:${canvas.source ?? ''}:${canvas.revision}:${song?.image ?? ''}`;
           }
-          if (song?.image) return `image:${songKey}`;
-          return `empty:${song?.uri ?? ''}`;
-        }, [
-          appActive,
-          backgroundSource,
-          canvas,
-          enabled,
-          song?.image,
-          song?.uri,
-        ]);
+          if (song?.image) return `image:${song.image}`;
+          return 'empty';
+        }, [appActive, canvas, enabled, song?.image]);
         effect(() => {
           let songKey = song ? `${song.uri}\u0000${song.image ?? ''}` : null;
           let canvasKey = `${canvas.mode ?? ''}\u0000${canvas.source ?? ''}\u0000${canvas.revision}`;
@@ -1950,36 +1774,9 @@
           const handleSong = (nextSong) => {
             const nextKey = `${nextSong.uri}\u0000${nextSong.image ?? ''}`;
             if (songKey === nextKey) return;
-            const isInitialSong = songKey === null;
-            const previousImage = latestSongImage.current;
             songKey = nextKey;
-            latestSongImage.current = nextSong.image;
+            Luminous.Palette.cancel();
             Luminous.Background.preloadImage(nextSong.image);
-            void Luminous.Palette.warmFromImage(nextSong.image);
-            if (!isInitialSong) {
-              clearPaletteCommitTimer();
-              const visualChangeExpected =
-                Luminous.Background.getType() === 'canvas' ||
-                previousImage !== nextSong.image;
-              if (visualChangeExpected) markTrackTransition();
-              if (Luminous.Background.getType() === 'canvas') {
-                Luminous.Background.holdCurrentFrame();
-              }
-              // A Canvas object can survive a Spotify songchange event for a short
-              // time even though it still represents the previous song. Requiring a
-              // newer Canvas revision prevents that stale object from immediately
-              // cancelling the handoff grace period and causing Canvas/artwork
-              // ping-pong while Spotify replaces the media source.
-              canvasRevisionFloor.current = latestCanvasRevision.current;
-              if (Luminous.Background.getType() === 'canvas') {
-                handoffDeadline.current =
-                  performance.now() + CANVAS_HANDOFF_GRACE_MS;
-                scheduleHandoffExpiry();
-              } else {
-                handoffDeadline.current = 0;
-                clearHandoffTimer();
-              }
-            }
             setSong(nextSong);
           };
           const handleCanvas = (payload) => {
@@ -1987,84 +1784,26 @@
             if (canvasKey === nextKey && canvasVideo === payload.video) return;
             canvasKey = nextKey;
             canvasVideo = payload.video;
-            latestCanvasRevision.current = Math.max(
-              latestCanvasRevision.current,
-              payload.revision,
-            );
-            if (
-              payload.video &&
-              payload.revision > canvasRevisionFloor.current
-            ) {
-              handoffDeadline.current = 0;
-              clearHandoffTimer();
-            }
             setCanvas(payload);
-          };
-          const handleBackground = (payload) => {
-            if (payload.phase !== 'settled') return;
-            clearPaletteCommitTimer();
-            const commitPalette = async () => {
-              paletteCommitTimer.current = null;
-              if (
-                backgroundEnabled.current &&
-                paletteEnabled.current &&
-                appActiveRef.current
-              ) {
-                await Luminous.Palette.applyFromImage(latestSongImage.current);
-              }
-              clearTrackTransition();
-            };
-            // Do not rebuild the large mix-blend/blur effect scene in the exact frame
-            // where the media compositor finishes a track handoff. Let the new media
-            // become fully stable first, then commit the already-warmed palette on a
-            // separate frame budget.
-            if (
-              document.documentElement.classList.contains(
-                'luminous-track-changing',
-              )
-            ) {
-              paletteCommitTimer.current = window.setTimeout(
-                () => void commitPalette(),
-                PALETTE_AFTER_MEDIA_DELAY_MS,
-              );
-            } else {
-              void commitPalette();
-            }
           };
           Luminous.Song.addEventListener('ready', handleSong);
           Luminous.Song.addEventListener('change', handleSong);
           Luminous.Canvas.addEventListener('mount', handleCanvas);
           Luminous.Canvas.addEventListener('change', handleCanvas);
           Luminous.Canvas.addEventListener('unmount', handleCanvas);
-          Luminous.Background.addEventListener('change', handleBackground);
           const unsubscribeHealth = (0, health_1.subscribeUiHealth)(
             (health) => {
-              const active = health.status !== 'booting';
-              appActiveRef.current = active;
-              setAppActive(active);
+              setAppActive(health.status !== 'booting');
             },
           );
           const unsubscribeSetting = Luminous.Settings.subscribe(
             'dynamicBackground',
-            (value) => {
-              const nextEnabled = value !== false;
-              backgroundEnabled.current = nextEnabled;
-              setEnabled(nextEnabled);
-            },
+            (value) => setEnabled(value !== false),
             { immediate: true },
           );
           const unsubscribePaletteSetting = Luminous.Settings.subscribe(
             'dynamicPalette',
-            (value) => {
-              const nextEnabled = value !== false;
-              paletteEnabled.current = nextEnabled;
-              setDynamicPalette(nextEnabled);
-            },
-            { immediate: true },
-          );
-          const unsubscribeSourceSetting = Luminous.Settings.subscribe(
-            'backgroundSource',
-            (value) => setBackgroundSource(String(value)),
+            (value) => setDynamicPalette(value !== false),
             { immediate: true },
           );
           return () => {
@@ -2073,49 +1812,30 @@
             Luminous.Canvas.removeEventListener('mount', handleCanvas);
             Luminous.Canvas.removeEventListener('change', handleCanvas);
             Luminous.Canvas.removeEventListener('unmount', handleCanvas);
-            Luminous.Background.removeEventListener('change', handleBackground);
             unsubscribeHealth();
             unsubscribeSetting();
             unsubscribePaletteSetting();
-            unsubscribeSourceSetting();
-            clearHandoffTimer();
-            clearPaletteCommitTimer();
-            clearTrackTransition();
-            handoffDeadline.current = 0;
             Luminous.Background.destroy();
             Luminous.Palette.clear();
           };
         }, []);
         effect(() => {
-          backgroundEnabled.current = enabled;
-          paletteEnabled.current = dynamicPalette;
-          appActiveRef.current = appActive;
-          if (!enabled || !dynamicPalette) {
+          if (!appActive || !enabled || !dynamicPalette) {
             Luminous.Palette.clear();
             return;
           }
-          // Song changes deliberately do not trigger palette application here. The
-          // old palette stays frozen while media changes underneath it and the new
-          // palette is committed only after Background reports a settled layer.
-          if (!appActive || Luminous.Background.getType() === 'none') return;
-          void Luminous.Palette.applyFromImage(latestSongImage.current);
-        }, [appActive, dynamicPalette, enabled]);
+          void Luminous.Palette.applyFromImage(song?.image);
+        }, [appActive, dynamicPalette, enabled, song?.image]);
         effect(() => {
-          // The background root is independent from Spotify's main-view DOM. Do not
-          // destroy a perfectly valid frame when Spotify temporarily remounts its UI;
-          // lifecycle cleanup still destroys it when the feature itself unmounts.
-          if (!appActive) return;
+          if (!appActive) {
+            Luminous.Background.destroy();
+            return;
+          }
           if (!enabled) {
             Luminous.Background.clear();
             return;
           }
-          const hasFreshCanvas =
-            backgroundSource === 'auto' &&
-            canvas.video !== null &&
-            canvas.revision > canvasRevisionFloor.current;
-          if (hasFreshCanvas && canvas.video) {
-            handoffDeadline.current = 0;
-            clearHandoffTimer();
+          if (canvas.video) {
             Luminous.Background.render({
               canvas: canvas.video,
               canvasSource: canvas.source,
@@ -2123,20 +1843,12 @@
             });
             return;
           }
-          if (
-            backgroundSource === 'auto' &&
-            Luminous.Background.getType() === 'canvas' &&
-            handoffDeadline.current > performance.now()
-          ) {
-            scheduleHandoffExpiry();
-            return;
-          }
           if (song?.image) {
             Luminous.Background.render({ image: song.image });
             return;
           }
           Luminous.Background.render();
-        }, [handoffRevision, renderKey]);
+        }, [renderKey]);
         return null;
       }
     },
@@ -2146,142 +1858,51 @@
       exports.MotionFeature = MotionFeature;
       const react_1 = require('../react');
       const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)';
-      const PARALLAX_EASING = 0.12;
-      const PARALLAX_EPSILON = 0.05;
+      /**
+       * Accessibility-only motion coordinator.
+       *
+       * The pointer parallax / visibility compositor loop introduced in 2.2.0 was
+       * intentionally removed. This feature now only mirrors the explicit setting
+       * and the OS reduced-motion preference into the stable CSS class that existed
+       * before the visual refactor.
+       */
       function MotionFeature() {
         const effect = (0, react_1.useEffect)();
         effect(() => {
           const root = document.documentElement;
           const mediaQuery = window.matchMedia(REDUCED_MOTION_QUERY);
-          let frameId = null;
-          let targetX = 0;
-          let targetY = 0;
-          let currentX = 0;
-          let currentY = 0;
           let reduceMotion = Luminous.Settings.get('reduceMotion') === true;
           let respectSystem =
             Luminous.Settings.get('respectSystemMotion') !== false;
-          let parallax = Luminous.Settings.get('parallax') !== false;
-          let parallaxStrength = Number(
-            Luminous.Settings.get('parallaxStrength') ?? 8,
+          const sync = () => {
+            root.classList.toggle(
+              'luminous-reduce-motion',
+              reduceMotion || (respectSystem && mediaQuery.matches),
+            );
+          };
+          const unsubscribeReduce = Luminous.Settings.subscribe(
+            'reduceMotion',
+            (value) => {
+              reduceMotion = value === true;
+              sync();
+            },
+            { immediate: true },
           );
-          let pauseWhenHidden =
-            Luminous.Settings.get('pauseWhenHidden') !== false;
-          const isReduced = () =>
-            reduceMotion || (respectSystem && mediaQuery.matches);
-          const resetParallax = () => {
-            targetX = 0;
-            targetY = 0;
-            if (frameId === null)
-              frameId = requestAnimationFrame(animateParallax);
-          };
-          const syncMotionState = () => {
-            const reduced = isReduced();
-            root.classList.toggle('luminous-reduce-motion', reduced);
-            if (reduced || !parallax) resetParallax();
-          };
-          const syncVisibility = () => {
-            const suspended = pauseWhenHidden && document.hidden;
-            root.classList.toggle('luminous-runtime-suspended', suspended);
-          };
-          const animateParallax = () => {
-            frameId = null;
-            currentX += (targetX - currentX) * PARALLAX_EASING;
-            currentY += (targetY - currentY) * PARALLAX_EASING;
-            if (Math.abs(currentX) < PARALLAX_EPSILON) currentX = 0;
-            if (Math.abs(currentY) < PARALLAX_EPSILON) currentY = 0;
-            root.style.setProperty(
-              '--luminous-parallax-x',
-              `${(currentX * parallaxStrength).toFixed(2)}px`,
-            );
-            root.style.setProperty(
-              '--luminous-parallax-y',
-              `${(currentY * parallaxStrength).toFixed(2)}px`,
-            );
-            if (
-              Math.abs(targetX - currentX) > PARALLAX_EPSILON ||
-              Math.abs(targetY - currentY) > PARALLAX_EPSILON
-            ) {
-              frameId = requestAnimationFrame(animateParallax);
-            }
-          };
-          const handlePointerMove = (event) => {
-            if (
-              !parallax ||
-              isReduced() ||
-              root.classList.contains('luminous-settings-open') ||
-              (pauseWhenHidden && document.hidden)
-            ) {
-              return;
-            }
-            targetX =
-              (event.clientX / Math.max(1, window.innerWidth) - 0.5) * 2;
-            targetY =
-              (event.clientY / Math.max(1, window.innerHeight) - 0.5) * 2;
-            if (frameId === null)
-              frameId = requestAnimationFrame(animateParallax);
-          };
-          const unsubscribers = [
-            Luminous.Settings.subscribe(
-              'reduceMotion',
-              (value) => {
-                reduceMotion = value === true;
-                syncMotionState();
-              },
-              { immediate: true },
-            ),
-            Luminous.Settings.subscribe(
-              'respectSystemMotion',
-              (value) => {
-                respectSystem = value !== false;
-                syncMotionState();
-              },
-              { immediate: true },
-            ),
-            Luminous.Settings.subscribe(
-              'parallax',
-              (value) => {
-                parallax = value !== false;
-                syncMotionState();
-              },
-              { immediate: true },
-            ),
-            Luminous.Settings.subscribe(
-              'parallaxStrength',
-              (value) => {
-                parallaxStrength = Number(value);
-                if (frameId === null)
-                  frameId = requestAnimationFrame(animateParallax);
-              },
-              { immediate: true },
-            ),
-            Luminous.Settings.subscribe(
-              'pauseWhenHidden',
-              (value) => {
-                pauseWhenHidden = value !== false;
-                syncVisibility();
-              },
-              { immediate: true },
-            ),
-          ];
-          mediaQuery.addEventListener('change', syncMotionState);
-          window.addEventListener('pointermove', handlePointerMove, {
-            passive: true,
-          });
-          window.addEventListener('pointerleave', resetParallax);
-          document.addEventListener('visibilitychange', syncVisibility);
-          syncMotionState();
-          syncVisibility();
+          const unsubscribeSystem = Luminous.Settings.subscribe(
+            'respectSystemMotion',
+            (value) => {
+              respectSystem = value !== false;
+              sync();
+            },
+            { immediate: true },
+          );
+          mediaQuery.addEventListener('change', sync);
+          sync();
           return () => {
-            unsubscribers.forEach((unsubscribe) => unsubscribe());
-            mediaQuery.removeEventListener('change', syncMotionState);
-            window.removeEventListener('pointermove', handlePointerMove);
-            window.removeEventListener('pointerleave', resetParallax);
-            document.removeEventListener('visibilitychange', syncVisibility);
-            if (frameId !== null) cancelAnimationFrame(frameId);
-            root.classList.remove('luminous-runtime-suspended');
-            root.style.removeProperty('--luminous-parallax-x');
-            root.style.removeProperty('--luminous-parallax-y');
+            unsubscribeReduce();
+            unsubscribeSystem();
+            mediaQuery.removeEventListener('change', sync);
+            root.classList.remove('luminous-reduce-motion');
           };
         }, []);
         return null;
@@ -2310,15 +1931,8 @@
         const [now, setNow] = state(() => Date.now());
         const mountedAt = ref(shellPresent ? SCRIPT_STARTED_AT : null);
         const finished = ref(false);
+        effect(() => (0, health_1.subscribeUiHealth)(setHealth), []);
         effect(() => {
-          if (!visible) return;
-          return (0, health_1.subscribeUiHealth)(setHealth);
-        }, [visible]);
-        effect(() => {
-          // Shell presence matters only while the startup splash is actually alive.
-          // Disconnect the document-wide observer permanently after it finishes so
-          // song-change React commits cannot keep re-rendering a hidden boot UI.
-          if (!visible) return;
           let frameId = null;
           const syncShellPresence = () => {
             frameId = null;
@@ -2338,7 +1952,7 @@
             observer.disconnect();
             if (frameId !== null) cancelAnimationFrame(frameId);
           };
-        }, [visible]);
+        }, []);
         effect(() => {
           if (!shellPresent || finished.current) return;
           if (mountedAt.current === null) {
@@ -2435,6 +2049,7 @@
         effect(() => {
           const controllers = [
             synchronize_1.Synchronize.uiMountWatcher(),
+            synchronize_1.Synchronize.observeCinema(),
             synchronize_1.Synchronize.playlistBackground(),
             synchronize_1.Synchronize.homeHeaderHeight(),
           ];
@@ -3243,14 +2858,12 @@
       exports.visualPresets =
         exports.settingsUi =
         exports.settingDefinitions =
-        exports.effectQualities =
         exports.backgroundSources =
         exports.motionModes =
           void 0;
       exports.registerLuminousSettings = registerLuminousSettings;
-      exports.motionModes = ['still', 'drift', 'float', 'orbit'];
+      exports.motionModes = ['still', 'drift', 'float'];
       exports.backgroundSources = ['auto', 'artwork'];
-      exports.effectQualities = ['full', 'balanced', 'lite'];
       const numberNormalizer = (fallback, min, max) => {
         return (value) => {
           if (typeof value !== 'number' && typeof value !== 'string')
@@ -3310,27 +2923,6 @@
               `${opacity}%`,
             );
           },
-        },
-        vignetteStrength: {
-          default: 28,
-          normalize: numberNormalizer(28, 0, 70),
-          apply: (value) =>
-            Luminous.Settings.setVar(
-              '--luminous-vignette-opacity',
-              `${value}%`,
-            ),
-        },
-        grainStrength: {
-          default: 5,
-          normalize: numberNormalizer(5, 0, 20),
-          apply: (value) =>
-            Luminous.Settings.setVar('--luminous-grain-opacity', `${value}%`),
-        },
-        glassHighlights: {
-          default: true,
-          normalize: booleanNormalizer(true),
-          apply: (value) =>
-            Luminous.Settings.toggleClass('luminous-glass-highlights', value),
         },
         backgroundEnergy: {
           default: 'adaptive',
@@ -3406,53 +2998,11 @@
             Luminous.Palette.setMotionDuration(value);
           },
         },
-        transitionDuration: {
-          default: 420,
-          normalize: numberNormalizer(420, 0, 1200),
-          apply: (value) => {
-            Luminous.Settings.setVar(
-              '--luminous-transition-duration',
-              `${value}ms`,
-            );
-            Luminous.Background.setTransitionDuration(value);
-          },
-        },
-        parallax: {
-          default: true,
-          normalize: booleanNormalizer(true),
-          apply: (value) =>
-            Luminous.Settings.toggleClass('luminous-parallax-enabled', value),
-        },
-        parallaxStrength: {
-          default: 8,
-          normalize: numberNormalizer(8, 0, 20),
-          apply: (value) =>
-            Luminous.Settings.setVar(
-              '--luminous-parallax-strength',
-              `${value}px`,
-            ),
-        },
         reduceMotion: {
           default: false,
           normalize: booleanNormalizer(false),
-        },
-        respectSystemMotion: {
-          default: true,
-          normalize: booleanNormalizer(true),
-        },
-        pauseWhenHidden: {
-          default: true,
-          normalize: booleanNormalizer(true),
-        },
-        effectQuality: {
-          default: 'full',
-          normalize: choiceNormalizer(exports.effectQualities, 'full'),
           apply: (value) =>
-            toggleExclusiveClasses(
-              'luminous-quality-',
-              exports.effectQualities,
-              value,
-            ),
+            Luminous.Settings.toggleClass('luminous-reduce-motion', value),
         },
       };
       exports.settingsUi = [
@@ -3539,88 +3089,27 @@
           unit: '%',
         },
         {
-          key: 'vignetteStrength',
-          label: 'Edge vignette',
-          description: 'Darkens the edges for stronger foreground contrast.',
-          section: 'appearance',
-          control: 'range',
-          min: 0,
-          max: 70,
-          step: 1,
-          unit: '%',
-        },
-        {
-          key: 'grainStrength',
-          label: 'Film grain',
-          description: 'Adds subtle animated texture to the lighting.',
-          section: 'appearance',
-          control: 'range',
-          min: 0,
-          max: 20,
-          step: 1,
-          unit: '%',
-        },
-        {
-          key: 'glassHighlights',
-          label: 'Glass highlights',
-          description: 'Adds a faint light edge to the main glass surfaces.',
-          section: 'appearance',
-          control: 'toggle',
-        },
-        {
           key: 'backgroundMotion',
           label: 'Background movement',
-          description: 'Choose the motion path used by media and light.',
+          description: 'Choose the stable media/light motion path.',
           section: 'motion',
           control: 'choice',
           options: [
             { value: 'still', label: 'Still' },
             { value: 'drift', label: 'Drift' },
             { value: 'float', label: 'Float' },
-            { value: 'orbit', label: 'Orbit' },
           ],
         },
         {
           key: 'motionDuration',
           label: 'Motion speed',
-          description: 'Scales the media movement and adaptive scene tempo.',
+          description: 'Scales media movement and adaptive scene tempo.',
           section: 'motion',
           control: 'range',
           min: 8,
           max: 60,
           step: 1,
           unit: 's',
-        },
-        {
-          key: 'transitionDuration',
-          label: 'Cross-fade',
-          description: 'Sets how quickly backgrounds and lighting morph.',
-          section: 'motion',
-          control: 'range',
-          min: 0,
-          max: 1200,
-          step: 20,
-          unit: 'ms',
-        },
-        {
-          key: 'parallax',
-          label: 'Pointer parallax',
-          description:
-            'Lets the lighting follow the pointer with gentle depth.',
-          section: 'motion',
-          control: 'toggle',
-        },
-        {
-          key: 'parallaxStrength',
-          label: 'Parallax depth',
-          description:
-            'Controls how far the ambient background follows the pointer.',
-          section: 'motion',
-          control: 'range',
-          min: 0,
-          max: 20,
-          step: 1,
-          unit: 'px',
         },
         {
           key: 'reduceMotion',
@@ -3630,40 +3119,12 @@
           section: 'motion',
           control: 'toggle',
         },
-        {
-          key: 'respectSystemMotion',
-          label: 'Respect system motion',
-          description:
-            'Also reduce motion when the operating system asks for it.',
-          section: 'motion',
-          control: 'toggle',
-        },
-        {
-          key: 'effectQuality',
-          label: 'Effect detail',
-          description: 'Trade richer animated lighting for lower GPU work.',
-          section: 'advanced',
-          control: 'choice',
-          options: [
-            { value: 'full', label: 'Full' },
-            { value: 'balanced', label: 'Balanced' },
-            { value: 'lite', label: 'Lite' },
-          ],
-        },
-        {
-          key: 'pauseWhenHidden',
-          label: 'Pause when hidden',
-          description: 'Pause custom Luminous motion while Spotify is hidden.',
-          section: 'advanced',
-          control: 'toggle',
-        },
       ];
       exports.visualPresets = [
         {
           id: 'balanced',
           label: 'Balanced',
-          description:
-            'The default Luminous balance of clarity, colour, and motion.',
+          description: 'Stable default balance of clarity, colour, and motion.',
           values: {
             dynamicBackground: true,
             backgroundSource: 'auto',
@@ -3673,22 +3134,15 @@
             uiOpacity: 50,
             uiBlur: 16,
             paletteStrength: 24,
-            vignetteStrength: 28,
-            grainStrength: 5,
-            glassHighlights: true,
             backgroundMotion: 'drift',
             motionDuration: 20,
-            transitionDuration: 420,
-            parallax: true,
-            parallaxStrength: 8,
-            effectQuality: 'full',
           },
         },
         {
           id: 'cinematic',
           label: 'Cinematic',
           description:
-            'Brighter media, deeper colour, slower transitions, more depth.',
+            'Brighter media and stronger colour without extra compositor layers.',
           values: {
             dynamicBackground: true,
             backgroundSource: 'auto',
@@ -3698,21 +3152,14 @@
             uiOpacity: 38,
             uiBlur: 20,
             paletteStrength: 36,
-            vignetteStrength: 36,
-            grainStrength: 7,
-            glassHighlights: true,
-            backgroundMotion: 'orbit',
+            backgroundMotion: 'float',
             motionDuration: 26,
-            transitionDuration: 620,
-            parallax: true,
-            parallaxStrength: 11,
-            effectQuality: 'full',
           },
         },
         {
           id: 'calm',
           label: 'Calm',
-          description: 'Soft, subdued lighting with minimal movement.',
+          description: 'Artwork-only mode with soft lighting and no movement.',
           values: {
             dynamicBackground: true,
             backgroundSource: 'artwork',
@@ -3722,20 +3169,14 @@
             uiOpacity: 68,
             uiBlur: 18,
             paletteStrength: 14,
-            vignetteStrength: 22,
-            grainStrength: 2,
-            glassHighlights: false,
             backgroundMotion: 'still',
-            transitionDuration: 360,
-            parallax: false,
-            effectQuality: 'balanced',
           },
         },
         {
           id: 'performance',
           label: 'Performance',
           description:
-            'Artwork-only mode with reduced effect complexity and motion.',
+            'Artwork-only mode with minimal motion and lower glass cost.',
           values: {
             dynamicBackground: true,
             backgroundSource: 'artwork',
@@ -3745,14 +3186,7 @@
             uiOpacity: 72,
             uiBlur: 10,
             paletteStrength: 10,
-            vignetteStrength: 20,
-            grainStrength: 0,
-            glassHighlights: false,
             backgroundMotion: 'still',
-            transitionDuration: 220,
-            parallax: false,
-            effectQuality: 'lite',
-            pauseWhenHidden: true,
           },
         },
       ];
@@ -3787,22 +3221,10 @@
       Object.defineProperty(exports, '__esModule', { value: true });
       exports.Background = void 0;
       class Background {
-        static DEFAULT_TRANSITION_MS = 420;
-        static VIDEO_FRAME_TIMEOUT_MS = 1200;
-        static CLEANUP_GRACE_MS = 120;
-        static LAYER_CLASS_CLEANUP_GRACE_MS = 48;
-        static transitionMs = this.DEFAULT_TRANSITION_MS;
+        static TRANSITION_MS = 250;
         static MAX_PRELOADED_IMAGES = 24;
         static root = null;
         static base = null;
-        static mediaStage = null;
-        static holdLayer = null;
-        static currentElement = null;
-        static stableLayer = null;
-        static transitionFrame = null;
-        static transitionCleanupTimer = null;
-        static transitionRevision = 0;
-        static layerClassCleanupTimer = null;
         static imageLayers = null;
         static activeImage = 0;
         static imageRenderId = 0;
@@ -3817,108 +3239,20 @@
         static pendingCanvasVideo = null;
         static pendingCanvasFallback = null;
         static videoCleanupTimer = null;
-        static unsupportedCanvasSources = new WeakMap();
+        static unsupportedCanvasSources = new WeakSet();
         static currentType = 'none';
         static listeners = new Map();
         static getType() {
           return this.currentType;
         }
         static get() {
-          return this.currentType === 'none' ? null : this.currentElement;
-        }
-        static holdCurrentFrame() {
-          const current = this.currentElement;
-          if (
-            this.currentType !== 'canvas' ||
-            !(current instanceof HTMLVideoElement) ||
-            this.stableLayer !== current
-          ) {
-            return;
+          if (this.currentType === 'canvas' && this.videoLayers) {
+            return this.videoLayers[this.activeVideo];
           }
-          // Freeze only Luminous's captured clone. Spotify's source video remains
-          // untouched. First try to rasterize the last *presented* frame into an
-          // independent canvas so source MediaStream teardown cannot black it out.
-          // If Chromium refuses the snapshot, pausing the clone is still safer than
-          // letting it follow a source that Spotify is about to replace.
-          if (this.captureHoldFrame(current)) return;
-          try {
-            current.pause();
-          } catch (error) {
-            Luminous.Logger.warn(
-              'Background',
-              'Could not hold Canvas frame',
-              error,
-            );
+          if (this.currentType === 'image' && this.imageLayers) {
+            return this.imageLayers[this.activeImage];
           }
-        }
-        static captureHoldFrame(video) {
-          const hold = this.holdLayer;
-          if (!hold || video.videoWidth <= 0 || video.videoHeight <= 0)
-            return false;
-          const viewportWidth = Math.max(1, window.innerWidth);
-          const viewportHeight = Math.max(1, window.innerHeight);
-          const pixelRatio = Math.min(
-            Math.max(window.devicePixelRatio || 1, 1),
-            2,
-          );
-          const maxWidth = 1920;
-          const desiredWidth = Math.round(viewportWidth * pixelRatio);
-          const scaleDown =
-            desiredWidth > maxWidth ? maxWidth / desiredWidth : 1;
-          const width = Math.max(1, Math.round(desiredWidth * scaleDown));
-          const height = Math.max(
-            1,
-            Math.round(viewportHeight * pixelRatio * scaleDown),
-          );
-          try {
-            hold.width = width;
-            hold.height = height;
-            const context = hold.getContext('2d', { alpha: false });
-            if (!context) return false;
-            const sourceWidth = video.videoWidth;
-            const sourceHeight = video.videoHeight;
-            const scale = Math.max(width / sourceWidth, height / sourceHeight);
-            const drawWidth = sourceWidth * scale;
-            const drawHeight = sourceHeight * scale;
-            const drawX = (width - drawWidth) / 2;
-            const drawY = (height - drawHeight) / 2;
-            context.drawImage(video, drawX, drawY, drawWidth, drawHeight);
-            const computed = getComputedStyle(video);
-            hold.style.translate = computed.translate;
-            hold.style.scale = computed.scale;
-            hold.style.zIndex = '1';
-            this.setOpacityImmediately(hold, '1');
-            this.setOpacityImmediately(video, '0');
-            video.style.zIndex = '0';
-            this.stableLayer = hold;
-            try {
-              video.pause();
-            } catch {
-              // The independent raster is already stable; playback state is now
-              // irrelevant and cleanup will release the stream after handoff.
-            }
-            return true;
-          } catch (error) {
-            this.clearHoldLayer();
-            Luminous.Logger.warn(
-              'Background',
-              'Could not snapshot outgoing Canvas frame',
-              error,
-            );
-            return false;
-          }
-        }
-        static clearHoldLayer() {
-          const hold = this.holdLayer;
-          if (!hold) return;
-          this.setOpacityImmediately(hold, '0');
-          hold.style.zIndex = '0';
-          hold.style.removeProperty('translate');
-          hold.style.removeProperty('scale');
-          const context = hold.getContext('2d');
-          context?.clearRect(0, 0, hold.width, hold.height);
-          hold.width = 1;
-          hold.height = 1;
+          return null;
         }
         static addEventListener(event, listener) {
           if (!this.listeners.has(event)) {
@@ -3929,11 +3263,10 @@
         static removeEventListener(event, listener) {
           this.listeners.get(event)?.delete(listener);
         }
-        static emit(event, phase = 'settled') {
+        static emit(event) {
           const payload = {
             type: this.currentType,
             element: this.get(),
-            phase,
           };
           this.listeners.get(event)?.forEach((listener) => {
             try {
@@ -3950,11 +3283,11 @@
             width: '120%',
             height: '120%',
             objectFit: 'cover',
+            filter: `blur(var(--luminous-background-blur)) brightness(var(--luminous-background-brightness))`,
             transform: 'scale(1.2) translateZ(0)',
             pointerEvents: 'none',
-            transition: 'opacity var(--luminous-transition-duration) ease',
+            transition: `opacity ${this.TRANSITION_MS}ms linear`,
             opacity: '0',
-            zIndex: '0',
             willChange: 'opacity, transform',
           };
         }
@@ -3993,31 +3326,12 @@
             blob.className = `luminous-background-blob luminous-background-blob--${variant}`;
             return blob;
           });
-          const shimmer = document.createElement('span');
-          shimmer.className = 'luminous-background-shimmer';
-          const sparkles = document.createElement('span');
-          sparkles.className = 'luminous-background-sparkles';
-          const vignette = document.createElement('span');
-          vignette.className = 'luminous-background-vignette';
-          const grain = document.createElement('span');
-          grain.className = 'luminous-background-grain';
-          effects.append(
-            mesh,
-            halo,
-            ...ribbons,
-            ...blobs,
-            shimmer,
-            sparkles,
-            vignette,
-            grain,
-          );
+          effects.append(mesh, halo, ...ribbons, ...blobs);
           return effects;
         }
         static ensureBackground() {
           if (this.root?.isConnected) return;
           this.cancelVideoCleanup();
-          this.cancelTransition();
-          this.cancelLayerClassCleanup();
           this.videoLayers?.forEach((video) => this.resetVideo(video));
           this.root?.remove();
           this.root = document.createElement('div');
@@ -4037,47 +3351,20 @@
             position: 'absolute',
             inset: '0',
             background: 'var(--spice-sidebar)',
-            transition: 'opacity var(--luminous-transition-duration) ease',
+            transition: `opacity ${this.TRANSITION_MS}ms linear`,
             opacity: '1',
-            zIndex: '1',
-            willChange: 'opacity',
           });
-          this.mediaStage = document.createElement('div');
-          this.mediaStage.className = 'luminous-media-stage';
-          Object.assign(this.mediaStage.style, {
-            position: 'absolute',
-            inset: '0',
-            zIndex: '1',
-            overflow: 'hidden',
-            pointerEvents: 'none',
-            filter:
-              'blur(var(--luminous-background-blur)) brightness(var(--luminous-background-brightness))',
-            willChange: 'filter',
-          });
-          this.holdLayer = document.createElement('canvas');
-          this.holdLayer.className = 'luminous-background-hold';
-          Object.assign(this.holdLayer.style, this.baseStyle());
-          this.holdLayer.style.opacity = '0';
           const imageA = this.createImageLayer();
           const imageB = this.createImageLayer();
           const videoA = this.createVideoLayer();
           const videoB = this.createVideoLayer();
           const effects = this.createEffectsLayer();
-          this.mediaStage.append(
-            imageA,
-            imageB,
-            videoA,
-            videoB,
-            this.holdLayer,
-          );
-          this.root.append(this.base, this.mediaStage, effects);
+          this.root.append(this.base, imageA, imageB, videoA, videoB, effects);
           this.imageLayers = [imageA, imageB];
           this.videoLayers = [videoA, videoB];
           this.activeImage = 0;
           this.activeVideo = 0;
           this.currentType = 'none';
-          this.currentElement = null;
-          this.stableLayer = this.base;
           this.currentCanvasSource = null;
           this.currentCanvasKey = null;
           this.clearPendingCanvas();
@@ -4117,7 +3404,9 @@
         static renderImage(src) {
           this.ensureBackground();
           this.videoRenderId++;
-          this.cancelPendingCanvas();
+          this.currentCanvasSource = null;
+          this.currentCanvasKey = null;
+          this.clearPendingCanvas();
           if (!this.imageLayers) {
             Luminous.Logger.warn('Background', 'No image layers for render');
             return;
@@ -4132,7 +3421,6 @@
           const current = this.imageLayers[this.activeImage];
           const next = this.imageLayers[nextIndex];
           if (
-            this.currentType === 'image' &&
             current.src === src &&
             current.complete &&
             current.naturalWidth > 0
@@ -4141,30 +3429,9 @@
             return;
           }
           const preload = this.getPreloadedImage(src);
-          const keepCurrentOrClear = () => {
-            if (renderId !== this.imageRenderId) return;
-            Luminous.Logger.warn('Background', 'Failed to load image', src);
-            if (this.currentType !== 'none' && this.get()?.isConnected) return;
-            this.clear();
-          };
-          const prepareLayer = async () => {
+          const showImage = () => {
             if (renderId !== this.imageRenderId) return;
             next.src = src;
-            try {
-              await next.decode();
-            } catch {
-              if (!next.complete || next.naturalWidth === 0) {
-                keepCurrentOrClear();
-                return;
-              }
-            }
-            if (
-              renderId !== this.imageRenderId ||
-              !next.complete ||
-              next.naturalWidth === 0
-            ) {
-              return;
-            }
             requestAnimationFrame(() => {
               if (renderId !== this.imageRenderId) return;
               this.activeImage = nextIndex;
@@ -4173,13 +3440,27 @@
             });
           };
           if (preload.complete && preload.naturalWidth > 0) {
-            void prepareLayer();
+            showImage();
             return;
           }
-          preload.addEventListener('load', () => void prepareLayer(), {
-            once: true,
-          });
-          preload.addEventListener('error', keepCurrentOrClear, { once: true });
+          preload.addEventListener('load', showImage, { once: true });
+          preload.addEventListener(
+            'error',
+            () => {
+              if (renderId !== this.imageRenderId) return;
+              Luminous.Logger.warn('Background', 'Failed to load image', src);
+              if (
+                this.currentType === 'image' &&
+                current.complete &&
+                current.naturalWidth > 0
+              ) {
+                this.transitionTo('image', current);
+                return;
+              }
+              this.clear();
+            },
+            { once: true },
+          );
         }
         static getPreloadedImage(src) {
           let image = this.preloadedImages.get(src);
@@ -4231,10 +3512,13 @@
           }
           if (this.pendingCanvasVideo) {
             this.videoRenderId++;
-            this.cancelPendingCanvas();
+            const pendingVideo = this.pendingCanvasVideo;
+            this.clearPendingCanvas();
+            this.resetVideo(pendingVideo);
           }
-          if (this.isUnsupportedCanvasSource(sourceVideo, canvasKey))
+          if (this.unsupportedCanvasSources.has(sourceVideo)) {
             return false;
+          }
           if (
             !sourceVideo.isConnected ||
             sourceVideo.ended ||
@@ -4244,7 +3528,7 @@
           }
           const captureStream = sourceVideo.captureStream;
           if (typeof captureStream !== 'function') {
-            this.markUnsupportedCanvasSource(sourceVideo, canvasKey);
+            this.unsupportedCanvasSources.add(sourceVideo);
             return false;
           }
           let stream;
@@ -4252,7 +3536,7 @@
             stream = captureStream.call(sourceVideo);
           } catch (error) {
             if (this.isPermanentCanvasError(error)) {
-              this.markUnsupportedCanvasSource(sourceVideo, canvasKey);
+              this.unsupportedCanvasSources.add(sourceVideo);
             }
             return false;
           }
@@ -4274,26 +3558,8 @@
           this.pendingCanvasFallback = fallbackImage ?? null;
           void next
             .play()
-            .then(async () => {
+            .then(() => {
               if (!this.isPendingCanvas(renderId, next)) return;
-              const hasFrame = await this.waitForFirstVideoFrame(next);
-              if (!this.isPendingCanvas(renderId, next)) return;
-              if (!hasFrame) {
-                const currentFallback = this.pendingCanvasFallback;
-                this.clearPendingCanvas();
-                this.resetVideo(next);
-                Luminous.Logger.warn(
-                  'Background',
-                  'Canvas stream produced no presentable frame before timeout',
-                  sourceVideo,
-                );
-                if (currentFallback) {
-                  this.renderImage(currentFallback);
-                } else if (this.currentType === 'none') {
-                  this.clear();
-                }
-                return;
-              }
               requestAnimationFrame(() => {
                 if (!this.isPendingCanvas(renderId, next)) return;
                 this.clearPendingCanvas();
@@ -4314,15 +3580,13 @@
               this.clearPendingCanvas();
               this.resetVideo(next);
               if (this.isInterruptedPlayback(error)) {
-                if (currentFallback) {
+                if (this.currentType === 'none' && currentFallback) {
                   this.renderImage(currentFallback);
-                } else if (this.currentType === 'none') {
-                  this.clear();
                 }
                 return;
               }
               if (this.isPermanentCanvasError(error)) {
-                this.markUnsupportedCanvasSource(sourceVideo, canvasKey);
+                this.unsupportedCanvasSources.add(sourceVideo);
               }
               Luminous.Logger.warn(
                 'Background',
@@ -4337,29 +3601,17 @@
             });
           return true;
         }
-        static setTransitionDuration(duration) {
-          this.transitionMs = Number.isFinite(duration)
-            ? Math.min(1200, Math.max(0, duration))
-            : this.DEFAULT_TRANSITION_MS;
-        }
         static destroy() {
           this.imageRenderId++;
           this.videoRenderId++;
           this.currentCanvasSource = null;
           this.currentCanvasKey = null;
-          this.cancelPendingCanvas();
+          this.clearPendingCanvas();
           this.cancelVideoCleanup();
-          this.cancelTransition();
-          this.cancelLayerClassCleanup();
           this.videoLayers?.forEach((video) => this.resetVideo(video));
-          this.clearHoldLayer();
           this.root?.remove();
           this.root = null;
           this.base = null;
-          this.mediaStage = null;
-          this.holdLayer = null;
-          this.currentElement = null;
-          this.stableLayer = null;
           this.imageLayers = null;
           this.videoLayers = null;
           this.activeImage = 0;
@@ -4372,161 +3624,33 @@
           this.videoRenderId++;
           this.currentCanvasSource = null;
           this.currentCanvasKey = null;
-          this.cancelPendingCanvas();
+          this.clearPendingCanvas();
           this.transitionTo('none');
         }
         static transitionTo(type, activeElement = null) {
-          if (!this.imageLayers || !this.videoLayers || !this.base) return;
-          if (
-            this.currentType === type &&
-            this.currentElement === activeElement
-          ) {
-            return;
-          }
-          const incomingLayer =
-            type === 'none' ? this.base : (activeElement ?? this.base);
-          const stableLayer =
-            this.stableLayer?.isConnected === true
-              ? this.stableLayer
-              : (this.currentElement ?? this.base);
-          const mediaLayers = [...this.imageLayers, ...this.videoLayers];
-          const revision = ++this.transitionRevision;
-          this.cancelTransition(false);
-          this.cancelLayerClassCleanup();
-          // A symmetric opacity cross-fade creates an alpha trough: at the midpoint
-          // two 50%-opaque layers cover only ~75% of the dark base. Because most of
-          // the Spotify UI is translucent, that luminance dip reads as a full-window
-          // flash. Keep one fully opaque stable layer underneath and reveal only the
-          // incoming layer above it. The stable layer is removed after the incoming
-          // layer reaches 100%, so every rendered frame remains fully covered.
-          mediaLayers.forEach((element) => {
-            if (element !== stableLayer && element !== incomingLayer) {
-              this.setOpacityImmediately(element, '0');
-              element.style.zIndex = '0';
-              element.classList.remove('luminous-background-layer--active');
-            }
-          });
-          if (
-            stableLayer instanceof HTMLImageElement ||
-            stableLayer instanceof HTMLVideoElement
-          ) {
-            stableLayer.classList.add('luminous-background-layer--active');
-          }
-          if (
-            incomingLayer instanceof HTMLImageElement ||
-            incomingLayer instanceof HTMLVideoElement
-          ) {
-            incomingLayer.classList.add('luminous-background-layer--active');
-          }
-          if (stableLayer !== incomingLayer) {
-            this.setOpacityImmediately(stableLayer, '1');
-            stableLayer.style.zIndex = '1';
-            this.setOpacityImmediately(incomingLayer, '0');
-            incomingLayer.style.zIndex = '2';
-          } else {
-            this.setOpacityImmediately(incomingLayer, '1');
-            incomingLayer.style.zIndex = '1';
-          }
+          if (!this.imageLayers || !this.videoLayers) return;
           this.currentType = type;
-          this.currentElement = type === 'none' ? null : activeElement;
-          if (type !== 'canvas') {
-            this.currentCanvasSource = null;
-            this.currentCanvasKey = null;
+          if (this.base) {
+            this.base.style.opacity = type === 'none' ? '1' : '0';
           }
-          if (stableLayer === incomingLayer || this.transitionMs === 0) {
-            this.finishTransition(
-              revision,
-              stableLayer,
-              incomingLayer,
-              mediaLayers,
+          this.imageLayers.forEach((element) => {
+            const active = type === 'image' && element === activeElement;
+            element.style.opacity = active ? '1' : '0';
+            element.classList.toggle(
+              'luminous-background-layer--active',
+              active,
             );
-            return;
-          }
-          // Force the 0% state into the compositor before enabling the opacity
-          // transition. A single rAF is then enough to begin the reveal without a
-          // coalesced 0 -> 1 style update.
-          void incomingLayer.offsetWidth;
-          this.restoreOpacityTransition(incomingLayer);
-          this.transitionFrame = requestAnimationFrame(() => {
-            this.transitionFrame = null;
-            if (revision !== this.transitionRevision) return;
-            incomingLayer.style.opacity = '1';
-            this.transitionCleanupTimer = window.setTimeout(() => {
-              this.transitionCleanupTimer = null;
-              this.finishTransition(
-                revision,
-                stableLayer,
-                incomingLayer,
-                mediaLayers,
-              );
-            }, this.transitionMs + this.LAYER_CLASS_CLEANUP_GRACE_MS);
           });
-          this.scheduleVideoCleanup();
-          this.emit('change', 'start');
-        }
-        static finishTransition(
-          revision,
-          outgoingLayer,
-          incomingLayer,
-          mediaLayers,
-        ) {
-          if (revision !== this.transitionRevision) return;
-          this.setOpacityImmediately(incomingLayer, '1');
-          incomingLayer.style.zIndex = '1';
-          if (outgoingLayer !== incomingLayer) {
-            this.setOpacityImmediately(outgoingLayer, '0');
-            outgoingLayer.style.zIndex = '0';
-          }
-          mediaLayers.forEach((element) => {
-            if (element !== incomingLayer) {
-              this.setOpacityImmediately(element, '0');
-              element.style.zIndex = '0';
-            }
+          this.videoLayers.forEach((element) => {
+            const active = type === 'canvas' && element === activeElement;
+            element.style.opacity = active ? '1' : '0';
+            element.classList.toggle(
+              'luminous-background-layer--active',
+              active,
+            );
           });
-          this.stableLayer = incomingLayer;
-          if (outgoingLayer === this.holdLayer) this.clearHoldLayer();
-          this.restoreOpacityTransition(incomingLayer);
-          this.scheduleLayerClassCleanup();
           this.scheduleVideoCleanup();
           this.emit('change');
-        }
-        static setOpacityImmediately(element, opacity) {
-          element.style.transition = 'none';
-          element.style.opacity = opacity;
-        }
-        static restoreOpacityTransition(element) {
-          element.style.transition =
-            'opacity var(--luminous-transition-duration) ease';
-        }
-        static cancelTransition(invalidate = true) {
-          if (invalidate) this.transitionRevision++;
-          if (this.transitionFrame !== null) {
-            cancelAnimationFrame(this.transitionFrame);
-            this.transitionFrame = null;
-          }
-          if (this.transitionCleanupTimer !== null) {
-            window.clearTimeout(this.transitionCleanupTimer);
-            this.transitionCleanupTimer = null;
-          }
-        }
-        static scheduleLayerClassCleanup() {
-          this.cancelLayerClassCleanup();
-          this.layerClassCleanupTimer = window.setTimeout(() => {
-            this.layerClassCleanupTimer = null;
-            const current = this.currentElement;
-            [...(this.imageLayers ?? []), ...(this.videoLayers ?? [])].forEach(
-              (element) => {
-                if (element !== current) {
-                  element.classList.remove('luminous-background-layer--active');
-                }
-              },
-            );
-          }, this.transitionMs + this.LAYER_CLASS_CLEANUP_GRACE_MS);
-        }
-        static cancelLayerClassCleanup() {
-          if (this.layerClassCleanupTimer === null) return;
-          window.clearTimeout(this.layerClassCleanupTimer);
-          this.layerClassCleanupTimer = null;
         }
         static isCanvasLayerUsable(element) {
           if (!(element instanceof HTMLVideoElement) || !element.isConnected) {
@@ -4549,11 +3673,6 @@
           this.pendingCanvasVideo = null;
           this.pendingCanvasFallback = null;
         }
-        static cancelPendingCanvas() {
-          const pendingVideo = this.pendingCanvasVideo;
-          this.clearPendingCanvas();
-          if (pendingVideo) this.resetVideo(pendingVideo);
-        }
         static scheduleVideoCleanup() {
           this.cancelVideoCleanup();
           this.videoCleanupTimer = window.setTimeout(() => {
@@ -4568,75 +3687,12 @@
                 this.resetVideo(video);
               }
             });
-          }, this.transitionMs + this.CLEANUP_GRACE_MS);
+          }, this.TRANSITION_MS);
         }
         static cancelVideoCleanup() {
           if (this.videoCleanupTimer === null) return;
           window.clearTimeout(this.videoCleanupTimer);
           this.videoCleanupTimer = null;
-        }
-        static waitForFirstVideoFrame(video) {
-          const frameVideo = video;
-          if (typeof frameVideo.requestVideoFrameCallback !== 'function') {
-            return new Promise((resolve) => {
-              const startedAt = performance.now();
-              const check = () => {
-                if (
-                  video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA &&
-                  video.videoWidth > 0 &&
-                  video.videoHeight > 0
-                ) {
-                  requestAnimationFrame(() => resolve(true));
-                  return;
-                }
-                if (
-                  performance.now() - startedAt >=
-                  this.VIDEO_FRAME_TIMEOUT_MS
-                ) {
-                  resolve(false);
-                  return;
-                }
-                requestAnimationFrame(check);
-              };
-              check();
-            });
-          }
-          return new Promise((resolve) => {
-            let settled = false;
-            let frameHandle = null;
-            const finish = (presented) => {
-              if (settled) return;
-              settled = true;
-              window.clearTimeout(timeoutId);
-              if (
-                frameHandle !== null &&
-                typeof frameVideo.cancelVideoFrameCallback === 'function'
-              ) {
-                frameVideo.cancelVideoFrameCallback(frameHandle);
-              }
-              resolve(presented);
-            };
-            const timeoutId = window.setTimeout(
-              () => finish(false),
-              this.VIDEO_FRAME_TIMEOUT_MS,
-            );
-            frameHandle = frameVideo.requestVideoFrameCallback(() =>
-              finish(true),
-            );
-          });
-        }
-        static isUnsupportedCanvasSource(video, source) {
-          if (!source) return false;
-          return this.unsupportedCanvasSources.get(video)?.has(source) ?? false;
-        }
-        static markUnsupportedCanvasSource(video, source) {
-          if (!source) return;
-          let sources = this.unsupportedCanvasSources.get(video);
-          if (!sources) {
-            sources = new Set();
-            this.unsupportedCanvasSources.set(video, sources);
-          }
-          sources.add(source);
         }
         static getErrorName(error) {
           if (
@@ -4734,7 +3790,7 @@
         try {
           listener(state);
         } catch (error) {
-          logger_1.Logger.error('UI', 'UI health listener failed', error);
+          logger_1.Logger.error('Main', 'UI health listener failed', error);
         }
       }
     },
@@ -4748,7 +3804,6 @@
       const PLAYLIST_BACKGROUND_VAR = '--luminous-playlist-background-image';
       const HOME_HEADER_HEIGHT_CLASS = 'luminous-home-header-height';
       const HOME_HEADER_HEIGHT_VAR = '--luminous-home-header-height';
-      const SHELL_MISSING_GRACE_MS = 500;
       class Synchronize {
         static playlistBackground(options) {
           let root = null;
@@ -4801,16 +3856,11 @@
               ) ||
               root.querySelector('main > div > .main-entityHeader-container');
             if (!source || !target) {
-              // Spotify often detaches and reattaches header internals for a single
-              // React commit. Keep the last valid decoration while its target still
-              // exists instead of flashing back to the unstyled header for one frame.
-              if (lastTarget?.isConnected) return;
               cleanupTarget();
               return;
             }
             const background = getComputedStyle(source).backgroundImage;
             if (!background || background === 'none') {
-              if (lastTarget === target && lastBackground) return;
               cleanupTarget();
               return;
             }
@@ -4900,10 +3950,6 @@
               'section[data-testid="home-page"]:has(.view-homeShortcutsGrid-shortcuts) .main-home-content section:first-child',
             );
             if (!header || !chips || !firstSection) {
-              // Do not collapse a previously measured Home header because a nested
-              // Spotify subtree disappeared for one transient render. Route changes
-              // still clean it up once the previous header disconnects.
-              if (lastHeader?.isConnected) return;
               cleanupHeader();
               return;
             }
@@ -4947,7 +3993,6 @@
           let rafId = null;
           let disposed = false;
           let waitingSince = null;
-          let shellMissingTimer = null;
           function hasSpotifyShell() {
             return (
               document.querySelector('.Root__top-container #main-view') !== null
@@ -4960,27 +4005,6 @@
               document.querySelector('[data-testid="main-view"]')
             );
           }
-          function cancelShellMissingTimer() {
-            if (shellMissingTimer === null) return;
-            window.clearTimeout(shellMissingTimer);
-            shellMissingTimer = null;
-          }
-          function scheduleShellMissingCommit() {
-            if (shellMissingTimer !== null) return;
-            // Spotify can detach #main-view for a single React commit while changing
-            // tracks. Treat that as a transient DOM state, not a runtime reboot.
-            // Otherwise every health subscriber gets a false booting edge exactly at
-            // songchange, which is enough to remount/fade UI owned by Luminous.
-            shellMissingTimer = window.setTimeout(() => {
-              shellMissingTimer = null;
-              if (disposed || hasSpotifyShell()) return;
-              waitingSince = null;
-              (0, health_1.setUiHealth)({
-                status: 'booting',
-                brokenSince: null,
-              });
-            }, SHELL_MISSING_GRACE_MS);
-          }
           function scheduleCheck() {
             if (disposed || rafId !== null) return;
             rafId = requestAnimationFrame(() => {
@@ -4991,11 +4015,12 @@
           function check() {
             if (!hasSpotifyShell()) {
               waitingSince = null;
-              if ((0, health_1.getUiHealth)().status === 'booting') return;
-              scheduleShellMissingCommit();
+              (0, health_1.setUiHealth)({
+                status: 'booting',
+                brokenSince: null,
+              });
               return;
             }
-            cancelShellMissingTimer();
             if (hasSpotifyUi()) {
               waitingSince = null;
               (0, health_1.setUiHealth)({ status: 'ready', brokenSince: null });
@@ -5025,12 +4050,46 @@
                 cancelAnimationFrame(rafId);
                 rafId = null;
               }
-              cancelShellMissingTimer();
               waitingSince = null;
               (0, health_1.setUiHealth)({
                 status: 'booting',
                 brokenSince: null,
               });
+            },
+          };
+        }
+        static observeCinema() {
+          let observer = null;
+          function cleanupAttributes() {
+            const html = document.documentElement;
+            html.removeAttribute('data-transition');
+            [
+              'data-right-sidebar-open-preenter',
+              'data-right-sidebar-open-preexit',
+              'data-right-sidebar-open-duringexit',
+              'data-right-sidebar-open-postexit',
+            ].forEach((attribute) => {
+              html.removeAttribute(attribute);
+            });
+          }
+          observer = new MutationObserver(cleanupAttributes);
+          observer.observe(document.documentElement, {
+            attributes: true,
+            attributeFilter: [
+              'data-transition',
+              'data-right-sidebar-open-preenter',
+              'data-right-sidebar-open-duringenter',
+              'data-right-sidebar-open-postenter',
+              'data-right-sidebar-open-preexit',
+              'data-right-sidebar-open-duringexit',
+              'data-right-sidebar-open-postexit',
+            ],
+          });
+          cleanupAttributes();
+          return {
+            disconnect() {
+              observer?.disconnect();
+              observer = null;
             },
           };
         }

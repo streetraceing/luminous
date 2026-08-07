@@ -57,35 +57,22 @@ html:root {
     transparent
   );
   --luminous-motion-duration: 20s;
-  --luminous-transition-duration: 420ms;
-  --luminous-vignette-opacity: 28%;
-  --luminous-grain-opacity: 5%;
-  --luminous-parallax-x: 0px;
-  --luminous-parallax-y: 0px;
 
   transition:
-    --luminous-palette-primary var(--luminous-transition-duration) ease,
-    --luminous-palette-secondary var(--luminous-transition-duration) ease,
-    --luminous-palette-accent var(--luminous-transition-duration) ease,
-    --luminous-palette-light var(--luminous-transition-duration) ease,
-    --luminous-palette-dark var(--luminous-transition-duration) ease;
+    --luminous-palette-primary 900ms ease,
+    --luminous-palette-secondary 900ms ease,
+    --luminous-palette-accent 900ms ease,
+    --luminous-palette-light 900ms ease,
+    --luminous-palette-dark 900ms ease;
 }
 
 html.hideDynamicBackground #luminous-dynamic-background {
   display: none;
 }
 
-/* Track-change stability --------------------------------------------------- */
-
-html.luminous-track-changing:not(:has(#VideoPlayerCinema_ReactPortal))
-  :is(.Root__globalNav, #main-view, .Root__now-playing-bar) {
-  visibility: visible !important;
-  opacity: 1 !important;
-}
-
 .luminous-background-effects {
   position: absolute;
-  z-index: 3;
+  z-index: 2;
   inset: 0;
   overflow: hidden;
   pointer-events: none;
@@ -94,26 +81,12 @@ html.luminous-track-changing:not(:has(#VideoPlayerCinema_ReactPortal))
     brightness(var(--luminous-effect-brightness))
     contrast(var(--luminous-effect-contrast));
   transition:
-    opacity var(--luminous-transition-duration) ease,
-    filter var(--luminous-transition-duration) ease;
+    opacity 700ms ease,
+    filter 900ms ease;
 }
 
 html.luminous-dynamic-palette .luminous-background-effects {
   opacity: var(--luminous-palette-effect-opacity);
-}
-
-html.luminous-palette-transitioning .luminous-background-effects {
-  /* Keep luminance stable while the adaptive scene changes. Fading this
-     layer to zero makes every translucent Spotify surface pulse darker. */
-  opacity: var(--luminous-palette-effect-opacity);
-}
-
-html.luminous-palette-transitioning .luminous-background-effects > span {
-  animation-play-state: paused !important;
-}
-
-html.luminous-track-changing .luminous-background-effects > span {
-  animation-play-state: paused !important;
 }
 
 .luminous-background-effects > span {
@@ -433,8 +406,7 @@ html.luminous-effect-tone-light .luminous-background-effects {
 
 html:not(.luminous-reduce-motion):is(
     .luminous-motion-drift,
-    .luminous-motion-float,
-    .luminous-motion-orbit
+    .luminous-motion-float
   ).luminous-dynamic-palette
   .luminous-background-mesh {
   animation: luminous-mesh-orbit var(--luminous-blob-4-duration) linear infinite;
@@ -443,8 +415,7 @@ html:not(.luminous-reduce-motion):is(
 
 html:not(.luminous-reduce-motion):is(
     .luminous-motion-drift,
-    .luminous-motion-float,
-    .luminous-motion-orbit
+    .luminous-motion-float
   ).luminous-dynamic-palette
   .luminous-background-halo {
   animation: luminous-halo-breathe var(--luminous-blob-3-duration) ease-in-out
@@ -454,8 +425,7 @@ html:not(.luminous-reduce-motion):is(
 
 html:not(.luminous-reduce-motion):is(
     .luminous-motion-drift,
-    .luminous-motion-float,
-    .luminous-motion-orbit
+    .luminous-motion-float
   ).luminous-dynamic-palette
   .luminous-background-ribbon--one {
   animation: luminous-ribbon-one var(--luminous-blob-1-duration) ease-in-out
@@ -465,8 +435,7 @@ html:not(.luminous-reduce-motion):is(
 
 html:not(.luminous-reduce-motion):is(
     .luminous-motion-drift,
-    .luminous-motion-float,
-    .luminous-motion-orbit
+    .luminous-motion-float
   ).luminous-dynamic-palette
   .luminous-background-ribbon--two {
   animation: luminous-ribbon-two var(--luminous-blob-2-duration) ease-in-out
@@ -476,8 +445,7 @@ html:not(.luminous-reduce-motion):is(
 
 html:not(.luminous-reduce-motion):is(
     .luminous-motion-drift,
-    .luminous-motion-float,
-    .luminous-motion-orbit
+    .luminous-motion-float
   ).luminous-dynamic-palette
   .luminous-background-blob--one {
   animation: luminous-blob-one var(--luminous-blob-1-duration) ease-in-out
@@ -487,8 +455,7 @@ html:not(.luminous-reduce-motion):is(
 
 html:not(.luminous-reduce-motion):is(
     .luminous-motion-drift,
-    .luminous-motion-float,
-    .luminous-motion-orbit
+    .luminous-motion-float
   ).luminous-dynamic-palette
   .luminous-background-blob--two {
   animation: luminous-blob-two var(--luminous-blob-2-duration) ease-in-out
@@ -498,8 +465,7 @@ html:not(.luminous-reduce-motion):is(
 
 html:not(.luminous-reduce-motion):is(
     .luminous-motion-drift,
-    .luminous-motion-float,
-    .luminous-motion-orbit
+    .luminous-motion-float
   ).luminous-dynamic-palette
   .luminous-background-blob--three {
   animation: luminous-blob-three var(--luminous-blob-3-duration) ease-in-out
@@ -509,8 +475,7 @@ html:not(.luminous-reduce-motion):is(
 
 html:not(.luminous-reduce-motion):is(
     .luminous-motion-drift,
-    .luminous-motion-float,
-    .luminous-motion-orbit
+    .luminous-motion-float
   ).luminous-dynamic-palette
   .luminous-background-blob--four {
   animation: luminous-blob-four var(--luminous-blob-4-duration) ease-in-out
@@ -664,281 +629,6 @@ html.luminous-reduce-motion .luminous-background-effects > span {
 
   to {
     transform: translate3d(-27%, -21%, 0) scale(0.9);
-  }
-}
-
-/* Ambient depth and detail ------------------------------------------------- */
-
-html.luminous-parallax-enabled:not(.luminous-reduce-motion)
-  #luminous-dynamic-background {
-  transform: translate3d(
-      var(--luminous-parallax-x),
-      var(--luminous-parallax-y),
-      0
-    )
-    scale(1.018);
-  transform-origin: center;
-  transition: transform 90ms linear;
-}
-
-.luminous-background-shimmer {
-  z-index: 3;
-  inset: -55%;
-  opacity: 0.2;
-  background: conic-gradient(
-    from calc(var(--luminous-effect-angle) + 20deg),
-    transparent 0deg 58deg,
-    color-mix(in srgb, var(--luminous-palette-light) 48%, transparent) 78deg,
-    transparent 112deg 210deg,
-    color-mix(in srgb, var(--luminous-palette-accent) 28%, transparent) 238deg,
-    transparent 270deg 360deg
-  );
-  mix-blend-mode: screen;
-  filter: blur(52px);
-}
-
-.luminous-background-sparkles {
-  z-index: 4;
-  inset: -10%;
-  opacity: 0.18;
-  background-image:
-    radial-gradient(circle at 12% 22%, white 0 1px, transparent 1.8px),
-    radial-gradient(circle at 72% 18%, white 0 0.8px, transparent 1.6px),
-    radial-gradient(circle at 84% 72%, white 0 1px, transparent 1.8px),
-    radial-gradient(circle at 28% 78%, white 0 0.7px, transparent 1.5px),
-    radial-gradient(
-      circle at 48% 48%,
-      var(--luminous-palette-light) 0 0.8px,
-      transparent 1.6px
-    );
-  background-size:
-    180px 180px,
-    230px 230px,
-    280px 280px,
-    310px 310px,
-    360px 360px;
-  mix-blend-mode: screen;
-}
-
-.luminous-background-vignette {
-  z-index: 8;
-  inset: 0;
-  opacity: var(--luminous-vignette-opacity);
-  background: radial-gradient(
-    ellipse at center,
-    transparent 38%,
-    rgba(0, 0, 0, 0.16) 68%,
-    rgba(0, 0, 0, 0.76) 100%
-  );
-}
-
-.luminous-background-grain {
-  z-index: 9;
-  inset: -12%;
-  opacity: var(--luminous-grain-opacity);
-  background-image:
-    repeating-radial-gradient(
-      circle at 17% 23%,
-      rgba(255, 255, 255, 0.45) 0 0.45px,
-      transparent 0.65px 2px
-    ),
-    repeating-radial-gradient(
-      circle at 67% 71%,
-      rgba(0, 0, 0, 0.5) 0 0.4px,
-      transparent 0.7px 2.4px
-    );
-  background-size:
-    11px 11px,
-    14px 14px;
-  mix-blend-mode: soft-light;
-}
-
-html:not(.luminous-reduce-motion):is(
-    .luminous-motion-drift,
-    .luminous-motion-float,
-    .luminous-motion-orbit
-  ).luminous-dynamic-palette
-  .luminous-background-shimmer {
-  animation: luminous-shimmer-orbit var(--luminous-blob-4-duration) linear
-    infinite;
-  will-change: transform;
-}
-
-html:not(.luminous-reduce-motion):is(
-    .luminous-motion-drift,
-    .luminous-motion-float,
-    .luminous-motion-orbit
-  ).luminous-dynamic-palette
-  .luminous-background-sparkles {
-  animation: luminous-sparkles-drift var(--luminous-blob-4-duration) linear
-    infinite;
-  will-change: transform, opacity;
-}
-
-html:not(.luminous-reduce-motion).luminous-motion-orbit
-  #luminous-dynamic-background
-  .luminous-background-layer--active {
-  animation: luminous-background-orbit var(--luminous-motion-duration)
-    ease-in-out infinite;
-  will-change: translate, scale;
-}
-
-html:not(.luminous-reduce-motion) .luminous-background-grain {
-  animation: luminous-grain-jitter 700ms steps(2, end) infinite;
-}
-
-html.luminous-runtime-suspended
-  :is(
-    #luminous-dynamic-background .luminous-background-layer--active,
-    .luminous-background-effects,
-    .luminous-background-effects > span
-  ) {
-  animation-play-state: paused !important;
-}
-
-html.luminous-quality-balanced
-  :is(.luminous-background-sparkles, .luminous-background-blob--four) {
-  display: none;
-}
-
-html.luminous-quality-lite
-  :is(
-    .luminous-background-ribbon,
-    .luminous-background-sparkles,
-    .luminous-background-shimmer,
-    .luminous-background-blob--three,
-    .luminous-background-blob--four,
-    .luminous-background-grain
-  ) {
-  display: none;
-}
-
-html.luminous-quality-lite .luminous-background-mesh,
-html.luminous-quality-lite .luminous-background-blob {
-  filter: blur(54px) saturate(1.02);
-}
-
-html.luminous-effect-nebula .luminous-background-mesh {
-  opacity: 0.7;
-  background:
-    radial-gradient(
-      ellipse at 28% 34%,
-      color-mix(in srgb, var(--luminous-palette-light) 66%, transparent) 0%,
-      color-mix(in srgb, var(--luminous-palette-primary) 62%, transparent) 18%,
-      transparent 48%
-    ),
-    radial-gradient(
-      ellipse at 70% 58%,
-      color-mix(in srgb, var(--luminous-palette-accent) 72%, transparent) 0%,
-      color-mix(in srgb, var(--luminous-palette-secondary) 58%, transparent) 24%,
-      transparent 54%
-    ),
-    radial-gradient(
-      ellipse at 44% 88%,
-      color-mix(in srgb, var(--luminous-palette-dark) 50%, transparent) 0%,
-      transparent 58%
-    );
-  mix-blend-mode: screen;
-  filter: blur(44px) saturate(1.32);
-}
-
-html.luminous-effect-nebula .luminous-background-halo {
-  width: 74vmax;
-  opacity: 0.58;
-}
-
-html.luminous-effect-nebula .luminous-background-ribbon--one {
-  top: 12%;
-  left: -34%;
-  transform: rotate(-28deg);
-}
-
-html.luminous-effect-nebula .luminous-background-ribbon--two {
-  right: -36%;
-  bottom: 6%;
-  transform: rotate(34deg);
-}
-
-html.luminous-glass-highlights
-  :is(
-    #Desktop_LeftSidebar_Id,
-    .Root__right-sidebar > div:first-child,
-    .Root__now-playing-bar > aside
-  ) {
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.08),
-    0 0 0 1px rgba(255, 255, 255, 0.025);
-}
-
-@keyframes luminous-background-orbit {
-  0%,
-  100% {
-    translate: -1.1% 0.2%;
-    scale: 1;
-  }
-
-  25% {
-    translate: 0.4% -1.5%;
-    scale: 1.015;
-  }
-
-  50% {
-    translate: 1.4% 0.5%;
-    scale: 1.025;
-  }
-
-  75% {
-    translate: -0.2% 1.4%;
-    scale: 1.01;
-  }
-}
-
-@keyframes luminous-shimmer-orbit {
-  from {
-    transform: rotate(0deg) scale(1);
-  }
-
-  50% {
-    transform: rotate(180deg) scale(1.08);
-  }
-
-  to {
-    transform: rotate(360deg) scale(1);
-  }
-}
-
-@keyframes luminous-sparkles-drift {
-  0%,
-  100% {
-    transform: translate3d(-1.5%, 1%, 0) scale(1);
-    opacity: 0.12;
-  }
-
-  50% {
-    transform: translate3d(2%, -1.5%, 0) scale(1.035);
-    opacity: 0.24;
-  }
-}
-
-@keyframes luminous-grain-jitter {
-  0% {
-    transform: translate3d(-1%, 1%, 0);
-  }
-
-  25% {
-    transform: translate3d(1%, -1%, 0);
-  }
-
-  50% {
-    transform: translate3d(0.5%, 1.5%, 0);
-  }
-
-  75% {
-    transform: translate3d(-1.5%, -0.5%, 0);
-  }
-
-  100% {
-    transform: translate3d(1%, 0.5%, 0);
   }
 }
 

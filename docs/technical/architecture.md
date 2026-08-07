@@ -2,111 +2,58 @@
 
 ## Execution model
 
-`src/index.ts` is the only runtime entry point. Vite injects all CSS through `import.meta.glob('./styles/**/*.css', { eager: true })`; JavaScript is built as one Spicetify extension and runs in Spotify's page context.
+`src/index.ts` is the runtime entry point. Vite bundles TypeScript and eagerly includes every CSS file under `src/styles`.
 
-The boot order is deliberate:
+Boot order:
 
-1. `destroyExistingRuntime()` calls the previous `window.Luminous.destroy()` when a local rebuild is injected over an existing runtime.
-2. `exposeGlobalAPI()` publishes the new API classes and the new teardown callback.
-3. `markLuminousRuntimeActive()` resets the lifecycle guard.
-4. The logger prints build metadata.
-5. `registerLuminousSettings()` registers the complete declarative setting schema.
-6. `Settings.init()` restores, normalizes, applies, and persists settings. Applying `backgroundSource` can disable Canvas observation immediately.
-7. `Song.init()` starts asynchronously. Failure is logged without preventing the UI shell from mounting.
-8. `mountLuminousApp()` waits for Spotify's React/ReactDOM runtime and mounts feature components into a private root.
+1. destroy an already injected Luminous runtime if present;
+2. expose the new `window.Luminous` API;
+3. mark the runtime active;
+4. register and initialize settings;
+5. start `Song.init()`;
+6. mount the React feature shell using Spotify's own React/ReactDOM instances.
 
-The application has no own playback state machine. It derives state from Spotify and mirrors only what is required to render the theme.
+## Feature shell
 
-## Global API
+`App` contains:
 
-`window.Luminous` exposes:
+- `SplashFeature` — startup status overlay using the original stable shell-health behavior;
+- `SynchronizeFeature` — observes Spotify structural UI state;
+- `DynamicBackgroundFeature` — the pre-refactor coordinator joining Song, Canvas, Palette, Background, and UI health;
+- `ThemeMenuFeature` — settings menu/modal.
 
-- `Logger` — structured console logging and build banner.
-- `Native` — defensive wrappers for optional platform/native operations.
-- `Settings` — schema-backed persistent settings.
-- `Song` — normalized current-track events and readiness.
-- `Canvas` — discovery of visible Spotify video candidates.
-- `Palette` — cover analysis and adaptive scene CSS.
-- `Background` — background DOM, image/video buffering, capture, transition, and cleanup.
-- `Diagnostics` — serializable runtime/settings/environment state.
-- `destroy()` — idempotent runtime teardown.
+The previous always-running `MotionFeature` is no longer mounted. System reduced-motion is handled by CSS; the explicit Reduce motion setting toggles the same stable root class directly.
 
-The global is both a debugging surface and the dependency bridge between small modules. It must remain replaceable because local Vite/Spicetify sync can execute a new bundle without a full Spotify process restart.
+## Stable visual baseline
 
-## React feature shell
+The following files are deliberately restored byte-for-byte from the pre-refactor project baseline in 2.2.1:
 
-`src/app/App.ts` composes feature-only components; they render little or no persistent UI except the settings modal/splash:
+- `src/render/background.ts`
+- `src/api/palette.ts`
+- `src/app/features/DynamicBackgroundFeature.ts`
+- `src/app/features/SplashFeature.ts`
+- `src/app/features/SynchronizeFeature.ts`
+- `src/ui/health.ts`
+- `src/ui/synchronize.ts`
+- `src/styles/luminous.css`
+- `src/styles/components/splash.css`
+- all Spotify shell override CSS files under `src/styles/overrides/`
 
-- `SynchronizeFeature` starts Spotify shell synchronization.
-- `MotionFeature` owns reduced-motion, pointer parallax, and document visibility suspension.
-- `DynamicBackgroundFeature` joins Song, Canvas, settings, UI health, Palette, and Background.
-- `SplashFeature` manages the short startup overlay.
-- `ThemeMenuFeature` registers the menu item and settings dialog.
+This is intentional regression control, not accidental code loss. New settings/lifecycle/menu/documentation work is kept around this stable rendering core.
 
-The project uses wrappers in `src/app/react.ts` instead of importing React directly. Production must use the exact React instance hosted by Spotify to avoid duplicate-runtime hooks errors.
+## Canvas API
 
-## Track state
+Canvas discovery also returns to the original selector/event strategy. Two lifecycle additions are retained around it:
 
-`Song` waits until `Spicetify.Player` has the methods required by the theme. It registers one stable `songchange` callback, emits `ready` once meaningful metadata exists, and emits `change` when the normalized track identity changes.
+- `setEnabled(false)` disconnects observation for artwork-only mode;
+- `destroy()` disconnects observers/media listeners and clears runtime state during hot replacement.
 
-Track data is normalized to the small `SongPayload` consumed by visuals. The class owns the Player listener and initial metadata timer and removes both in `destroy()`. A resettable readiness promise prevents a replaced runtime from inheriting stale resolution state.
+Those additions do not change how a playable Canvas candidate is selected while Canvas is enabled.
 
-## Canvas state
+## Hot replacement
 
-`Canvas` never captures video itself. It only finds the best visible source element and emits `{video, mode, source, revision}`.
+The newer lifecycle boundary is retained because it fixes duplicate listeners/observers during development without participating in track rendering. `window.Luminous.destroy()` unmounts React, destroys Background/Canvas/Song, clears Palette, flushes Settings, and removes owned root state before a new bundle is injected.
 
-Candidate priority is:
+## Stability policy
 
-1. `.canvasVideoContainerNPV video`
-2. `#VideoPlayerNpv_ReactPortal video`
-3. cinema video under `.Root__top-container:has(#VideoPlayerCinema_ReactPortal)`
-
-Within a candidate selector, visible non-ended video with current data is preferred. Visibility checks require connection, non-hidden display/visibility, non-zero opacity, and layout rectangles.
-
-A document `MutationObserver` watches structural and relevant attribute changes. Checks are coalesced into one `requestAnimationFrame`. The selected video is additionally observed through media readiness/source events. `revision` increments for meaningful source/readiness transitions, allowing consumers to retry even when Spotify reuses the same `<video>` element.
-
-`setEnabled(false)` fully disconnects observation and source listeners. Artwork-only/performance modes therefore avoid paying ongoing Canvas DOM-observation cost.
-
-## Dynamic background orchestration
-
-`DynamicBackgroundFeature` is the coordinator, not the renderer. It maintains React state for current song, Canvas payload, dynamic-background toggle, palette toggle, background source, and Spotify UI health.
-
-Behavior:
-
-- UI still booting → no active background work.
-- Dynamic background disabled → clear media layer.
-- Palette disabled → clear generated palette classes/variables but keep media.
-- Source `auto` + playable Canvas candidate → request Canvas rendering with artwork fallback.
-- Otherwise → render artwork.
-- No media → neutral base.
-
-Every song change preloads the next cover and warms its palette profile, but does not immediately mutate the visible palette. Media settles first; a settled Background event then commits the cached profile. Event listeners and setting subscriptions are explicitly removed by effect cleanup.
-
-## Lifecycle and hot replacement
-
-`src/app/lifecycle.ts` is the final ownership boundary. Teardown order is:
-
-1. unmount React, letting feature effects unsubscribe;
-2. destroy Background and captured streams;
-3. clear Palette;
-4. destroy Canvas observers/media listeners;
-5. destroy Song player listener/timers;
-6. flush and destroy Settings;
-7. remove Luminous-owned root classes and CSS variables.
-
-`destroyed` makes the operation idempotent. `src/app/runtime.ts` also uses a mount revision token: an asynchronous wait for React cannot mount an obsolete runtime after teardown.
-
-This fixes a critical class of local-development bugs where a previous injection kept Player listeners, MutationObservers, or React effects alive and caused duplicate reactions after every rebuild.
-
-## Error containment
-
-External integration failures are intentionally localized:
-
-- listener callbacks run behind try/catch and are logged by channel;
-- missing native APIs return a failure boolean rather than throwing into the theme;
-- Canvas capture failure falls back to artwork;
-- palette extraction failure clears only adaptive effects;
-- settings parse/normalization failure falls back to registered defaults;
-- UI synchronization is health-scored instead of assuming selectors always exist.
-
-A visual feature should degrade independently rather than make Spotify unusable.
+Rendering behavior should now be compared against the pre-refactor baseline before accepting future visual features. New fullscreen filters, blend layers, root transforms, global opacity/visibility rules, and media lifecycle state machines must be considered high-risk because they interact directly with Spotify/Electron compositing during track changes.

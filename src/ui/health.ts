@@ -2,10 +2,10 @@ import { Logger } from '../api/logger';
 
 export type UiHealthStatus = 'booting' | 'ready' | 'waiting';
 
-export type UiHealthState = Readonly<{
+export type UiHealthState = {
   status: UiHealthStatus;
   brokenSince: number | null;
-}>;
+};
 
 type UiHealthListener = (state: UiHealthState) => void;
 
@@ -20,8 +20,8 @@ export function getUiHealth(): UiHealthState {
   return state;
 }
 
-export function setUiHealth(nextState: Partial<UiHealthState>): void {
-  const next: UiHealthState = { ...state, ...nextState };
+export function setUiHealth(nextState: Partial<UiHealthState>) {
+  const next = { ...state, ...nextState };
 
   if (next.status === state.status && next.brokenSince === state.brokenSince) {
     return;
@@ -40,10 +40,10 @@ export function subscribeUiHealth(listener: UiHealthListener): () => void {
   };
 }
 
-function notifyListener(listener: UiHealthListener): void {
+function notifyListener(listener: UiHealthListener) {
   try {
     listener(state);
   } catch (error) {
-    Logger.error('UI', 'UI health listener failed', error);
+    Logger.error('Main', 'UI health listener failed', error);
   }
 }
