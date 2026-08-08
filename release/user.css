@@ -1,41 +1,42 @@
-body:has(.Root__top-container #main-view):not(:has(.luminous-splash)):before {
+/* src/styles/components/splash.css */
+body:has(.Root__top-container #main-view):not(:has(.luminous-splash))::before,
+body:has(.Root__top-container #main-view):not(:has(.luminous-splash))::after {
+  position: fixed;
   z-index: 9999;
   pointer-events: none;
   content: '';
-  animation: 1ms linear 3s forwards luminous-bootstrap-splash-failsafe;
-  position: fixed;
+  animation: luminous-bootstrap-splash-failsafe 1ms linear 3s forwards;
 }
-body:has(.Root__top-container #main-view):not(:has(.luminous-splash)):after {
-  z-index: 9999;
-  pointer-events: none;
-  content: '';
-  animation: 1ms linear 3s forwards luminous-bootstrap-splash-failsafe;
-  position: fixed;
-}
-body:has(.Root__top-container #main-view):not(:has(.luminous-splash)):before {
+
+body:has(.Root__top-container #main-view):not(:has(.luminous-splash))::before {
+  inset: 0;
   background: var(--spice-main, #121212);
   background: color-mix(
     in srgb,
     var(--luminous-ui-base, var(--spice-main, #121212)) 96%,
     #000
   );
-  inset: 0;
 }
-body:has(.Root__top-container #main-view):not(:has(.luminous-splash)):after {
-  border: 3px solid color-mix(in srgb, var(--spice-text, #fff) 18%, transparent);
-  border-top-color: var(--spice-button-active, #1ed760);
-  border-radius: 50%;
+
+body:has(.Root__top-container #main-view):not(:has(.luminous-splash))::after {
+  top: 50%;
+  left: 50%;
   width: 42px;
   height: 42px;
   margin: -21px 0 0 -21px;
+  border: 3px solid color-mix(in srgb, var(--spice-text, #fff) 18%, transparent);
+  border-top-color: var(--spice-button-active, #1ed760);
+  border-radius: 50%;
   animation:
-    0.8s linear infinite luminous-bootstrap-splash-loader,
-    1ms linear 3s forwards luminous-bootstrap-splash-failsafe;
-  top: 50%;
-  left: 50%;
+    luminous-bootstrap-splash-loader 800ms linear infinite,
+    luminous-bootstrap-splash-failsafe 1ms linear 3s forwards;
 }
+
 .luminous-splash {
+  position: fixed;
+  inset: 0;
   z-index: 10000;
+  display: grid;
   color: var(--spice-text, #fff);
   background: var(--spice-main, #121212);
   background: color-mix(
@@ -43,208 +44,230 @@ body:has(.Root__top-container #main-view):not(:has(.luminous-splash)):after {
     var(--luminous-ui-base, var(--spice-main, #121212)) 96%,
     #000
   );
+  place-items: center;
   opacity: 1;
   pointer-events: auto;
-  visibility: visible;
-  place-items: center;
   transition:
-    opacity 0.24s,
-    visibility 0.24s;
-  display: grid;
-  position: fixed;
-  inset: 0;
+    opacity 240ms ease,
+    visibility 240ms ease;
+  visibility: visible;
 }
+
 .luminous-splash--hidden {
   opacity: 0;
   pointer-events: none;
   visibility: hidden;
 }
+
 .luminous-splash__panel {
-  background:
-    linear-gradient(#ffffff14, #fff0), var(--luminous-ui-background, #121212e6);
-  width: min(360px, 100vw - 48px);
-  -webkit-backdrop-filter: blur(calc(var(--luminous-ui-blur, 16px) + 10px));
-  backdrop-filter: blur(calc(var(--luminous-ui-blur, 16px) + 10px));
-  border: 1px solid #ffffff24;
-  border-radius: 8px;
+  display: grid;
   grid-template-columns: auto 1fr;
   align-items: center;
-  column-gap: 14px;
+  width: min(360px, calc(100vw - 48px));
   padding: 18px;
-  display: grid;
+  column-gap: 14px;
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0)),
+    var(--luminous-ui-background, rgba(18, 18, 18, 0.9));
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
   box-shadow:
-    0 28px 80px #0000006b,
-    inset 0 1px #ffffff14;
+    0 28px 80px rgba(0, 0, 0, 0.42),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(calc(var(--luminous-ui-blur, 16px) + 10px));
 }
+
 .luminous-splash__mark {
+  display: grid;
+  width: 44px;
+  height: 44px;
   color: #000;
   background: var(--spice-button-active, #1ed760);
   border-radius: 8px;
   place-items: center;
-  width: 44px;
-  height: 44px;
-  display: grid;
 }
+
 .luminous-splash__luminous-icon {
-  pointer-events: none;
-  -webkit-user-select: none;
-  user-select: none;
-  fill: currentColor;
+  display: block;
   width: 24px;
   height: 24px;
-  display: block;
+  pointer-events: none;
+  user-select: none;
+  fill: currentColor;
 }
+
 .luminous-splash__copy {
+  display: grid;
   gap: 3px;
   min-width: 0;
-  display: grid;
 }
+
 .luminous-splash__copy span,
 .luminous-splash__copy small {
+  overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  overflow: hidden;
 }
+
 .luminous-splash__copy span {
   font-size: 16px;
   font-weight: 850;
 }
+
 .luminous-splash__copy small {
   color: var(--spice-subtext, #b3b3b3);
   font-size: 12px;
   font-weight: 650;
 }
+
 .luminous-splash__loader {
-  background: #ffffff1a;
-  border-radius: 999px;
-  grid-column: 1/-1;
+  grid-column: 1 / -1;
   height: 3px;
   margin-top: 16px;
   overflow: hidden;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
 }
+
 .luminous-splash__loader span {
-  background: var(--spice-button-active, #1ed760);
-  border-radius: inherit;
+  display: block;
   width: 42%;
   height: 100%;
-  animation: 0.9s ease-in-out infinite luminous-splash-loader;
-  display: block;
+  background: var(--spice-button-active, #1ed760);
+  border-radius: inherit;
+  animation: luminous-splash-loader 900ms ease-in-out infinite;
 }
+
 .luminous-splash__hint {
-  color: var(--spice-subtext, #b3b3b3);
-  background: #ffffff0e;
-  border: 1px solid #ffffff14;
-  border-radius: 8px;
-  grid-column: 1/-1;
+  grid-column: 1 / -1;
   margin-top: 14px;
   padding: 10px 12px;
+  color: var(--spice-subtext, #b3b3b3);
+  background: rgba(255, 255, 255, 0.055);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
   font-size: 12px;
   line-height: 1.4;
 }
+
 @keyframes luminous-bootstrap-splash-loader {
   to {
     transform: rotate(360deg);
   }
 }
+
 @keyframes luminous-bootstrap-splash-failsafe {
   to {
     opacity: 0;
     visibility: hidden;
   }
 }
+
 @keyframes luminous-splash-loader {
   0% {
-    transform: translate(-110%);
+    transform: translateX(-110%);
   }
-  to {
-    transform: translate(250%);
+
+  100% {
+    transform: translateX(250%);
   }
 }
+
 @media (prefers-reduced-motion: reduce) {
+  body:has(.Root__top-container #main-view):not(:has(.luminous-splash))::after,
   .luminous-splash__loader span {
     animation-duration: 1.8s;
   }
-  body:has(.Root__top-container #main-view):not(:has(.luminous-splash)):after {
-    animation-duration: 1.8s;
-  }
 }
+
+/* src/styles/components/theme-menu.css */
 .luminous-theme-modal-backdrop {
-  z-index: 100000;
-  overscroll-behavior: contain;
-  background: #000000ad;
-  place-items: center;
-  padding: clamp(16px, 5vw, 72px);
-  animation: 0.14s ease-out luminous-theme-modal-backdrop-in;
-  display: grid;
   position: fixed;
+  z-index: 100000;
   inset: 0;
+  display: grid;
+  padding: clamp(16px, 5vw, 72px);
+  background: rgba(0, 0, 0, 0.68);
+  overscroll-behavior: contain;
+  place-items: center;
+  animation: luminous-theme-modal-backdrop-in 140ms ease-out;
 }
+
 .luminous-theme-menu {
   width: min(100%, 680px);
-  max-height: min(760px, 100dvh - 32px);
+  max-height: min(760px, calc(100dvh - 32px));
   color: var(--spice-text);
   background: color-mix(in srgb, var(--luminous-ui-base) 98%, #0b0b0b 2%);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 16px;
+  box-shadow: 0 24px 72px rgba(0, 0, 0, 0.5);
+  overflow: auto;
   contain: layout style;
   overscroll-behavior: contain;
   scrollbar-width: thin;
-  border: 1px solid #ffffff29;
-  border-radius: 16px;
-  animation: 0.18s cubic-bezier(0.2, 0.75, 0.25, 1)
-    luminous-theme-modal-panel-in;
-  overflow: auto;
-  box-shadow: 0 24px 72px #00000080;
+  animation: luminous-theme-modal-panel-in 180ms
+    cubic-bezier(0.2, 0.75, 0.25, 1);
 }
+
 .luminous-theme-menu__header {
+  position: sticky;
   z-index: 6;
-  background: color-mix(in srgb, var(--luminous-ui-base) 98%, #0b0b0b 2%);
-  border-bottom: 1px solid #ffffff14;
+  top: 0;
+  display: grid;
   grid-template-columns: auto 1fr auto auto;
   align-items: center;
   gap: 12px;
   min-height: 52px;
   padding: 20px 22px 16px;
-  display: grid;
-  position: sticky;
-  top: 0;
+  background: color-mix(in srgb, var(--luminous-ui-base) 98%, #0b0b0b 2%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
+
 .luminous-theme-menu__mark {
+  display: grid;
+  width: 36px;
+  height: 36px;
   color: #000;
   background: var(--luminous-accent);
   border-radius: 10px;
   place-items: center;
-  width: 36px;
-  height: 36px;
-  display: grid;
 }
+
 .luminous-theme-menu__luminous-icon {
-  fill: currentColor;
   width: 20px;
   height: 20px;
+  fill: currentColor;
 }
+
 .luminous-theme-menu__title,
 .luminous-theme-menu__copy {
+  display: grid;
   gap: 3px;
   min-width: 0;
-  display: grid;
 }
+
 .luminous-theme-menu__title span,
 .luminous-theme-menu__copy > span {
+  overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  overflow: hidden;
 }
+
 .luminous-theme-menu__title span {
   font-size: 16px;
   font-weight: 700;
 }
+
 .luminous-theme-menu__title small,
 .luminous-theme-menu__copy small {
   color: var(--spice-subtext);
   line-height: 1.4;
 }
+
 .luminous-theme-menu__title small {
   font-size: 12px;
 }
+
 .luminous-theme-menu__reset-button,
 .luminous-theme-menu__icon-button,
 .luminous-theme-menu__tab,
@@ -253,222 +276,264 @@ body:has(.Root__top-container #main-view):not(:has(.luminous-splash)):after {
   cursor: pointer;
   border: 0;
 }
+
 .luminous-theme-menu__reset-button,
 .luminous-theme-menu__icon-button {
-  background: 0 0;
+  background: transparent;
 }
+
 .luminous-theme-menu__reset-button {
+  padding: 7px 9px;
   color: var(--spice-subtext);
   border-radius: 6px;
-  padding: 7px 9px;
   font-size: 13px;
   font-weight: 600;
 }
+
 .luminous-theme-menu__icon-button {
-  border-radius: 50%;
-  place-items: center;
+  display: grid;
   width: 32px;
   height: 32px;
   padding: 0;
-  display: grid;
+  border-radius: 50%;
+  place-items: center;
 }
+
 .luminous-theme-menu__close-icon {
-  fill: currentColor;
   width: 16px;
   height: 16px;
+  fill: currentColor;
 }
+
 .luminous-theme-menu__reset-button:hover,
 .luminous-theme-menu__icon-button:hover {
   color: var(--spice-text);
-  background: #ffffff14;
+  background: rgba(255, 255, 255, 0.08);
 }
+
 .luminous-theme-menu__tabs {
-  scrollbar-width: none;
-  border-top: 1px solid #ffffff14;
-  border-bottom: 1px solid #ffffff1a;
-  gap: 20px;
-  padding: 0 22px;
   display: flex;
   overflow-x: auto;
+  scrollbar-width: none;
+  gap: 20px;
+  padding: 0 22px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
+
 .luminous-theme-menu__tabs::-webkit-scrollbar {
   display: none;
 }
+
 .luminous-theme-menu__tab {
-  color: var(--spice-subtext);
-  background: 0 0;
+  position: relative;
   padding: 13px 1px 11px;
+  color: var(--spice-subtext);
+  background: transparent;
   font-size: 14px;
   font-weight: 650;
-  position: relative;
 }
-.luminous-theme-menu__tab:after {
-  content: '';
-  background: 0 0;
-  height: 2px;
-  transition: background-color 0.15s;
+
+.luminous-theme-menu__tab::after {
   position: absolute;
+  right: 0;
   bottom: -1px;
   left: 0;
-  right: 0;
+  height: 2px;
+  background: transparent;
+  content: '';
+  transition: background-color 150ms ease;
 }
+
 .luminous-theme-menu__tab:hover,
 .luminous-theme-menu__tab--active {
   color: var(--spice-text);
 }
-.luminous-theme-menu__tab--active:after {
+
+.luminous-theme-menu__tab--active::after {
   background: var(--luminous-accent);
 }
+
 .luminous-theme-menu__panel {
   box-sizing: border-box;
-  contain: layout style;
   overflow: visible;
-}
-.luminous-theme-menu__panel-content {
   contain: layout style;
-  padding: 22px;
-  animation: 0.18s cubic-bezier(0.2, 0.75, 0.25, 1) luminous-theme-tab-in;
 }
+
+.luminous-theme-menu__panel-content {
+  padding: 22px;
+  contain: layout style;
+  animation: luminous-theme-tab-in 180ms cubic-bezier(0.2, 0.75, 0.25, 1);
+}
+
 .luminous-theme-menu__panel-heading {
   margin: 0 0 12px;
 }
+
 .luminous-theme-menu__panel-heading h2 {
   margin: 0;
   font-size: 15px;
   font-weight: 700;
 }
+
 .luminous-theme-menu__panel-heading p {
-  color: var(--spice-subtext);
   margin: 5px 0 0;
+  color: var(--spice-subtext);
   font-size: 13px;
   line-height: 1.45;
 }
+
 .luminous-theme-menu__row {
+  display: grid;
+  gap: 12px;
+  padding: 15px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 14px;
   contain: layout style;
   content-visibility: auto;
   contain-intrinsic-size: 72px;
-  border-top: 1px solid #ffffff14;
-  gap: 12px;
-  padding: 15px 0;
-  font-size: 14px;
-  display: grid;
 }
+
 .luminous-theme-menu__copy > span {
   font-weight: 650;
 }
+
 .luminous-theme-menu__copy small {
   font-size: 12px;
 }
+
 .luminous-theme-menu__toggle {
   grid-template-columns: 1fr auto;
   align-items: center;
 }
+
 .luminous-theme-menu__switch {
-  align-items: center;
+  position: relative;
+  display: inline-grid;
   width: 44px;
   height: 24px;
-  display: inline-grid;
-  position: relative;
+  align-items: center;
 }
+
 .luminous-theme-menu__switch input {
+  position: absolute;
+  inset: 0;
   z-index: 1;
   opacity: 0;
   cursor: pointer;
+}
+
+.luminous-theme-menu__switch span {
   position: absolute;
   inset: 0;
-}
-.luminous-theme-menu__switch span {
-  background: #ffffff24;
-  border: 1px solid #ffffff1f;
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 999px;
   transition:
-    background-color 0.15s,
-    border-color 0.15s;
-  position: absolute;
-  inset: 0;
+    background-color 150ms ease,
+    border-color 150ms ease;
 }
-.luminous-theme-menu__switch span:after {
-  background: var(--spice-text);
-  content: '';
-  border-radius: 50%;
-  width: 16px;
-  height: 16px;
-  transition: transform 0.15s;
+
+.luminous-theme-menu__switch span::after {
   position: absolute;
   top: 3px;
   left: 3px;
-  box-shadow: 0 1px 4px #00000052;
+  width: 16px;
+  height: 16px;
+  background: var(--spice-text);
+  border-radius: 50%;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.32);
+  content: '';
+  transition: transform 150ms ease;
 }
+
 .luminous-theme-menu__switch input:checked + span {
   background: var(--luminous-accent);
   border-color: var(--luminous-accent);
 }
-.luminous-theme-menu__switch input:checked + span:after {
-  transform: translate(20px);
+
+.luminous-theme-menu__switch input:checked + span::after {
+  transform: translateX(20px);
 }
+
 .luminous-theme-menu__range-header {
+  display: grid;
   grid-template-columns: 1fr auto;
   align-items: start;
   gap: 14px;
-  display: grid;
 }
+
 .luminous-theme-menu__range strong {
   min-width: 48px;
-  color: var(--spice-subtext);
-  text-align: right;
   padding: 3px 0;
+  color: var(--spice-subtext);
   font-size: 12px;
   font-weight: 600;
+  text-align: right;
 }
+
 .luminous-theme-menu__range-control {
-  align-items: center;
-  height: 18px;
   display: grid;
+  height: 18px;
+  align-items: center;
 }
+
 .luminous-theme-menu__range input {
   width: 100%;
   height: 16px;
   accent-color: var(--luminous-accent);
   cursor: pointer;
 }
+
 .luminous-theme-menu__choice {
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
 }
+
 .luminous-theme-menu__choices {
-  border: 1px solid #ffffff24;
-  border-radius: 7px;
   display: inline-flex;
   overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 7px;
 }
+
 .luminous-theme-menu__choice-button {
   min-width: 54px;
-  color: var(--spice-subtext);
-  background: 0 0;
-  border-left: 1px solid #ffffff1f;
   padding: 7px 10px;
+  color: var(--spice-subtext);
+  background: transparent;
+  border-left: 1px solid rgba(255, 255, 255, 0.12);
   font-size: 12px;
   font-weight: 600;
 }
+
 .luminous-theme-menu__choice-button:first-child {
   border-left: 0;
 }
+
 .luminous-theme-menu__choice-button:hover {
   color: var(--spice-text);
-  background: #ffffff12;
+  background: rgba(255, 255, 255, 0.07);
 }
-.luminous-theme-menu__choice-button--active,
+
+.luminous-theme-menu__choice-button--active {
+  color: #000;
+  background: var(--luminous-accent);
+}
+
 .luminous-theme-menu__choice-button--active:hover {
   color: #000;
   background: var(--luminous-accent);
 }
+
 .luminous-theme-menu__footer {
-  color: var(--spice-subtext);
-  border-top: 1px solid #ffffff14;
   margin: 0;
   padding: 13px 22px 16px;
+  color: var(--spice-subtext);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
   font-size: 12px;
 }
+
 .luminous-theme-menu__reset-button:focus-visible,
 .luminous-theme-menu__icon-button:focus-visible,
 .luminous-theme-menu__tab:focus-visible,
@@ -478,67 +543,85 @@ body:has(.Root__top-container #main-view):not(:has(.luminous-splash)):after {
   outline: 2px solid var(--luminous-accent);
   outline-offset: 3px;
 }
+
 @keyframes luminous-theme-modal-backdrop-in {
-  0% {
+  from {
     opacity: 0;
   }
 }
+
 @keyframes luminous-theme-modal-panel-in {
-  0% {
+  from {
     opacity: 0;
     transform: translateY(8px);
   }
 }
+
 @keyframes luminous-theme-tab-in {
-  0% {
+  from {
     opacity: 0;
-    transform: translate(8px);
+    transform: translateX(8px);
   }
 }
-@media (width<=560px) {
+
+@media (max-width: 560px) {
   .luminous-theme-modal-backdrop {
     padding: 12px;
   }
+
   .luminous-theme-menu {
-    border-radius: 12px;
     max-height: calc(100dvh - 24px);
+    border-radius: 12px;
   }
+
   .luminous-theme-menu__header {
+    grid-template-areas:
+      'mark title close'
+      'mark reset close';
     grid-template-columns: auto 1fr auto;
-    grid-template-areas: 'mark title close' 'mark reset close';
-    row-gap: 8px;
     padding: 18px 16px 14px;
+    row-gap: 8px;
   }
+
   .luminous-theme-menu__mark {
     grid-area: mark;
   }
+
   .luminous-theme-menu__title {
     grid-area: title;
   }
+
   .luminous-theme-menu__reset-button {
     grid-area: reset;
     justify-self: start;
     margin-left: -9px;
   }
+
   .luminous-theme-menu__icon-button {
     grid-area: close;
   }
+
   .luminous-theme-menu__tabs {
     padding: 0 16px;
   }
+
   .luminous-theme-menu__panel-content {
     padding: 18px 16px;
   }
+
   .luminous-theme-menu__choice {
     grid-template-columns: 1fr;
   }
+
   .luminous-theme-menu__choices {
     justify-self: start;
   }
+
   .luminous-theme-menu__footer {
     padding: 13px 16px 15px;
   }
 }
+
 @media (prefers-reduced-motion: reduce) {
   .luminous-theme-modal-backdrop,
   .luminous-theme-menu,
@@ -546,12 +629,14 @@ body:has(.Root__top-container #main-view):not(:has(.luminous-splash)):after {
   .luminous-theme-menu__panel-content {
     animation: none;
   }
+
   .luminous-theme-menu__switch span,
-  .luminous-theme-menu__switch span:after,
-  .luminous-theme-menu__tab:after {
+  .luminous-theme-menu__switch span::after,
+  .luminous-theme-menu__tab::after {
     transition: none;
   }
 }
+
 html.luminous-reduce-motion
   :is(
     .luminous-theme-modal-backdrop,
@@ -561,102 +646,124 @@ html.luminous-reduce-motion
   ) {
   animation: none;
 }
+
 .luminous-theme-menu__preset-grid {
+  display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
-  display: grid;
 }
+
 .luminous-theme-menu__preset-card,
 .luminous-theme-menu__tool-button {
   color: var(--spice-text);
+  background: rgba(255, 255, 255, 0.065);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   cursor: pointer;
-  background: #fff1;
-  border: 1px solid #ffffff1a;
 }
+
 .luminous-theme-menu__preset-card {
-  text-align: left;
-  contain: layout paint style;
-  border-radius: 10px;
+  display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 5px 12px;
   min-height: 92px;
   padding: 14px;
+  border-radius: 10px;
+  text-align: left;
+  contain: layout paint style;
   transition:
-    background-color 0.14s,
-    border-color 0.14s,
-    transform 0.14s;
-  display: grid;
+    background-color 140ms ease,
+    border-color 140ms ease,
+    transform 140ms ease;
 }
+
 .luminous-theme-menu__preset-card strong {
   font-size: 14px;
 }
+
 .luminous-theme-menu__preset-card small {
+  grid-column: 1 / -1;
   color: var(--spice-subtext);
-  grid-column: 1/-1;
   font-size: 12px;
   line-height: 1.45;
 }
+
 .luminous-theme-menu__preset-card > span {
-  color: var(--luminous-accent);
   align-self: start;
+  color: var(--luminous-accent);
   font-size: 11px;
   font-weight: 700;
 }
+
 .luminous-theme-menu__preset-card:hover {
-  background: #ffffff1c;
-  border-color: #ffffff2e;
+  background: rgba(255, 255, 255, 0.11);
+  border-color: rgba(255, 255, 255, 0.18);
   transform: translateY(-1px);
 }
+
 .luminous-theme-menu__runtime {
-  border-top: 1px solid #ffffff14;
+  display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 14px;
   padding: 15px 0 2px;
-  display: grid;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
+
 .luminous-theme-menu__runtime-copy {
+  display: grid;
   gap: 3px;
   min-width: 0;
-  display: grid;
 }
+
 .luminous-theme-menu__runtime-copy strong {
   font-size: 13px;
 }
+
 .luminous-theme-menu__runtime-copy small {
+  overflow: hidden;
   color: var(--spice-subtext);
+  font-size: 11px;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 11px;
-  overflow: hidden;
 }
+
 .luminous-theme-menu__tool-button {
-  border-radius: 7px;
   padding: 7px 10px;
+  border-radius: 7px;
   font-size: 12px;
   font-weight: 650;
 }
+
 .luminous-theme-menu__tool-button:hover {
-  background: #ffffff1c;
+  background: rgba(255, 255, 255, 0.11);
 }
+
 .luminous-theme-menu__preset-card:focus-visible,
 .luminous-theme-menu__tool-button:focus-visible {
   outline: 2px solid var(--luminous-accent);
   outline-offset: 3px;
 }
-@media (width<=560px) {
-  .luminous-theme-menu__preset-grid,
+
+@media (max-width: 560px) {
+  .luminous-theme-menu__preset-grid {
+    grid-template-columns: 1fr;
+  }
+
   .luminous-theme-menu__runtime {
     grid-template-columns: 1fr;
   }
+
   .luminous-theme-menu__tool-button {
     justify-self: start;
   }
 }
+
 html.luminous-reduce-motion
   :is(.luminous-theme-menu__preset-card, .luminous-theme-menu__tool-button) {
   transition: none;
 }
+
+/* Settings performance mode: keep the underlying scene visually stable while editing. */
 html.luminous-settings-open
   :is(
     #luminous-dynamic-background .luminous-background-layer--active,
@@ -665,38 +772,47 @@ html.luminous-settings-open
   ) {
   animation-play-state: paused !important;
 }
+
 html.luminous-settings-open #luminous-dynamic-background {
   transition: none !important;
 }
+
+/* src/styles/luminous.css */
 @property --luminous-palette-primary {
   syntax: '<color>';
   inherits: true;
   initial-value: #648cff;
 }
+
 @property --luminous-palette-secondary {
   syntax: '<color>';
   inherits: true;
   initial-value: #8c5cff;
 }
+
 @property --luminous-palette-accent {
   syntax: '<color>';
   inherits: true;
   initial-value: #53e7d8;
 }
+
 @property --luminous-palette-light {
   syntax: '<color>';
   inherits: true;
   initial-value: #dce8ff;
 }
+
 @property --luminous-palette-dark {
   syntax: '<color>';
   inherits: true;
   initial-value: #10152a;
 }
+
 html:root {
   --luminous-background: var(--spice-sidebar);
   --luminous-background-blur: 24px;
   --luminous-background-brightness: 0.75;
+
   --luminous-ui-opacity: 100%;
   --luminous-ui-blur: 16px;
   --luminous-ui-base: var(--spice-main);
@@ -721,39 +837,92 @@ html:root {
     transparent
   );
   --luminous-motion-duration: 20s;
+
   transition:
-    --luminous-palette-primary 0.9s,
-    --luminous-palette-secondary 0.9s,
-    --luminous-palette-accent 0.9s,
-    --luminous-palette-light 0.9s,
-    --luminous-palette-dark 0.9s;
+    --luminous-palette-primary 900ms ease,
+    --luminous-palette-secondary 900ms ease,
+    --luminous-palette-accent 900ms ease,
+    --luminous-palette-light 900ms ease,
+    --luminous-palette-dark 900ms ease;
 }
+
 html.hideDynamicBackground #luminous-dynamic-background {
   display: none;
 }
+
+/*
+ * Protected long-form NPV videos cannot be mirrored reliably with
+ * captureStream(). For those videos Luminous keeps Spotify's original
+ * <video> in place in the DOM and temporarily promotes that same element
+ * to a viewport-sized background layer.
+ */
+#VideoPlayerNpv_ReactPortal.luminous-direct-video-host {
+  overflow: visible !important;
+  clip: auto !important;
+  clip-path: none !important;
+  contain: none !important;
+  transform: none !important;
+}
+
+video.luminous-direct-video-background {
+  position: fixed !important;
+  inset: -10vh -10vw !important;
+  width: 120vw !important;
+  height: 120vh !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  max-width: none !important;
+  max-height: none !important;
+  margin: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  object-fit: cover !important;
+  object-position: center !important;
+  filter: blur(var(--luminous-background-blur))
+    brightness(var(--luminous-background-brightness)) !important;
+  transform: translateZ(0) !important;
+  transform-origin: center !important;
+  pointer-events: none !important;
+  user-select: none !important;
+  visibility: visible !important;
+  display: block !important;
+  z-index: -1 !important;
+  opacity: 0 !important;
+  transition: opacity 250ms linear !important;
+  will-change: opacity, transform !important;
+}
+
+video.luminous-direct-video-background--active {
+  opacity: 1 !important;
+}
+
 .luminous-background-effects {
+  position: absolute;
   z-index: 2;
+  inset: 0;
+  overflow: hidden;
   pointer-events: none;
   opacity: 0;
   filter: saturate(var(--luminous-effect-saturation))
     brightness(var(--luminous-effect-brightness))
     contrast(var(--luminous-effect-contrast));
   transition:
-    opacity 0.7s,
-    filter 0.9s;
-  position: absolute;
-  inset: 0;
-  overflow: hidden;
+    opacity 700ms ease,
+    filter 900ms ease;
 }
+
 html.luminous-dynamic-palette .luminous-background-effects {
   opacity: var(--luminous-palette-effect-opacity);
 }
+
 .luminous-background-effects > span {
-  pointer-events: none;
-  display: block;
   position: absolute;
+  display: block;
+  pointer-events: none;
 }
+
 .luminous-background-mesh {
+  inset: -24%;
   opacity: 0.56;
   background:
     radial-gradient(
@@ -777,11 +946,15 @@ html.luminous-dynamic-palette .luminous-background-effects {
   mix-blend-mode: screen;
   filter: blur(34px);
   transform: rotate(var(--luminous-effect-angle)) scale(1.08);
-  transform-origin: 50%;
-  inset: -24%;
+  transform-origin: center;
 }
+
 .luminous-background-halo {
+  top: 50%;
+  left: 50%;
+  width: 84vmax;
   aspect-ratio: 1;
+  border-radius: 50%;
   opacity: 0.48;
   background: radial-gradient(
     circle,
@@ -792,13 +965,13 @@ html.luminous-dynamic-palette .luminous-background-effects {
   );
   mix-blend-mode: screen;
   filter: blur(24px);
-  border-radius: 50%;
-  width: 84vmax;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%) scale(0.86);
+  transform: translate3d(-50%, -50%, 0) scale(0.86);
 }
+
 .luminous-background-ribbon {
+  width: 128vmax;
+  height: 24vmax;
+  border-radius: 50%;
   opacity: 0.44;
   background: linear-gradient(
     90deg,
@@ -810,86 +983,94 @@ html.luminous-dynamic-palette .luminous-background-effects {
   );
   mix-blend-mode: screen;
   filter: blur(30px) saturate(1.16);
-  transform-origin: 50%;
-  border-radius: 50%;
-  width: 128vmax;
-  height: 24vmax;
+  transform-origin: center;
 }
+
 .luminous-background-ribbon--one {
-  transform: rotate(calc(var(--luminous-effect-angle) - 208deg));
   top: 2%;
   left: -26%;
+  transform: rotate(calc(var(--luminous-effect-angle) - 208deg));
 }
+
 .luminous-background-ribbon--two {
+  right: -31%;
+  bottom: 3%;
   opacity: 0.32;
   transform: rotate(calc(var(--luminous-effect-angle) - 42deg));
-  bottom: 3%;
-  right: -31%;
 }
+
 .luminous-background-blob {
+  width: 58vmax;
   aspect-ratio: 1;
+  border-radius: 50%;
   opacity: 0.62;
   mix-blend-mode: screen;
   filter: blur(44px) saturate(1.16);
-  border-radius: 50%;
-  width: 58vmax;
 }
+
 .luminous-background-blob--one {
+  top: -35vmax;
+  left: -28vmax;
   background: radial-gradient(
     circle at 36% 34%,
     color-mix(in srgb, var(--luminous-palette-light) 84%, transparent) 0%,
     color-mix(in srgb, var(--luminous-palette-primary) 70%, transparent) 31%,
     transparent 70%
   );
-  top: -35vmax;
-  left: -28vmax;
 }
+
 .luminous-background-blob--two {
+  top: -31vmax;
+  right: -32vmax;
+  width: 68vmax;
   background: radial-gradient(
     circle at 60% 44%,
     color-mix(in srgb, var(--luminous-palette-accent) 82%, transparent) 0%,
     color-mix(in srgb, var(--luminous-palette-secondary) 62%, transparent) 34%,
     transparent 72%
   );
-  width: 68vmax;
-  top: -31vmax;
-  right: -32vmax;
 }
+
 .luminous-background-blob--three {
+  bottom: -45vmax;
+  left: -2vmax;
+  width: 76vmax;
   background: radial-gradient(
     circle at 48% 30%,
     color-mix(in srgb, var(--luminous-palette-secondary) 74%, transparent) 0%,
     color-mix(in srgb, var(--luminous-palette-dark) 44%, transparent) 40%,
     transparent 74%
   );
-  width: 76vmax;
-  bottom: -45vmax;
-  left: -2vmax;
 }
+
 .luminous-background-blob--four {
+  right: -31vmax;
+  bottom: -34vmax;
+  width: 56vmax;
   background: radial-gradient(
     circle at 34% 32%,
     color-mix(in srgb, var(--luminous-palette-light) 72%, transparent) 0%,
     color-mix(in srgb, var(--luminous-palette-accent) 62%, transparent) 35%,
     transparent 72%
   );
-  width: 56vmax;
-  bottom: -34vmax;
-  right: -31vmax;
 }
+
 html.luminous-effect-aurora .luminous-background-ribbon {
-  opacity: 0.58;
   height: 20vmax;
+  opacity: 0.58;
 }
+
 html.luminous-effect-aurora .luminous-background-ribbon--one {
   top: 2%;
   left: -20%;
 }
+
 html.luminous-effect-aurora .luminous-background-ribbon--two {
-  opacity: 0.42;
-  bottom: 0;
   right: -25%;
+  bottom: 0;
+  opacity: 0.42;
 }
+
 html.luminous-effect-ember .luminous-background-mesh {
   background:
     radial-gradient(
@@ -909,25 +1090,29 @@ html.luminous-effect-ember .luminous-background-mesh {
       transparent 44%
     );
 }
+
 html.luminous-effect-ember .luminous-background-halo {
-  opacity: 0.62;
-  width: 96vmax;
   top: 74%;
+  width: 96vmax;
+  opacity: 0.62;
 }
+
 html.luminous-effect-ember .luminous-background-ribbon--one {
-  height: 18vmax;
   top: auto;
   bottom: 9%;
   left: -18%;
+  height: 18vmax;
   transform: rotate(-7deg);
 }
+
 html.luminous-effect-ember .luminous-background-ribbon--two {
-  opacity: 0.28;
-  height: 14vmax;
-  bottom: 24%;
   right: -22%;
+  bottom: 24%;
+  height: 14vmax;
+  opacity: 0.28;
   transform: rotate(12deg);
 }
+
 html.luminous-effect-bloom .luminous-background-mesh {
   background:
     radial-gradient(
@@ -947,20 +1132,24 @@ html.luminous-effect-bloom .luminous-background-mesh {
       transparent 46%
     );
 }
+
 html.luminous-effect-bloom .luminous-background-halo {
-  opacity: 0.66;
   width: 72vmax;
+  opacity: 0.66;
 }
+
 html.luminous-effect-bloom .luminous-background-ribbon--one {
   top: -1%;
   left: -31%;
   transform: rotate(64deg);
 }
+
 html.luminous-effect-bloom .luminous-background-ribbon--two {
-  bottom: -2%;
   right: -29%;
+  bottom: -2%;
   transform: rotate(-58deg);
 }
+
 html.luminous-effect-prism .luminous-background-mesh {
   opacity: 0.72;
   background: conic-gradient(
@@ -973,58 +1162,74 @@ html.luminous-effect-prism .luminous-background-mesh {
   );
   filter: blur(50px) saturate(1.24);
 }
+
 html.luminous-effect-prism .luminous-background-halo {
   opacity: 0.3;
 }
+
 html.luminous-effect-prism .luminous-background-ribbon {
-  opacity: 0.54;
   height: 17vmax;
+  opacity: 0.54;
 }
+
 html.luminous-effect-halo .luminous-background-mesh {
   opacity: 0.24;
   filter: blur(56px) saturate(0.82);
 }
+
 html.luminous-effect-halo .luminous-background-halo {
+  width: 94vmax;
   opacity: 0.78;
   filter: blur(36px) saturate(0.82);
-  width: 94vmax;
 }
+
 html.luminous-effect-halo .luminous-background-ribbon {
   opacity: 0.08;
 }
+
 html.luminous-effect-halo .luminous-background-blob {
   opacity: 0.3;
   filter: blur(58px) saturate(0.78);
 }
+
 html.luminous-effect-energy-soft .luminous-background-mesh {
   opacity: 0.38;
 }
+
 html.luminous-effect-energy-soft .luminous-background-ribbon {
   opacity: 0.24;
 }
+
 html.luminous-effect-energy-soft .luminous-background-blob {
   opacity: 0.42;
 }
+
 html.luminous-effect-energy-soft .luminous-background-blob--four {
   opacity: 0.2;
 }
+
 html.luminous-effect-energy-vivid .luminous-background-mesh {
   opacity: 0.74;
 }
+
 html.luminous-effect-energy-vivid .luminous-background-ribbon {
   opacity: 0.62;
   filter: blur(26px) saturate(1.32);
 }
+
 html.luminous-effect-energy-vivid .luminous-background-blob {
   opacity: 0.78;
   filter: blur(38px) saturate(1.34);
 }
+
 html.luminous-effect-tone-dark .luminous-background-halo {
   opacity: 0.68;
 }
+
 html.luminous-effect-tone-light .luminous-background-effects {
   mix-blend-mode: soft-light;
 }
+
 html:not(.luminous-reduce-motion):is(
     .luminous-motion-drift,
     .luminous-motion-float
@@ -1033,6 +1238,7 @@ html:not(.luminous-reduce-motion):is(
   animation: luminous-mesh-orbit var(--luminous-blob-4-duration) linear infinite;
   will-change: transform;
 }
+
 html:not(.luminous-reduce-motion):is(
     .luminous-motion-drift,
     .luminous-motion-float
@@ -1042,6 +1248,7 @@ html:not(.luminous-reduce-motion):is(
     infinite;
   will-change: transform;
 }
+
 html:not(.luminous-reduce-motion):is(
     .luminous-motion-drift,
     .luminous-motion-float
@@ -1051,6 +1258,7 @@ html:not(.luminous-reduce-motion):is(
     infinite alternate;
   will-change: transform;
 }
+
 html:not(.luminous-reduce-motion):is(
     .luminous-motion-drift,
     .luminous-motion-float
@@ -1060,6 +1268,7 @@ html:not(.luminous-reduce-motion):is(
     infinite alternate;
   will-change: transform;
 }
+
 html:not(.luminous-reduce-motion):is(
     .luminous-motion-drift,
     .luminous-motion-float
@@ -1069,6 +1278,7 @@ html:not(.luminous-reduce-motion):is(
     infinite alternate;
   will-change: transform;
 }
+
 html:not(.luminous-reduce-motion):is(
     .luminous-motion-drift,
     .luminous-motion-float
@@ -1078,6 +1288,7 @@ html:not(.luminous-reduce-motion):is(
     infinite alternate;
   will-change: transform;
 }
+
 html:not(.luminous-reduce-motion):is(
     .luminous-motion-drift,
     .luminous-motion-float
@@ -1087,6 +1298,7 @@ html:not(.luminous-reduce-motion):is(
     infinite alternate;
   will-change: transform;
 }
+
 html:not(.luminous-reduce-motion):is(
     .luminous-motion-drift,
     .luminous-motion-float
@@ -1096,11 +1308,13 @@ html:not(.luminous-reduce-motion):is(
     infinite alternate;
   will-change: transform;
 }
+
 html:not(.luminous-reduce-motion).luminous-motion-float.luminous-dynamic-palette
   .luminous-background-effects
   > span {
   animation-direction: normal;
 }
+
 html:not(.luminous-reduce-motion).luminous-motion-drift
   #luminous-dynamic-background
   .luminous-background-layer--active {
@@ -1108,6 +1322,7 @@ html:not(.luminous-reduce-motion).luminous-motion-drift
     ease-in-out infinite alternate;
   will-change: translate;
 }
+
 html:not(.luminous-reduce-motion).luminous-motion-float
   #luminous-dynamic-background
   .luminous-background-layer--active {
@@ -1115,131 +1330,162 @@ html:not(.luminous-reduce-motion).luminous-motion-float
     ease-in-out infinite;
   will-change: translate;
 }
+
 html.luminous-reduce-motion,
 html.luminous-reduce-motion
   #luminous-dynamic-background
   .luminous-background-layer--active,
 html.luminous-reduce-motion .luminous-background-effects,
 html.luminous-reduce-motion .luminous-background-effects > span {
-  transition: none !important;
   animation: none !important;
+  transition: none !important;
 }
+
 @keyframes luminous-background-drift {
-  0% {
+  from {
     translate: -1.6% -1.1%;
   }
+
   to {
     translate: 1.6% 1.1%;
   }
 }
+
 @keyframes luminous-background-float {
   0%,
-  to {
+  100% {
     translate: -0.8% 1.2%;
   }
+
   35% {
     translate: 1.7% -1.2%;
   }
+
   70% {
     translate: 0.9% 1.5%;
   }
 }
+
 @keyframes luminous-mesh-orbit {
   0% {
     transform: rotate(var(--luminous-effect-angle)) scale(1.06)
       translate3d(-2%, -1%, 0);
   }
+
   50% {
     transform: rotate(calc(var(--luminous-effect-angle) + 16deg)) scale(1.16)
       translate3d(3%, 2%, 0);
   }
-  to {
+
+  100% {
     transform: rotate(calc(var(--luminous-effect-angle) + 32deg)) scale(1.08)
       translate3d(-1%, 3%, 0);
   }
 }
+
 @keyframes luminous-halo-breathe {
   0%,
-  to {
-    transform: translate(-50%, -50%) scale(0.82);
+  100% {
+    transform: translate3d(-50%, -50%, 0) scale(0.82);
   }
+
   50% {
-    transform: translate(-48%, -52%) scale(1.08);
+    transform: translate3d(-48%, -52%, 0) scale(1.08);
   }
 }
+
 @keyframes luminous-ribbon-one {
-  0% {
+  from {
     translate: -7% -4%;
     scale: 0.94;
   }
+
   to {
     translate: 10% 9%;
     scale: 1.08;
   }
 }
+
 @keyframes luminous-ribbon-two {
-  0% {
+  from {
     translate: 8% 4%;
     scale: 1.06;
   }
+
   to {
     translate: -12% -8%;
     scale: 0.92;
   }
 }
+
 @keyframes luminous-blob-one {
-  0% {
-    transform: translate(-8%, -6%) scale(0.9);
+  from {
+    transform: translate3d(-8%, -6%, 0) scale(0.9);
   }
+
   to {
-    transform: translate(25%, 20%) scale(1.16);
+    transform: translate3d(25%, 20%, 0) scale(1.16);
   }
 }
+
 @keyframes luminous-blob-two {
-  0% {
-    transform: translate(9%, -8%) scale(1.08);
+  from {
+    transform: translate3d(9%, -8%, 0) scale(1.08);
   }
+
   to {
-    transform: translate(-27%, 25%) scale(0.87);
+    transform: translate3d(-27%, 25%, 0) scale(0.87);
   }
 }
+
 @keyframes luminous-blob-three {
-  0% {
-    transform: translate(-12%, 11%) scale(0.88);
+  from {
+    transform: translate3d(-12%, 11%, 0) scale(0.88);
   }
+
   to {
-    transform: translate(21%, -19%) scale(1.15);
+    transform: translate3d(21%, -19%, 0) scale(1.15);
   }
 }
+
 @keyframes luminous-blob-four {
-  0% {
-    transform: translate(13%, 8%) scale(1.12);
+  from {
+    transform: translate3d(13%, 8%, 0) scale(1.12);
   }
+
   to {
-    transform: translate(-27%, -21%) scale(0.9);
+    transform: translate3d(-27%, -21%, 0) scale(0.9);
   }
 }
+
 @media (prefers-reduced-motion: reduce) {
   html:root,
   #luminous-dynamic-background .luminous-background-layer--active,
   .luminous-background-effects,
   .luminous-background-effects > span {
-    transition: none !important;
     animation: none !important;
+    transition: none !important;
   }
 }
+
+/* src/styles/overrides/bottom-bar.css */
+/* .Root__now-playing-bar */
+
 .Root__now-playing-bar {
   background: var(--luminous-background);
   z-index: 11 !important;
 }
+
 .Root__now-playing-bar > aside {
   background: var(--luminous-ui-background);
   border-radius: 8px;
 }
+
 html.hideDynamicBackground
   :is(.Root__now-playing-bar, .Root__now-playing-bar > aside) {
-  background: 0 0;
+  background: transparent;
 }
+
 :is(
     html[data-transition],
     html[data-cinema-npv-postenter],
@@ -1254,20 +1500,28 @@ html.hideDynamicBackground
   color: var(--text-subdued);
   pointer-events: none;
   cursor: not-allowed;
-  transition: opacity 0.25s;
+  transition: opacity 250ms ease;
 }
+
+/* src/styles/overrides/cinema-view.css */
+/* DEPRECATED .Root__top-container > *:has(#VideoPlayerCinema_ReactPortal):has(.main-actionBar-ActionBarContainer):has(.over-cinema-scroll) */
+/* .Root__cinema-view */
+
 .Root__cinema-view {
-  outline: 0;
   z-index: 10 !important;
+  outline: 0;
 }
+
 .Root__cinema-view .main-actionBar-ActionBarContainer {
   background: 0;
   outline: 0;
 }
+
 .Root__cinema-view
-  > div:not(.main-actionBar-ActionBarContainer, .over-cinema-scroll):before {
-  background: 0 0 !important;
+  > div:not(.main-actionBar-ActionBarContainer, .over-cinema-scroll)::before {
+  background: transparent !important;
 }
+
 .Root__cinema-view
   .main-actionBar-ActionBarContainer
   > div:not(.os-scrollbar)
@@ -1278,12 +1532,14 @@ html.hideDynamicBackground
   > div:empty {
   display: none;
 }
+
 .Root__cinema-view
   .main-actionBar-ActionBarContainer
   > .os-scrollbar
   .os-scrollbar-track {
   visibility: hidden;
 }
+
 .Root__cinema-view
   .main-actionBar-ActionBarContainer
   > div:not(.os-scrollbar)
@@ -1293,8 +1549,9 @@ html.hideDynamicBackground
   > div
   > div
   > div:empty {
-  background: 0 0;
+  background: transparent;
 }
+
 .Root__cinema-view
   .main-actionBar-ActionBarContainer
   > div:not(.os-scrollbar)
@@ -1302,6 +1559,7 @@ html.hideDynamicBackground
   > div {
   margin-top: 128px;
 }
+
 .Root__cinema-view
   .main-nowPlayingView-queue
   .main-nowPlayingView-sectionHeader
@@ -1311,33 +1569,47 @@ html.hideDynamicBackground
   pointer-events: none;
   cursor: not-allowed;
 }
+
 .Root__cinema-view div:has(video) {
   --cinema-canvas-height: 70vh;
 }
+
+/* src/styles/overrides/left-sidebar.css */
+/* #Desktop_LeftSidebar_Id */
+
 #Desktop_LeftSidebar_Id {
   background: var(--luminous-ui-background);
 }
+
 #Desktop_LeftSidebar_Id .search-searchCategory-carouselButton {
   display: none;
 }
+
 #Desktop_LeftSidebar_Id
   :is(.main-yourLibraryX-library, .main-yourLibraryX-libraryContainer) {
-  background: 0 0;
+  background: transparent;
 }
-#Desktop_LeftSidebar_Id .main-yourLibraryX-listItem:hover > div > div:after {
+
+#Desktop_LeftSidebar_Id .main-yourLibraryX-listItem:hover > div > div::after {
   background: var(--luminous-ui-background);
 }
+
+/* src/styles/overrides/main-view.css */
+/* #main-view */
+
+#main-view > div:has(div[data-testid='test-ref-div']),
 #main-view
   div[data-testid='hpto-parent-container']
   > div[data-testid='test-hpto-ref'] {
   display: none;
 }
-#main-view > div:has(div[data-testid='test-ref-div']) {
-  display: none;
-}
+
+/* Global */
+
 #main-view {
   background: var(--luminous-ui-background);
 }
+
 #main-view
   :is(
     .playlist-playlist-playlistContent,
@@ -1352,174 +1624,231 @@ html.hideDynamicBackground
         .playlist-playlist-actionBarBackground-background
       )
   ) {
-  background: 0 0 !important;
+  background: transparent !important;
 }
+
 #main-view .main-view-container .before-scroll-node {
   display: none;
 }
+
+/* Hide when left-sidebar expanded */
+
 .Root__top-container:has(#Desktop_LeftSidebar_Id:not([class='Root__nav-bar']))
   #main-view {
   visibility: hidden;
   opacity: 0;
-  pointer-events: none;
   transition: none;
+  pointer-events: none;
 }
+
+/* Playlist page */
+
 #main-view:has(.playlist-playlist-page, .main-trackList-trackListContainer)
   .main-topBar-container {
   display: none;
 }
+
 #main-view:has(.playlist-playlist-page, .main-trackList-trackListContainer)
   .main-trackList-trackListHeader {
-  background: 0 0;
   top: unset !important;
+  background: transparent;
 }
+
 #main-view .main-trackList-trackListHeader {
   box-sizing: none;
 }
+
+/* Marketplace */
+
 #main-view .marketplace-header {
-  background: 0 0;
   position: relative;
+  background: transparent;
 }
+
 #main-view:has(.marketplace-content) .main-topBar-background {
   background: var(--luminous-ui-background);
-  -webkit-backdrop-filter: blur(var(--luminous-ui-blur));
   backdrop-filter: blur(var(--luminous-ui-blur));
 }
+
 #main-view:has(.marketplace-content)
   .main-topBar-background
   > .main-topBar-overlay {
-  background: 0 0;
+  background: transparent;
 }
+
 #marketplace-readme {
-  background: 0 0;
+  background: transparent;
 }
+
+/* Search */
+
 #main-view:has(#searchPage):not(:has(.main-shelf-shelf))
   main
   > div
   > div:first-child {
   background: var(--luminous-ui-background);
-  -webkit-backdrop-filter: blur(var(--luminous-ui-blur));
   backdrop-filter: blur(var(--luminous-ui-blur));
 }
+
+/* Episode */
+
 #main-view
   main
   > section[data-testid='episode']
   div:not(.main-entityHeader-container) {
-  background: 0 0;
+  background: transparent;
 }
+
 #main-view:has(section[data-testid='episode']) ul[data-encore-id='navBarList'] {
-  background: 0 0;
   border-bottom: none;
+  background: transparent;
   position: static;
 }
+
 #main-view:has(section[data-testid='episode']) .main-topBar-container {
   display: none;
 }
+
+/* Diskography */
+
 #main-view:has(section[data-test-uri^='spotify:artist:'])
   div:has(.main-entityHeader-image) {
-  background: 0 0;
+  background: transparent;
 }
+
 #main-view section[data-test-uri^='spotify:artist:'] > div {
   box-shadow: none;
-  background: 0 0;
+  background: transparent;
   position: relative;
 }
+
+/* What's New */
+
 #main-view
   ul[role='treegrid']
   div[aria-labelledby^='listrow-title-spotify:album:'] {
-  background: 0 0 !important;
+  background: transparent !important;
 }
+
+/* Main page */
+
 #main-view:has(.main-home-filterChipsContainer)
   .main-home-filterChipsContainer {
   top: unset !important;
 }
+
 #main-view:has(.main-home-filterChipsContainer)
   .main-home-filterChipsSectionActive {
   display: none;
 }
+
 #main-view .main-home-homeHeader {
   background-image:
     linear-gradient(transparent 0%, var(--luminous-ui-background) 100%),
     var(--background-noise);
-  height: 0;
+  height: 0px;
 }
+
 #main-view:not(
     :has(section[data-testid='home-page'] .view-homeShortcutsGrid-shortcuts)
   )
   .main-home-homeHeader {
   display: none;
 }
+
 #main-view div[data-testid='home-ads-container'] {
   display: none;
 }
+
+/* Lyrics */
+
 #main-view .lyrics-lyrics-background {
-  background: 0 0;
+  background: transparent;
 }
+
+/* Genre */
+
 #main-view:has(.main-shelf-shelf) main div:last-child {
-  background: 0 0;
+  background: transparent;
 }
+
 #main-view .main-entityHeader-container.luminous-playlist-background {
-  background-position: 50%;
+  background-image:
+    linear-gradient(rgba(0, 0, 0, 0.25), rgba(0, 0, 0, 0.75)),
+    var(--luminous-playlist-background-image) !important;
+  background-position: center;
   background-repeat: no-repeat;
   background-size:
     100% 101%,
     cover;
-  background-image:
-    linear-gradient(#00000040, #000000bf),
-    var(--luminous-playlist-background-image) !important;
 }
+
 #main-view .main-home-homeHeader.luminous-home-header-height {
   height: var(--luminous-home-header-height);
 }
+
+/* src/styles/overrides/right-sidebar.css */
+/* .Root__right-sidebar */
+
 .Root__right-sidebar > div:first-child {
   background: var(--luminous-ui-background);
 }
+
 .Root__right-sidebar #Desktop_PanelContainer_Id,
-#Desktop_PanelContainer_Id:before {
-  background: 0 0 !important;
+#Desktop_PanelContainer_Id::before {
+  background: transparent !important;
 }
+
 .Root__right-sidebar:has(.canvasVideoContainerNPV)
   .main-nowPlayingView-headerWrapper {
   --background-base: var(--luminous-ui-base);
   box-shadow: none;
   border-radius: 8px;
 }
+
 .Root__right-sidebar
   .main-nowPlayingView-aboutArtist
   :is(button, button > div > div:last-child) {
-  background: 0 0;
+  background: transparent;
 }
+
 .Root__right-sidebar
   .main-nowPlayingView-coverArtContainer
   > div:not(
     .main-nowPlayingView-coverArtVisualEnhancement,
     #VideoPlayerNpv_ReactPortal
-  ):before {
+  )::before {
+  border-radius: 8px;
   background-image: linear-gradient(
     to bottom,
     transparent 0%,
     var(--luminous-ui-base) 100%
   );
-  border-radius: 8px;
 }
+
 .Root__right-sidebar:has(.canvasVideoContainerNPV)
   .main-nowPlayingView-nowPlayingGrid {
   gap: 0;
 }
-.Root__right-sidebar div:has(div > .canvasVideoContainerNPV):after {
+
+.Root__right-sidebar div:has(div > .canvasVideoContainerNPV)::after {
   display: none;
 }
-.Root__right-sidebar .main-nowPlayingView-contextItemInfo:before {
+
+.Root__right-sidebar .main-nowPlayingView-contextItemInfo::before {
   display: none;
 }
+
 .Root__right-sidebar
   .main-nowPlayingView-nowPlayingGrid
   > div:has(.canvasVideoContainerNPV) {
-  aspect-ratio: 9/14.5 !important;
+  aspect-ratio: 9 / 14.5 !important;
 }
-.Root__right-sidebar:before {
-  background: 0 0 !important;
+
+.Root__right-sidebar::before {
+  background: transparent !important;
 }
+
 :is(
     html[data-cinema-npv-postenter],
     html[data-cinema-npv-duringenter],
@@ -1537,19 +1866,34 @@ html.hideDynamicBackground
   opacity: 0 !important;
   pointer-events: none !important;
 }
+
 :is(
   .main-nowPlayingView-aboutArtist > div,
   .main-nowPlayingView-aboutArtist > div > div > div:last-child
 ) {
-  background: 0 0;
+  background: transparent;
 }
+
+/* Colors */
+
 .Root__right-sidebar .main-nowPlayingView-section {
   --section-background-base: var(--luminous-ui-background);
 }
-.Root__top-container,
+
+/* src/styles/overrides/root-container.css */
+/* .Root__top-container */
+
+.Root__top-container {
+  background: var(--luminous-background);
+}
+
+/* src/styles/overrides/top-bar.css */
+/* .Root__globalNav */
+
 .Root__globalNav {
   background: var(--luminous-background);
 }
+
 :is(
     html[data-transition],
     html[data-cinema-npv-postenter],
@@ -1561,6 +1905,7 @@ html.hideDynamicBackground
   .Root__globalNav {
   visibility: hidden;
 }
+
 .Root__globalNav
   :is(
     .main-globalNav-searchContainer,
@@ -1569,6 +1914,7 @@ html.hideDynamicBackground
   ) {
   --background-elevated-base: var(--luminous-ui-background);
 }
+
 .Root__globalNav
   :is(
     button[data-testid='top-bar-back-button'],
@@ -1581,9 +1927,9 @@ html.hideDynamicBackground
     .main-globalNav-friendsActivityButton
   ) {
   background: var(--luminous-ui-background);
-  -webkit-backdrop-filter: blur(var(--luminous-ui-blur));
   backdrop-filter: blur(var(--luminous-ui-blur));
 }
+
 .Root__globalNav
   :is(
     button[data-testid='top-bar-back-button'],
@@ -1594,11 +1940,12 @@ html.hideDynamicBackground
     .main-globalNav-activityFeedButton,
     .main-globalNav-friendsActivityButton
   ) {
-  border-radius: 50%;
   width: 36px;
   min-width: 36px;
   height: 36px;
+  border-radius: 50%;
 }
+
 .Root__globalNav
   :is(
     button[data-testid='top-bar-back-button'],
@@ -1612,26 +1959,31 @@ html.hideDynamicBackground
   ):hover {
   background: var(--luminous-ui-background);
 }
+
 .Root__globalNav .main-globalNav-navLinkActive {
   color: unset;
 }
+
 .Root__globalNav .main-userWidget-box {
   background-color: var(--luminous-ui-background);
 }
+
 .Root__globalNav .main-globalNav-contentRight {
   margin-inline-end: calc(
     var(--panel-gap) / (var(--zoom-level, 100) / 100) * -4.5
   ) !important;
 }
+
 .Root__globalNav
   :is(.main-topBar-topbarContentRight, .main-globalNav-topbarContentRight) {
   width: calc((135px + 32px) / (var(--zoom-level, 100) / 100));
 }
+
 .Root__globalNav .spicetify-sc-contentArea button {
   width: 48px !important;
   height: 48px !important;
 }
+
 .Root__globalNav .custom-navlinks-scrollable_container button {
   transform: none;
 }
-/*$vite$:1*/

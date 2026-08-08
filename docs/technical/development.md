@@ -72,10 +72,12 @@ Artwork fallback is expected when:
 
 - no visible Canvas/NPV/cinema source exists;
 - the element has not reached current-data readiness;
-- `captureStream()` is missing;
-- the stream has no video track yet;
-- EME/DRM/security policy blocks capture;
-- the clone's `play()` fails.
+- a normal Canvas source has no usable `captureStream()`;
+- a normal captured stream has no video track yet;
+- the clone's `play()` fails;
+- a protected long-form NPV source has no current frame or usable dimensions.
+
+Protected long-form NPV video intentionally bypasses `captureStream()`. The original Spotify `<video>` is styled in place as the background, which avoids the EME/DRM capture restriction while keeping React ownership of the DOM node intact.
 
 Do not mark an entire Spotify `<video>` permanently unsupported. Spotify can reuse it with another source. Permanent capture failures are cached per element + source identity.
 
@@ -97,7 +99,7 @@ The neutral base while Spotify has not supplied metadata is intentional.
 
 ## Performance troubleshooting
 
-Start with the **Performance** preset. In 2.2.1 it forces artwork-only mode, still motion, higher surface opacity, and lower glass blur without enabling experimental compositor layers.
+Start with the **Performance** preset. In 2.2.3 it forces artwork-only mode, still motion, higher surface opacity, and lower glass blur without enabling experimental compositor layers.
 
 If tuning manually, the largest expected reductions are usually:
 

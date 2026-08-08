@@ -2,7 +2,7 @@
 
 Settings are schema-backed and persisted under the `luminous-settings` LocalStorage key. Each registered setting has a default, normalization function, and optional runtime application callback. The settings dialog is generated from the same schema metadata, so the UI and runtime no longer maintain separate lists of defaults.
 
-## Active settings in 2.2.1
+## Active settings in 2.2.3
 
 | Key                    | Default    | Range / values            | Runtime effect                                                     |
 | ---------------------- | ---------- | ------------------------- | ------------------------------------------------------------------ |

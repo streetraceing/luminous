@@ -115,6 +115,7 @@ export function DynamicBackgroundFeature() {
       Luminous.Background.render({
         canvas: canvas.video,
         canvasSource: canvas.source,
+        canvasMode: canvas.mode,
         image: song?.image,
       });
       return;

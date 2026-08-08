@@ -1,10 +1,10 @@
 # Background pipeline
 
-`src/render/background.ts` in 2.2.1 intentionally uses the pre-refactor rendering architecture. The large 2.2.0 compositor rewrite was rolled back because the flicker regression appeared together with that rewrite and survived multiple incremental workarounds.
+`src/render/background.ts` intentionally uses the pre-refactor rendering architecture. The large 2.2.0 compositor rewrite was rolled back because the flicker regression appeared together with that rewrite and survived multiple incremental workarounds.
 
 ## Design goal
 
-The renderer follows one conservative rule: Spotify owns Spotify media nodes; Luminous only reads from them and maintains its own small set of background elements. No shell node is re-parented or animated by the renderer.
+The renderer follows one conservative rule: Spotify owns Spotify media nodes. Luminous never re-parents a Spotify media node. Normal Canvas is mirrored into Luminous-owned buffers; protected long-form NPV video is handled by temporarily styling the original `<video>` in place.
 
 ## DOM structure
 
@@ -25,11 +25,11 @@ A successfully cached image can be activated immediately. A not-yet-loaded image
 
 ## Canvas rendering
 
-Canvas is mirrored using `HTMLVideoElement.captureStream()` into one of two Luminous-owned `<video>` elements. The Spotify source is never paused, moved, or assigned a new source by the renderer.
+Normal Canvas is mirrored using `HTMLVideoElement.captureStream()` into one of two Luminous-owned `<video>` elements. The Spotify source is never paused, moved, or assigned a new source by that path.
 
-Before capture the source must be connected, not ended, and have at least `HAVE_CURRENT_DATA`. Captured streams without a video track are discarded. The inactive clone receives `srcObject`, calls `play()`, and only then becomes the active Canvas buffer.
+Long-form NPV video (`CanvasMode = npv-video`) uses a separate protected-media path. Luminous does **not** call `captureStream()` for that mode. Instead, the original Spotify `<video>` remains in its React-owned DOM location and receives temporary CSS classes that promote the same element to a fixed, blurred, pointer-inert fullscreen background. When the long-form source disappears or another background becomes active, the classes are removed after the normal media fade. No source URL, playback state, or inline Spotify style is rewritten.
 
-The implementation deliberately matches the known-good pre-refactor behavior instead of the more complicated first-frame/snapshot/grace-window state machine introduced later.
+Before either video path is selected the source must be connected, not ended, and have current frame data. The direct long-form path also requires non-zero video dimensions. For normal capture, streams without a video track are discarded. The inactive clone receives `srcObject`, calls `play()`, and only then becomes the active Canvas buffer.
 
 ## Pending requests and cancellation
 
@@ -37,7 +37,7 @@ The implementation deliberately matches the known-good pre-refactor behavior ins
 
 ## Cleanup
 
-Inactive Canvas clones are cleaned after the fixed 250 ms media transition. Cleanup pauses the clone, stops all `MediaStreamTrack`s, clears `srcObject`/`src`, and calls `load()`.
+Inactive Canvas clones are cleaned after the fixed 250 ms media transition. Direct long-form video classes use the same delayed cleanup so switching back to artwork does not abruptly restore the NPV element in the middle of the fade. Cleanup pauses the clone, stops all `MediaStreamTrack`s, clears `srcObject`/`src`, and calls `load()`.
 
 `destroy()` invalidates pending image/video work, stops all captured streams, removes the dynamic-background root, resets active indices, and emits the final background change.
 

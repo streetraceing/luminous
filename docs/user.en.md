@@ -7,4 +7,6 @@ Open **Luminous → Settings** in Spotify.
 - **Motion** - Still / Drift / Float, speed, and Reduce motion.
 - **Advanced** - diagnostics and runtime tools.
 
-In `2.2.1` the visual pipeline is intentionally reduced to the proven stable path: parallax, Orbit, grain/vignette/detail-quality, and configurable cross-fade from the previous refactor were removed to eliminate track-change interface flicker.
+In `2.2.3` the visual pipeline is intentionally reduced to the proven stable path: parallax, Orbit, grain/vignette/detail-quality, and configurable cross-fade from the previous refactor were removed to eliminate track-change interface flicker.
+
+- Protected long-form NPV video uses the original Spotify video element directly as the background instead of DRM-incompatible stream capture.

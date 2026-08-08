@@ -1,3 +1,5 @@
+import type { CanvasMode } from '../types/runtime/canvas.types';
+
 export type BackgroundType = 'none' | 'image' | 'canvas';
 
 export type BackgroundEvent = 'change';
@@ -40,6 +42,14 @@ export class Background {
   private static videoCleanupTimer: number | null = null;
   private static unsupportedCanvasSources = new WeakSet<HTMLVideoElement>();
 
+  private static directVideoSource: HTMLVideoElement | null = null;
+  private static directVideoKey: string | null = null;
+  private static directVideoHosts = new Map<
+    HTMLVideoElement,
+    HTMLElement | null
+  >();
+  private static directVideoCleanupTimers = new Map<HTMLVideoElement, number>();
+
   private static currentType: BackgroundType = 'none';
 
   private static listeners = new Map<
@@ -52,6 +62,10 @@ export class Background {
   }
 
   static get(): HTMLVideoElement | HTMLImageElement | null {
+    if (this.currentType === 'canvas' && this.directVideoSource?.isConnected) {
+      return this.directVideoSource;
+    }
+
     if (this.currentType === 'canvas' && this.videoLayers) {
       return this.videoLayers[this.activeVideo];
     }
@@ -216,6 +230,7 @@ export class Background {
     image?: string | null;
     canvas?: HTMLVideoElement | null;
     canvasSource?: string | null;
+    canvasMode?: CanvasMode;
   }) {
     this.ensureBackground();
 
@@ -231,6 +246,7 @@ export class Background {
         options.canvas,
         options.image,
         options.canvasSource ?? null,
+        options.canvasMode ?? null,
       )
     ) {
       return;
@@ -358,6 +374,7 @@ export class Background {
     sourceVideo: HTMLVideoElement,
     fallbackImage?: string | null,
     sourceKey?: string | null,
+    mode: CanvasMode = null,
   ): boolean {
     this.ensureBackground();
 
@@ -368,6 +385,10 @@ export class Background {
 
     const canvasKey =
       (sourceKey ?? sourceVideo.currentSrc) || sourceVideo.src || null;
+
+    if (mode === 'npv-video') {
+      return this.renderDirectVideo(sourceVideo, canvasKey);
+    }
 
     if (
       this.currentType === 'canvas' &&
@@ -501,12 +522,145 @@ export class Background {
     return true;
   }
 
+  private static renderDirectVideo(
+    sourceVideo: HTMLVideoElement,
+    sourceKey: string | null,
+  ): boolean {
+    if (
+      this.currentType === 'canvas' &&
+      this.directVideoSource === sourceVideo &&
+      sourceVideo.isConnected &&
+      !sourceVideo.ended &&
+      sourceVideo.classList.contains('luminous-direct-video-background--active')
+    ) {
+      // Spotify can reuse the same protected <video> while currentSrc and
+      // readyState briefly change. Keep the original element promoted instead
+      // of bouncing through the artwork fallback during those media events.
+      this.directVideoKey = sourceKey;
+      this.currentCanvasKey = sourceKey;
+      return true;
+    }
+
+    if (
+      !sourceVideo.isConnected ||
+      sourceVideo.ended ||
+      sourceVideo.readyState < HTMLMediaElement.HAVE_CURRENT_DATA ||
+      sourceVideo.videoWidth === 0 ||
+      sourceVideo.videoHeight === 0
+    ) {
+      return false;
+    }
+
+    this.cancelVideoCleanup();
+    this.imageRenderId++;
+    this.videoRenderId++;
+
+    if (this.pendingCanvasVideo) {
+      const pendingVideo = this.pendingCanvasVideo;
+      this.clearPendingCanvas();
+      this.resetVideo(pendingVideo);
+    }
+
+    if (this.directVideoSource && this.directVideoSource !== sourceVideo) {
+      this.deactivateDirectVideo();
+    }
+
+    this.cancelDirectVideoCleanup(sourceVideo);
+
+    const host = sourceVideo.closest(
+      '#VideoPlayerNpv_ReactPortal',
+    ) as HTMLElement | null;
+    sourceVideo.classList.add('luminous-direct-video-background');
+    host?.classList.add('luminous-direct-video-host');
+
+    this.directVideoSource = sourceVideo;
+    this.directVideoKey = sourceKey;
+    this.directVideoHosts.set(sourceVideo, host);
+    this.currentCanvasSource = sourceVideo;
+    this.currentCanvasKey = sourceKey;
+
+    // Register the inactive direct-video style before starting its opacity
+    // transition. This layout read is intentionally limited to the rare
+    // long-form path and avoids a one-frame empty background.
+    void sourceVideo.offsetWidth;
+    sourceVideo.classList.add('luminous-direct-video-background--active');
+
+    this.transitionTo('canvas', sourceVideo);
+    Luminous.Logger.info(
+      'Background',
+      'Using original protected video as background',
+      sourceVideo,
+    );
+
+    return true;
+  }
+
+  private static deactivateDirectVideo(immediate = false) {
+    const sourceVideo = this.directVideoSource;
+    if (!sourceVideo) return;
+
+    this.directVideoSource = null;
+    this.directVideoKey = null;
+
+    sourceVideo.classList.remove('luminous-direct-video-background--active');
+
+    if (immediate) {
+      this.restoreDirectVideo(sourceVideo);
+      return;
+    }
+
+    this.cancelDirectVideoCleanup(sourceVideo);
+    const timer = window.setTimeout(() => {
+      this.directVideoCleanupTimers.delete(sourceVideo);
+      this.restoreDirectVideo(sourceVideo);
+    }, this.TRANSITION_MS);
+    this.directVideoCleanupTimers.set(sourceVideo, timer);
+  }
+
+  private static cancelDirectVideoCleanup(sourceVideo: HTMLVideoElement) {
+    const timer = this.directVideoCleanupTimers.get(sourceVideo);
+    if (timer === undefined) return;
+
+    window.clearTimeout(timer);
+    this.directVideoCleanupTimers.delete(sourceVideo);
+  }
+
+  private static restoreDirectVideo(sourceVideo: HTMLVideoElement) {
+    this.cancelDirectVideoCleanup(sourceVideo);
+    sourceVideo.classList.remove(
+      'luminous-direct-video-background',
+      'luminous-direct-video-background--active',
+    );
+
+    const host = this.directVideoHosts.get(sourceVideo);
+    this.directVideoHosts.delete(sourceVideo);
+
+    if (host && !host.querySelector('video.luminous-direct-video-background')) {
+      host.classList.remove('luminous-direct-video-host');
+    }
+  }
+
+  private static restoreAllDirectVideos() {
+    this.directVideoCleanupTimers.forEach((timer) =>
+      window.clearTimeout(timer),
+    );
+    this.directVideoCleanupTimers.clear();
+
+    Array.from(this.directVideoHosts.keys()).forEach((video) =>
+      this.restoreDirectVideo(video),
+    );
+
+    this.directVideoSource = null;
+    this.directVideoKey = null;
+  }
+
   static destroy() {
     this.imageRenderId++;
     this.videoRenderId++;
     this.currentCanvasSource = null;
     this.currentCanvasKey = null;
     this.clearPendingCanvas();
+    this.restoreAllDirectVideos();
 
     this.cancelVideoCleanup();
     this.videoLayers?.forEach((video) => this.resetVideo(video));
@@ -536,6 +690,13 @@ export class Background {
     activeElement: BackgroundElement | null = null,
   ) {
     if (!this.imageLayers || !this.videoLayers) return;
+
+    if (
+      this.directVideoSource &&
+      (type !== 'canvas' || activeElement !== this.directVideoSource)
+    ) {
+      this.deactivateDirectVideo();
+    }
 
     this.currentType = type;
 
@@ -594,7 +755,9 @@ export class Background {
       this.videoCleanupTimer = null;
 
       const activeVideo =
-        this.currentType === 'canvas' && this.videoLayers
+        this.currentType === 'canvas' &&
+        !this.directVideoSource &&
+        this.videoLayers
           ? this.videoLayers[this.activeVideo]
           : null;
       const pendingVideo = this.pendingCanvasVideo;

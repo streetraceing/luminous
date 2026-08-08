@@ -1,3281 +1,4206 @@
-var e = class {
-    static TRANSITION_MS = 250;
-    static MAX_PRELOADED_IMAGES = 24;
-    static root = null;
-    static base = null;
-    static imageLayers = null;
-    static activeImage = 0;
-    static imageRenderId = 0;
-    static preloadedImages = new Map();
-    static videoLayers = null;
-    static activeVideo = 0;
-    static videoRenderId = 0;
-    static currentCanvasSource = null;
-    static currentCanvasKey = null;
-    static pendingCanvasSource = null;
-    static pendingCanvasKey = null;
-    static pendingCanvasVideo = null;
-    static pendingCanvasFallback = null;
-    static videoCleanupTimer = null;
-    static unsupportedCanvasSources = new WeakSet();
-    static currentType = `none`;
-    static listeners = new Map();
-    static getType() {
-      return this.currentType;
-    }
-    static get() {
-      return this.currentType === `canvas` && this.videoLayers
-        ? this.videoLayers[this.activeVideo]
-        : this.currentType === `image` && this.imageLayers
-          ? this.imageLayers[this.activeImage]
-          : null;
-    }
-    static addEventListener(e, t) {
-      (this.listeners.has(e) || this.listeners.set(e, new Set()),
-        this.listeners.get(e).add(t));
-    }
-    static removeEventListener(e, t) {
-      this.listeners.get(e)?.delete(t);
-    }
-    static emit(e) {
-      let t = { type: this.currentType, element: this.get() };
-      this.listeners.get(e)?.forEach((e) => {
-        try {
-          e(t);
-        } catch (e) {
-          Luminous.Logger.error(`Background`, `Listener failed`, e);
+(() => {
+  const __APP_VERSION__ = '2.2.3';
+  const __APP_AUTHOR__ = 'streetraceing';
+  const __BUILD_TIME__ = '2026-08-08T23:19:22.315Z';
+  const __mods = {
+    'src/types/runtime/canvas.types.ts': (module, exports, require) => {
+      'use strict';
+      Object.defineProperty(exports, '__esModule', { value: true });
+    },
+    'src/render/background.ts': (module, exports, require) => {
+      'use strict';
+      Object.defineProperty(exports, '__esModule', { value: true });
+      exports.Background = void 0;
+      class Background {
+        static TRANSITION_MS = 250;
+        static MAX_PRELOADED_IMAGES = 24;
+        static root = null;
+        static base = null;
+        static imageLayers = null;
+        static activeImage = 0;
+        static imageRenderId = 0;
+        static preloadedImages = new Map();
+        static videoLayers = null;
+        static activeVideo = 0;
+        static videoRenderId = 0;
+        static currentCanvasSource = null;
+        static currentCanvasKey = null;
+        static pendingCanvasSource = null;
+        static pendingCanvasKey = null;
+        static pendingCanvasVideo = null;
+        static pendingCanvasFallback = null;
+        static videoCleanupTimer = null;
+        static unsupportedCanvasSources = new WeakSet();
+        static directVideoSource = null;
+        static directVideoKey = null;
+        static directVideoHosts = new Map();
+        static directVideoCleanupTimers = new Map();
+        static currentType = 'none';
+        static listeners = new Map();
+        static getType() {
+          return this.currentType;
         }
-      });
-    }
-    static baseStyle() {
-      return {
-        position: `absolute`,
-        inset: `0`,
-        width: `120%`,
-        height: `120%`,
-        objectFit: `cover`,
-        filter: `blur(var(--luminous-background-blur)) brightness(var(--luminous-background-brightness))`,
-        transform: `scale(1.2) translateZ(0)`,
-        pointerEvents: `none`,
-        transition: `opacity ${this.TRANSITION_MS}ms linear`,
-        opacity: `0`,
-        willChange: `opacity, transform`,
-      };
-    }
-    static createImageLayer() {
-      let e = document.createElement(`img`);
-      return (
-        Object.assign(e.style, this.baseStyle()),
-        (e.alt = ``),
-        (e.decoding = `async`),
-        Luminous.Logger.info(`Background`, `Created image layer`, e),
-        e
-      );
-    }
-    static createVideoLayer() {
-      let e = document.createElement(`video`);
-      return (
-        Object.assign(e.style, this.baseStyle()),
-        (e.muted = !0),
-        (e.playsInline = !0),
-        (e.autoplay = !0),
-        (e.loop = !0),
-        Luminous.Logger.info(`Background`, `Created video layer`, e),
-        e
-      );
-    }
-    static createEffectsLayer() {
-      let e = document.createElement(`div`);
-      e.className = `luminous-background-effects`;
-      let t = document.createElement(`span`);
-      t.className = `luminous-background-mesh`;
-      let n = document.createElement(`span`);
-      n.className = `luminous-background-halo`;
-      let r = [`one`, `two`].map((e) => {
-          let t = document.createElement(`span`);
-          return (
-            (t.className = `luminous-background-ribbon luminous-background-ribbon--${e}`),
-            t
-          );
-        }),
-        i = [`one`, `two`, `three`, `four`].map((e) => {
-          let t = document.createElement(`span`);
-          return (
-            (t.className = `luminous-background-blob luminous-background-blob--${e}`),
-            t
-          );
-        });
-      return (e.append(t, n, ...r, ...i), e);
-    }
-    static ensureBackground() {
-      if (this.root?.isConnected) return;
-      (this.cancelVideoCleanup(),
-        this.videoLayers?.forEach((e) => this.resetVideo(e)),
-        this.root?.remove(),
-        (this.root = document.createElement(`div`)),
-        (this.root.id = `luminous-dynamic-background`),
-        this.root.setAttribute(`aria-hidden`, `true`),
-        Object.assign(this.root.style, {
-          position: `fixed`,
-          inset: `0`,
-          zIndex: `0`,
-          overflow: `hidden`,
-          pointerEvents: `none`,
-          isolation: `isolate`,
-        }),
-        (this.base = document.createElement(`div`)),
-        (this.base.className = `luminous-base`),
-        Object.assign(this.base.style, {
-          position: `absolute`,
-          inset: `0`,
-          background: `var(--spice-sidebar)`,
-          transition: `opacity ${this.TRANSITION_MS}ms linear`,
-          opacity: `1`,
-        }));
-      let e = this.createImageLayer(),
-        t = this.createImageLayer(),
-        n = this.createVideoLayer(),
-        r = this.createVideoLayer(),
-        i = this.createEffectsLayer();
-      (this.root.append(this.base, e, t, n, r, i),
-        (this.imageLayers = [e, t]),
-        (this.videoLayers = [n, r]),
-        (this.activeImage = 0),
-        (this.activeVideo = 0),
-        (this.currentType = `none`),
-        (this.currentCanvasSource = null),
-        (this.currentCanvasKey = null),
-        this.clearPendingCanvas(),
-        document.body.prepend(this.root));
-    }
-    static render(e) {
-      if ((this.ensureBackground(), !e || (!e.image && !e.canvas))) {
-        (this.clear(),
-          Luminous.Logger.info(`Background`, `Rendering default layer`));
-        return;
-      }
-      if (!(
-        e.canvas && this.renderCanvas(e.canvas, e.image, e.canvasSource ?? null)
-      )) {
-        if (e.image) {
-          this.renderImage(e.image);
-          return;
+        static get() {
+          if (
+            this.currentType === 'canvas' &&
+            this.directVideoSource?.isConnected
+          ) {
+            return this.directVideoSource;
+          }
+          if (this.currentType === 'canvas' && this.videoLayers) {
+            return this.videoLayers[this.activeVideo];
+          }
+          if (this.currentType === 'image' && this.imageLayers) {
+            return this.imageLayers[this.activeImage];
+          }
+          return null;
         }
-        this.clear();
-      }
-    }
-    static preloadImage(e) {
-      if (!e || this.preloadedImages.has(e)) return;
-      let t = new Image();
-      ((t.decoding = `async`),
-        (t.src = e),
-        this.preloadedImages.set(e, t),
-        this.trimPreloadedImages());
-    }
-    static renderImage(e) {
-      if (
-        (this.ensureBackground(),
-        this.videoRenderId++,
-        (this.currentCanvasSource = null),
-        (this.currentCanvasKey = null),
-        this.clearPendingCanvas(),
-        !this.imageLayers)
-      ) {
-        Luminous.Logger.warn(`Background`, `No image layers for render`);
-        return;
-      }
-      if (!e) {
-        (Luminous.Logger.warn(`Background`, `No image src for render`),
-          this.clear());
-        return;
-      }
-      let t = ++this.imageRenderId,
-        n = +(this.activeImage === 0),
-        r = this.imageLayers[this.activeImage],
-        i = this.imageLayers[n];
-      if (r.src === e && r.complete && r.naturalWidth > 0) {
-        this.transitionTo(`image`, r);
-        return;
-      }
-      let a = this.getPreloadedImage(e),
-        o = () => {
-          t === this.imageRenderId &&
-            ((i.src = e),
+        static addEventListener(event, listener) {
+          if (!this.listeners.has(event)) {
+            this.listeners.set(event, new Set());
+          }
+          this.listeners.get(event).add(listener);
+        }
+        static removeEventListener(event, listener) {
+          this.listeners.get(event)?.delete(listener);
+        }
+        static emit(event) {
+          const payload = {
+            type: this.currentType,
+            element: this.get(),
+          };
+          this.listeners.get(event)?.forEach((listener) => {
+            try {
+              listener(payload);
+            } catch (error) {
+              Luminous.Logger.error('Background', 'Listener failed', error);
+            }
+          });
+        }
+        static baseStyle() {
+          return {
+            position: 'absolute',
+            inset: '0',
+            width: '120%',
+            height: '120%',
+            objectFit: 'cover',
+            filter: `blur(var(--luminous-background-blur)) brightness(var(--luminous-background-brightness))`,
+            transform: 'scale(1.2) translateZ(0)',
+            pointerEvents: 'none',
+            transition: `opacity ${this.TRANSITION_MS}ms linear`,
+            opacity: '0',
+            willChange: 'opacity, transform',
+          };
+        }
+        static createImageLayer() {
+          const image = document.createElement('img');
+          Object.assign(image.style, this.baseStyle());
+          image.alt = '';
+          image.decoding = 'async';
+          Luminous.Logger.info('Background', 'Created image layer', image);
+          return image;
+        }
+        static createVideoLayer() {
+          const video = document.createElement('video');
+          Object.assign(video.style, this.baseStyle());
+          video.muted = true;
+          video.playsInline = true;
+          video.autoplay = true;
+          video.loop = true;
+          Luminous.Logger.info('Background', 'Created video layer', video);
+          return video;
+        }
+        static createEffectsLayer() {
+          const effects = document.createElement('div');
+          effects.className = 'luminous-background-effects';
+          const mesh = document.createElement('span');
+          mesh.className = 'luminous-background-mesh';
+          const halo = document.createElement('span');
+          halo.className = 'luminous-background-halo';
+          const ribbons = ['one', 'two'].map((variant) => {
+            const ribbon = document.createElement('span');
+            ribbon.className = `luminous-background-ribbon luminous-background-ribbon--${variant}`;
+            return ribbon;
+          });
+          const blobs = ['one', 'two', 'three', 'four'].map((variant) => {
+            const blob = document.createElement('span');
+            blob.className = `luminous-background-blob luminous-background-blob--${variant}`;
+            return blob;
+          });
+          effects.append(mesh, halo, ...ribbons, ...blobs);
+          return effects;
+        }
+        static ensureBackground() {
+          if (this.root?.isConnected) return;
+          this.cancelVideoCleanup();
+          this.videoLayers?.forEach((video) => this.resetVideo(video));
+          this.root?.remove();
+          this.root = document.createElement('div');
+          this.root.id = 'luminous-dynamic-background';
+          this.root.setAttribute('aria-hidden', 'true');
+          Object.assign(this.root.style, {
+            position: 'fixed',
+            inset: '0',
+            zIndex: '0',
+            overflow: 'hidden',
+            pointerEvents: 'none',
+            isolation: 'isolate',
+          });
+          this.base = document.createElement('div');
+          this.base.className = 'luminous-base';
+          Object.assign(this.base.style, {
+            position: 'absolute',
+            inset: '0',
+            background: 'var(--spice-sidebar)',
+            transition: `opacity ${this.TRANSITION_MS}ms linear`,
+            opacity: '1',
+          });
+          const imageA = this.createImageLayer();
+          const imageB = this.createImageLayer();
+          const videoA = this.createVideoLayer();
+          const videoB = this.createVideoLayer();
+          const effects = this.createEffectsLayer();
+          this.root.append(this.base, imageA, imageB, videoA, videoB, effects);
+          this.imageLayers = [imageA, imageB];
+          this.videoLayers = [videoA, videoB];
+          this.activeImage = 0;
+          this.activeVideo = 0;
+          this.currentType = 'none';
+          this.currentCanvasSource = null;
+          this.currentCanvasKey = null;
+          this.clearPendingCanvas();
+          document.body.prepend(this.root);
+        }
+        static render(options) {
+          this.ensureBackground();
+          if (!options || (!options.image && !options.canvas)) {
+            this.clear();
+            Luminous.Logger.info('Background', 'Rendering default layer');
+            return;
+          }
+          if (
+            options.canvas &&
+            this.renderCanvas(
+              options.canvas,
+              options.image,
+              options.canvasSource ?? null,
+              options.canvasMode ?? null,
+            )
+          ) {
+            return;
+          }
+          if (options.image) {
+            this.renderImage(options.image);
+            return;
+          }
+          this.clear();
+        }
+        static preloadImage(src) {
+          if (!src || this.preloadedImages.has(src)) return;
+          const image = new Image();
+          image.decoding = 'async';
+          image.src = src;
+          this.preloadedImages.set(src, image);
+          this.trimPreloadedImages();
+        }
+        static renderImage(src) {
+          this.ensureBackground();
+          this.videoRenderId++;
+          this.currentCanvasSource = null;
+          this.currentCanvasKey = null;
+          this.clearPendingCanvas();
+          if (!this.imageLayers) {
+            Luminous.Logger.warn('Background', 'No image layers for render');
+            return;
+          }
+          if (!src) {
+            Luminous.Logger.warn('Background', 'No image src for render');
+            this.clear();
+            return;
+          }
+          const renderId = ++this.imageRenderId;
+          const nextIndex = this.activeImage === 0 ? 1 : 0;
+          const current = this.imageLayers[this.activeImage];
+          const next = this.imageLayers[nextIndex];
+          if (
+            current.src === src &&
+            current.complete &&
+            current.naturalWidth > 0
+          ) {
+            this.transitionTo('image', current);
+            return;
+          }
+          const preload = this.getPreloadedImage(src);
+          const showImage = () => {
+            if (renderId !== this.imageRenderId) return;
+            next.src = src;
             requestAnimationFrame(() => {
-              t === this.imageRenderId &&
-                ((this.activeImage = n),
-                this.transitionTo(`image`, i),
-                Luminous.Logger.info(`Background`, `Rendering image layer`, e));
-            }));
-        };
-      if (a.complete && a.naturalWidth > 0) {
-        o();
-        return;
-      }
-      (a.addEventListener(`load`, o, { once: !0 }),
-        a.addEventListener(
-          `error`,
-          () => {
-            if (t === this.imageRenderId) {
+              if (renderId !== this.imageRenderId) return;
+              this.activeImage = nextIndex;
+              this.transitionTo('image', next);
+              Luminous.Logger.info('Background', 'Rendering image layer', src);
+            });
+          };
+          if (preload.complete && preload.naturalWidth > 0) {
+            showImage();
+            return;
+          }
+          preload.addEventListener('load', showImage, { once: true });
+          preload.addEventListener(
+            'error',
+            () => {
+              if (renderId !== this.imageRenderId) return;
+              Luminous.Logger.warn('Background', 'Failed to load image', src);
               if (
-                (Luminous.Logger.warn(`Background`, `Failed to load image`, e),
-                this.currentType === `image` &&
-                  r.complete &&
-                  r.naturalWidth > 0)
+                this.currentType === 'image' &&
+                current.complete &&
+                current.naturalWidth > 0
               ) {
-                this.transitionTo(`image`, r);
+                this.transitionTo('image', current);
                 return;
               }
               this.clear();
+            },
+            { once: true },
+          );
+        }
+        static getPreloadedImage(src) {
+          let image = this.preloadedImages.get(src);
+          if (image?.complete && image.naturalWidth === 0) {
+            this.preloadedImages.delete(src);
+            image = undefined;
+          }
+          if (!image) {
+            image = new Image();
+            image.decoding = 'async';
+            image.src = src;
+            this.preloadedImages.set(src, image);
+            this.trimPreloadedImages();
+          }
+          return image;
+        }
+        static trimPreloadedImages() {
+          while (this.preloadedImages.size > this.MAX_PRELOADED_IMAGES) {
+            const oldestKey = this.preloadedImages.keys().next().value;
+            if (!oldestKey) return;
+            this.preloadedImages.delete(oldestKey);
+          }
+        }
+        static renderCanvas(
+          sourceVideo,
+          fallbackImage,
+          sourceKey,
+          mode = null,
+        ) {
+          this.ensureBackground();
+          if (!this.videoLayers) {
+            Luminous.Logger.warn('Background', 'No video layers for render');
+            return false;
+          }
+          const canvasKey =
+            (sourceKey ?? sourceVideo.currentSrc) || sourceVideo.src || null;
+          if (mode === 'npv-video') {
+            return this.renderDirectVideo(sourceVideo, canvasKey);
+          }
+          if (
+            this.currentType === 'canvas' &&
+            this.currentCanvasSource === sourceVideo &&
+            this.currentCanvasKey === canvasKey &&
+            this.isCanvasLayerUsable(this.get())
+          ) {
+            return true;
+          }
+          if (
+            this.pendingCanvasSource === sourceVideo &&
+            this.pendingCanvasKey === canvasKey &&
+            this.pendingCanvasVideo?.isConnected
+          ) {
+            if (fallbackImage !== undefined) {
+              this.pendingCanvasFallback = fallbackImage;
             }
-          },
-          { once: !0 },
-        ));
-    }
-    static getPreloadedImage(e) {
-      let t = this.preloadedImages.get(e);
-      return (
-        t?.complete &&
-          t.naturalWidth === 0 &&
-          (this.preloadedImages.delete(e), (t = void 0)),
-        t ||
-          ((t = new Image()),
-          (t.decoding = `async`),
-          (t.src = e),
-          this.preloadedImages.set(e, t),
-          this.trimPreloadedImages()),
-        t
-      );
-    }
-    static trimPreloadedImages() {
-      for (; this.preloadedImages.size > this.MAX_PRELOADED_IMAGES;) {
-        let e = this.preloadedImages.keys().next().value;
-        if (!e) return;
-        this.preloadedImages.delete(e);
-      }
-    }
-    static renderCanvas(e, t, n) {
-      if ((this.ensureBackground(), !this.videoLayers))
-        return (
-          Luminous.Logger.warn(`Background`, `No video layers for render`),
-          !1
-        );
-      let r = (n ?? e.currentSrc) || e.src || null;
-      if (
-        this.currentType === `canvas` &&
-        this.currentCanvasSource === e &&
-        this.currentCanvasKey === r &&
-        this.isCanvasLayerUsable(this.get())
-      )
-        return !0;
-      if (
-        this.pendingCanvasSource === e &&
-        this.pendingCanvasKey === r &&
-        this.pendingCanvasVideo?.isConnected
-      )
-        return (t !== void 0 && (this.pendingCanvasFallback = t), !0);
-      if (this.pendingCanvasVideo) {
-        this.videoRenderId++;
-        let e = this.pendingCanvasVideo;
-        (this.clearPendingCanvas(), this.resetVideo(e));
-      }
-      if (
-        this.unsupportedCanvasSources.has(e) ||
-        !e.isConnected ||
-        e.ended ||
-        e.readyState < HTMLMediaElement.HAVE_CURRENT_DATA
-      )
-        return !1;
-      let i = e.captureStream;
-      if (typeof i != `function`)
-        return (this.unsupportedCanvasSources.add(e), !1);
-      let a;
-      try {
-        a = i.call(e);
-      } catch (t) {
-        return (
-          this.isPermanentCanvasError(t) &&
-            this.unsupportedCanvasSources.add(e),
-          !1
-        );
-      }
-      if (a.getVideoTracks().length === 0)
-        return (a.getTracks().forEach((e) => e.stop()), !1);
-      (this.cancelVideoCleanup(), this.imageRenderId++);
-      let o = +(this.activeVideo === 0),
-        s = this.videoLayers[o],
-        c = ++this.videoRenderId;
-      return (
-        this.resetVideo(s),
-        (s.style.opacity = `0`),
-        (s.srcObject = a),
-        (this.pendingCanvasSource = e),
-        (this.pendingCanvasKey = r),
-        (this.pendingCanvasVideo = s),
-        (this.pendingCanvasFallback = t ?? null),
-        s
-          .play()
-          .then(() => {
-            this.isPendingCanvas(c, s) &&
+            return true;
+          }
+          if (this.pendingCanvasVideo) {
+            this.videoRenderId++;
+            const pendingVideo = this.pendingCanvasVideo;
+            this.clearPendingCanvas();
+            this.resetVideo(pendingVideo);
+          }
+          if (this.unsupportedCanvasSources.has(sourceVideo)) {
+            return false;
+          }
+          if (
+            !sourceVideo.isConnected ||
+            sourceVideo.ended ||
+            sourceVideo.readyState < HTMLMediaElement.HAVE_CURRENT_DATA
+          ) {
+            return false;
+          }
+          const captureStream = sourceVideo.captureStream;
+          if (typeof captureStream !== 'function') {
+            this.unsupportedCanvasSources.add(sourceVideo);
+            return false;
+          }
+          let stream;
+          try {
+            stream = captureStream.call(sourceVideo);
+          } catch (error) {
+            if (this.isPermanentCanvasError(error)) {
+              this.unsupportedCanvasSources.add(sourceVideo);
+            }
+            return false;
+          }
+          if (stream.getVideoTracks().length === 0) {
+            stream.getTracks().forEach((track) => track.stop());
+            return false;
+          }
+          this.cancelVideoCleanup();
+          this.imageRenderId++;
+          const nextIndex = this.activeVideo === 0 ? 1 : 0;
+          const next = this.videoLayers[nextIndex];
+          const renderId = ++this.videoRenderId;
+          this.resetVideo(next);
+          next.style.opacity = '0';
+          next.srcObject = stream;
+          this.pendingCanvasSource = sourceVideo;
+          this.pendingCanvasKey = canvasKey;
+          this.pendingCanvasVideo = next;
+          this.pendingCanvasFallback = fallbackImage ?? null;
+          void next
+            .play()
+            .then(() => {
+              if (!this.isPendingCanvas(renderId, next)) return;
               requestAnimationFrame(() => {
-                this.isPendingCanvas(c, s) &&
-                  (this.clearPendingCanvas(),
-                  (this.activeVideo = o),
-                  (this.currentCanvasSource = e),
-                  (this.currentCanvasKey = r),
-                  this.transitionTo(`canvas`, s),
-                  Luminous.Logger.info(
-                    `Background`,
-                    `Rendering canvas layer`,
-                    e,
-                  ));
+                if (!this.isPendingCanvas(renderId, next)) return;
+                this.clearPendingCanvas();
+                this.activeVideo = nextIndex;
+                this.currentCanvasSource = sourceVideo;
+                this.currentCanvasKey = canvasKey;
+                this.transitionTo('canvas', next);
+                Luminous.Logger.info(
+                  'Background',
+                  'Rendering canvas layer',
+                  sourceVideo,
+                );
               });
-          })
-          .catch((t) => {
-            if (!this.isPendingCanvas(c, s)) return;
-            let n = this.pendingCanvasFallback;
-            if (
-              (this.clearPendingCanvas(),
-              this.resetVideo(s),
-              this.isInterruptedPlayback(t))
-            ) {
-              this.currentType === `none` && n && this.renderImage(n);
-              return;
-            }
-            (this.isPermanentCanvasError(t) &&
-              this.unsupportedCanvasSources.add(e),
+            })
+            .catch((error) => {
+              if (!this.isPendingCanvas(renderId, next)) return;
+              const currentFallback = this.pendingCanvasFallback;
+              this.clearPendingCanvas();
+              this.resetVideo(next);
+              if (this.isInterruptedPlayback(error)) {
+                if (this.currentType === 'none' && currentFallback) {
+                  this.renderImage(currentFallback);
+                }
+                return;
+              }
+              if (this.isPermanentCanvasError(error)) {
+                this.unsupportedCanvasSources.add(sourceVideo);
+              }
               Luminous.Logger.warn(
-                `Background`,
-                `Failed to play canvas stream`,
-                t,
-              ),
-              n ? this.renderImage(n) : this.clear());
-          }),
-        !0
-      );
-    }
-    static destroy() {
-      (this.imageRenderId++,
-        this.videoRenderId++,
-        (this.currentCanvasSource = null),
-        (this.currentCanvasKey = null),
-        this.clearPendingCanvas(),
-        this.cancelVideoCleanup(),
-        this.videoLayers?.forEach((e) => this.resetVideo(e)),
-        this.root?.remove(),
-        (this.root = null),
-        (this.base = null),
-        (this.imageLayers = null),
-        (this.videoLayers = null),
-        (this.activeImage = 0),
-        (this.activeVideo = 0),
-        (this.currentType = `none`),
-        this.emit(`change`));
-    }
-    static clear() {
-      (this.imageRenderId++,
-        this.videoRenderId++,
-        (this.currentCanvasSource = null),
-        (this.currentCanvasKey = null),
-        this.clearPendingCanvas(),
-        this.transitionTo(`none`));
-    }
-    static transitionTo(e, t = null) {
-      !this.imageLayers ||
-        !this.videoLayers ||
-        ((this.currentType = e),
-        this.base && (this.base.style.opacity = e === `none` ? `1` : `0`),
-        this.imageLayers.forEach((n) => {
-          let r = e === `image` && n === t;
-          ((n.style.opacity = r ? `1` : `0`),
-            n.classList.toggle(`luminous-background-layer--active`, r));
-        }),
-        this.videoLayers.forEach((n) => {
-          let r = e === `canvas` && n === t;
-          ((n.style.opacity = r ? `1` : `0`),
-            n.classList.toggle(`luminous-background-layer--active`, r));
-        }),
-        this.scheduleVideoCleanup(),
-        this.emit(`change`));
-    }
-    static isCanvasLayerUsable(e) {
-      if (!(e instanceof HTMLVideoElement) || !e.isConnected) return !1;
-      let t = e.srcObject;
-      return (
-        t instanceof MediaStream &&
-        t.getVideoTracks().some((e) => e.readyState === `live`)
-      );
-    }
-    static isPendingCanvas(e, t) {
-      return e === this.videoRenderId && this.pendingCanvasVideo === t;
-    }
-    static clearPendingCanvas() {
-      ((this.pendingCanvasSource = null),
-        (this.pendingCanvasKey = null),
-        (this.pendingCanvasVideo = null),
-        (this.pendingCanvasFallback = null));
-    }
-    static scheduleVideoCleanup() {
-      (this.cancelVideoCleanup(),
-        (this.videoCleanupTimer = window.setTimeout(() => {
-          this.videoCleanupTimer = null;
-          let e =
-              this.currentType === `canvas` && this.videoLayers
-                ? this.videoLayers[this.activeVideo]
-                : null,
-            t = this.pendingCanvasVideo;
-          this.videoLayers?.forEach((n) => {
-            n !== e && n !== t && this.resetVideo(n);
-          });
-        }, this.TRANSITION_MS)));
-    }
-    static cancelVideoCleanup() {
-      this.videoCleanupTimer !== null &&
-        (window.clearTimeout(this.videoCleanupTimer),
-        (this.videoCleanupTimer = null));
-    }
-    static getErrorName(e) {
-      return typeof e != `object` || !e || !(`name` in e)
-        ? null
-        : typeof e.name == `string`
-          ? e.name
-          : null;
-    }
-    static isInterruptedPlayback(e) {
-      return this.getErrorName(e) === `AbortError`;
-    }
-    static isPermanentCanvasError(e) {
-      let t = this.getErrorName(e);
-      return t === `NotSupportedError` || t === `SecurityError`;
-    }
-    static resetVideo(e) {
-      ((e.onplaying = null), e.pause());
-      let t = e.srcObject;
-      (t instanceof MediaStream && t.getTracks().forEach((e) => e.stop()),
-        (e.srcObject = null),
-        e.removeAttribute(`src`),
-        e.load());
-    }
-  },
-  t = class {
-    static NPV_VIDEO_SELECTOR = `.canvasVideoContainerNPV video`;
-    static NPV_LONGFORM_VIDEO_SELECTOR = `#VideoPlayerNpv_ReactPortal video`;
-    static CINEMA_VIDEO_SELECTOR = `.Root__top-container:has(#VideoPlayerCinema_ReactPortal) video`;
-    static listeners = new Map();
-    static observer = null;
-    static checkFrame = null;
-    static currentVideo = null;
-    static currentMode = null;
-    static currentSource = null;
-    static revision = 0;
-    static observedSourceVideo = null;
-    static forceCheck = !1;
-    static handleVideoSourceChange = () => {
-      ((this.forceCheck = !0), this.scheduleCheck());
-    };
-    static initialized = !1;
-    static enabled = !0;
-    static createPayload(e, t) {
-      return {
-        video: e,
-        mode: t,
-        source: e?.currentSrc || e?.src || null,
-        revision: this.revision,
-      };
-    }
-    static addEventListener(e, t) {
-      (this.getListeners(e).add(t),
-        (e === `mount` || e === `change`) &&
-          this.currentVideo &&
-          this.currentMode &&
-          this.callListener(
-            t,
-            this.createPayload(this.currentVideo, this.currentMode),
-          ),
-        this.initialized || this.init());
-    }
-    static removeEventListener(e, t) {
-      this.listeners.get(e)?.delete(t);
-    }
-    static get() {
-      return this.createPayload(this.currentVideo, this.currentMode);
-    }
-    static getVideo() {
-      return this.currentVideo;
-    }
-    static init() {
-      this.initialized ||
-        !this.enabled ||
-        ((this.initialized = !0),
-        (this.observer = new MutationObserver(() => this.scheduleCheck())),
-        this.observer.observe(document.documentElement, {
-          childList: !0,
-          subtree: !0,
-          attributes: !0,
-          attributeFilter: [`class`, `style`, `hidden`, `src`],
-        }),
-        this.check());
-    }
-    static setEnabled(e) {
-      if (this.enabled !== e) {
-        if (((this.enabled = e), !e)) {
-          let e = this.currentVideo,
-            t = this.currentMode;
-          (this.destroy(!1),
-            e &&
-              (this.revision++,
-              this.emit(`unmount`, this.createPayload(null, t))));
-          return;
-        }
-        this.init();
-      }
-    }
-    static destroy(e = !0) {
-      (this.observer?.disconnect(),
-        (this.observer = null),
-        this.checkFrame !== null &&
-          (cancelAnimationFrame(this.checkFrame), (this.checkFrame = null)),
-        this.observeVideoSource(null),
-        (this.currentVideo = null),
-        (this.currentMode = null),
-        (this.currentSource = null),
-        (this.forceCheck = !1),
-        (this.initialized = !1),
-        e && this.listeners.clear());
-    }
-    static scheduleCheck() {
-      this.checkFrame === null &&
-        (this.checkFrame = requestAnimationFrame(() => {
-          ((this.checkFrame = null), this.check());
-        }));
-    }
-    static detect() {
-      let e = document.querySelector(this.NPV_VIDEO_SELECTOR);
-      if (e) return this.createPayload(e, `npv`);
-      let t = this.findVisibleVideo(this.NPV_LONGFORM_VIDEO_SELECTOR);
-      if (t) return this.createPayload(t, `npv-video`);
-      let n = document.querySelector(this.CINEMA_VIDEO_SELECTOR);
-      return n
-        ? this.createPayload(n, `cinema`)
-        : this.createPayload(null, null);
-    }
-    static findVisibleVideo(e) {
-      let t = document.querySelectorAll(e);
-      return (
-        Array.from(t).find((e) => {
-          let t = getComputedStyle(e);
-          return (
-            e.isConnected &&
-            t.display !== `none` &&
-            t.visibility !== `hidden` &&
-            !e.ended &&
-            e.getClientRects().length > 0
-          );
-        }) ?? null
-      );
-    }
-    static check() {
-      let { video: e, mode: t, source: n } = this.detect(),
-        r = this.forceCheck;
-      this.forceCheck = !1;
-      let i = this.currentVideo,
-        a = this.currentMode;
-      if (!r && i === e && a === t && this.currentSource === n) return;
-      if (
-        ((this.currentVideo = e),
-        (this.currentMode = t),
-        (this.currentSource = n),
-        this.revision++,
-        this.observeVideoSource(e),
-        i && !e)
-      ) {
-        let e = this.createPayload(null, a);
-        (Luminous.Logger.info(`Canvas`, `Unmounted`, e),
-          this.emit(`unmount`, e));
-        return;
-      }
-      if (!i && e) {
-        let n = this.createPayload(e, t);
-        (Luminous.Logger.info(`Canvas`, `Mounted`, n), this.emit(`mount`, n));
-        return;
-      }
-      let o = this.createPayload(e, t);
-      (Luminous.Logger.info(`Canvas`, `Changed`, o), this.emit(`change`, o));
-    }
-    static emit(e, t) {
-      this.getListeners(e).forEach((e) => {
-        this.callListener(e, t);
-      });
-    }
-    static observeVideoSource(e) {
-      if (e === this.observedSourceVideo) return;
-      let t = [
-        `loadedmetadata`,
-        `loadeddata`,
-        `canplay`,
-        `playing`,
-        `emptied`,
-        `ended`,
-      ];
-      (t.forEach((e) => {
-        this.observedSourceVideo?.removeEventListener(
-          e,
-          this.handleVideoSourceChange,
-        );
-      }),
-        (this.observedSourceVideo = e),
-        t.forEach((t) => {
-          e?.addEventListener(t, this.handleVideoSourceChange);
-        }));
-    }
-    static callListener(e, t) {
-      try {
-        e(t);
-      } catch (e) {
-        Luminous.Logger.error(`Canvas`, `Listener failed`, e);
-      }
-    }
-    static getListeners(e) {
-      let t = this.listeners.get(e);
-      return (t || ((t = new Set()), this.listeners.set(e, t)), t);
-    }
-  },
-  n = class {
-    static disabledLevels = new Set();
-    static disabledChannels = new Set();
-    static levelStyles = {
-      INFO: `color:#ccc`,
-      WARN: `color:#facc15`,
-      ERROR: `color:#ef4444`,
-    };
-    static channelStyles = {
-      Runtime: `color:#38bdf8`,
-      Main: `color:#68c4e8`,
-      Background: `color:#60a5fa`,
-      Canvas: `color:#a78bfa`,
-      Palette: `color:#f472b6`,
-      Song: `color:#34d399`,
-      Settings: `color:#fbbf24`,
-      Motion: `color:#22d3ee`,
-      UI: `color:#c084fc`,
-    };
-    static baseStyle = `color:#888`;
-    static getTime() {
-      return new Date().toLocaleTimeString(`en-GB`, { hour12: !1 });
-    }
-    static shouldLog(e, t) {
-      return !this.disabledLevels.has(e) && !this.disabledChannels.has(t);
-    }
-    static format(e) {
-      return `Luminous/${e}`;
-    }
-    static log(e, t, ...n) {
-      this.shouldLog(e, t) &&
-        console.log(
-          `%c[${this.getTime()}] %c[${e}] %c[${this.format(t)}]`,
-          this.baseStyle,
-          this.levelStyles[e],
-          this.channelStyles[t],
-          ...n,
-        );
-    }
-    static info(e, ...t) {
-      this.log(`INFO`, e, ...t);
-    }
-    static warn(e, ...t) {
-      this.log(`WARN`, e, ...t);
-    }
-    static error(e, ...t) {
-      this.log(`ERROR`, e, ...t);
-    }
-    static enableLevel(e) {
-      this.disabledLevels.delete(e);
-    }
-    static disableLevel(e) {
-      this.disabledLevels.add(e);
-    }
-    static enableChannel(e) {
-      this.disabledChannels.delete(e);
-    }
-    static disableChannel(e) {
-      this.disabledChannels.add(e);
-    }
-    static printBanner() {
-      (console.log(
-        `%c Luminous v2.2.2 %c by streetraceing `,
-        `background:#1DB954;color:#000;padding:6px 12px;border-radius:8px 0 0 8px;font-weight:600;`,
-        `background:#181818;color:#1DB954;padding:6px 12px;border-radius:0 8px 8px 0;font-weight:500;`,
-      ),
-        console.log(
-          `%c build: 08/08/2026 04:08:35 UTC+03:00 `,
-          `color:#888;font-size:12px;`,
-        ));
-    }
-  },
-  r = { status: `booting`, brokenSince: null },
-  i = new Set();
-function a() {
-  return r;
-}
-function o(e) {
-  let t = { ...r, ...e };
-  (t.status === r.status && t.brokenSince === r.brokenSince) ||
-    ((r = t), i.forEach((e) => c(e)));
-}
-function s(e) {
-  return (
-    i.add(e),
-    c(e),
-    () => {
-      i.delete(e);
-    }
-  );
-}
-function c(e) {
-  try {
-    e(r);
-  } catch (e) {
-    n.error(`Main`, `UI health listener failed`, e);
-  }
-}
-var l = class {
-    static get() {
-      let e = Luminous.Canvas.get(),
-        t = Luminous.Song.getSync();
-      return {
-        luminous: {
-          version: `2.2.2`,
-          buildTime: `08/08/2026 04:08:35 UTC+03:00`,
-        },
-        runtime: {
-          background: Luminous.Background.getType(),
-          canvasMode: e.mode,
-          canvasSource: e.source,
-          track: t?.title ?? null,
-          uiHealth: a().status,
-          documentHidden: document.hidden,
-        },
-        settings: Luminous.Settings.snapshot(),
-        environment: {
-          platform: navigator.platform,
-          language: navigator.language,
-        },
-      };
-    }
-    static toText() {
-      return JSON.stringify(this.get(), null, 2);
-    }
-    static async copy() {
-      try {
-        return (await navigator.clipboard.writeText(this.toText()), !0);
-      } catch (e) {
-        return (
-          Luminous.Logger.warn(`Runtime`, `Failed to copy diagnostics`, e),
-          !1
-        );
-      }
-    }
-  },
-  u = class {
-    static isDesktop() {
-      return !!Spicetify.Platform?.NativeAPI;
-    }
-    static canFocus() {
-      return (
-        Spicetify.Platform?.FocusMainWindowAPI?.canFocusMainWindow?.() ?? !1
-      );
-    }
-    static focus() {
-      this.canFocus() &&
-        Spicetify.Platform?.FocusMainWindowAPI?.focusMainWindow?.();
-    }
-    static getZoomCapabilities() {
-      return (
-        Spicetify.Platform?.ZoomAPI?.getCapabilities?.() ?? {
-          canGetZoomLevel: !1,
-          canSetZoomLevel: !1,
-          canZoomIn: !1,
-          canZoomOut: !1,
-        }
-      );
-    }
-    static async getZoomLevel() {
-      let e = Spicetify.Platform?.ZoomAPI;
-      if (!e?.getZoomLevel) return null;
-      try {
-        return await e.getZoomLevel();
-      } catch (e) {
-        return (
-          Luminous.Logger.warn(`Runtime`, `Failed to read Spotify zoom`, e),
-          null
-        );
-      }
-    }
-    static async setZoomLevel(e) {
-      let t = Spicetify.Platform?.ZoomAPI;
-      if (!t?.setZoomLevel || !this.getZoomCapabilities().canSetZoomLevel)
-        return !1;
-      try {
-        return (await t.setZoomLevel(e), !0);
-      } catch (e) {
-        return (
-          Luminous.Logger.warn(`Runtime`, `Failed to set Spotify zoom`, e),
-          !1
-        );
-      }
-    }
-    static zoomIn() {
-      this.getZoomCapabilities().canZoomIn &&
-        Spicetify.Platform?.ZoomAPI?.zoomIn?.();
-    }
-    static zoomOut() {
-      this.getZoomCapabilities().canZoomOut &&
-        Spicetify.Platform?.ZoomAPI?.zoomOut?.();
-    }
-    static setWindowButtonsVisible(e) {
-      Spicetify.Platform?.NativeAPI?.setWindowButtonsVisibility?.(e);
-    }
-    static async setFullscreen(e) {
-      try {
-        return (
-          e
-            ? await document.documentElement.requestFullscreen()
-            : document.fullscreenElement && (await document.exitFullscreen()),
-          !0
-        );
-      } catch (e) {
-        return (
-          Luminous.Logger.warn(
-            `Runtime`,
-            `Failed to change fullscreen state`,
-            e,
-          ),
-          !1
-        );
-      }
-    }
-    static restart() {
-      Spicetify.Platform?.LifecycleAPI?.restart?.();
-    }
-    static shutdown() {
-      Spicetify.Platform?.LifecycleAPI?.shutdown?.();
-    }
-    static openNotificationSettings() {
-      Spicetify.Platform?.OSNotificationsAPI?.openNotificationsSetting?.();
-    }
-    static showToast(e, t) {
-      Spicetify.Platform?.OSNotificationsAPI?.showToast?.(e, t);
-    }
-    static async getLogFolder() {
-      let e = Spicetify.Platform?.DesktopLogsAPI;
-      if (!e?.getLogFolder) return null;
-      try {
-        return await e.getLogFolder();
-      } catch (e) {
-        return (
-          Luminous.Logger.warn(
-            `Runtime`,
-            `Failed to get Spotify log folder`,
-            e,
-          ),
-          null
-        );
-      }
-    }
-    static async getVersionInfo() {
-      let e = Spicetify.Platform?.UpdateAPI;
-      if (!e?.getVersionInfo) return null;
-      try {
-        return await e.getVersionInfo();
-      } catch (e) {
-        return (
-          Luminous.Logger.warn(
-            `Runtime`,
-            `Failed to get Spotify version info`,
-            e,
-          ),
-          null
-        );
-      }
-    }
-  },
-  d = `luminous-dynamic-palette`,
-  f = [
-    `--luminous-palette-primary`,
-    `--luminous-palette-secondary`,
-    `--luminous-palette-accent`,
-    `--luminous-palette-light`,
-    `--luminous-palette-dark`,
-    `--luminous-effect-angle`,
-    `--luminous-effect-saturation`,
-    `--luminous-effect-brightness`,
-    `--luminous-effect-contrast`,
-    `--luminous-blob-1-duration`,
-    `--luminous-blob-2-duration`,
-    `--luminous-blob-3-duration`,
-    `--luminous-blob-4-duration`,
-  ],
-  p = [
-    `luminous-effect-aurora`,
-    `luminous-effect-ember`,
-    `luminous-effect-bloom`,
-    `luminous-effect-prism`,
-    `luminous-effect-halo`,
-    `luminous-effect-energy-soft`,
-    `luminous-effect-energy-flow`,
-    `luminous-effect-energy-vivid`,
-    `luminous-effect-tone-dark`,
-    `luminous-effect-tone-balanced`,
-    `luminous-effect-tone-light`,
-  ],
-  m = 48,
-  h = 24,
-  g = 20,
-  _ = class {
-    static requestId = 0;
-    static source = null;
-    static cache = new Map();
-    static currentProfile = null;
-    static motionScale = 1;
-    static cancel() {
-      this.requestId++;
-    }
-    static clear() {
-      (this.cancel(),
-        (this.source = null),
-        (this.currentProfile = null),
-        this.clearAppliedPalette());
-    }
-    static setMotionDuration(e) {
-      let t = Number.isFinite(e) ? Math.min(48, Math.max(8, e)) : g;
-      ((this.motionScale = t / g),
-        this.currentProfile &&
-          this.applyDurations(this.currentProfile.baseDurations));
-    }
-    static async applyFromImage(e) {
-      if (!e) {
-        this.clear();
-        return;
-      }
-      if (e === this.source && document.documentElement.classList.contains(d))
-        return;
-      let t = ++this.requestId;
-      try {
-        let n = this.getCachedPalette(e) ?? (await this.extractProfile(e));
-        if (t !== this.requestId) return;
-        (this.cachePalette(e, n), this.applyProfile(n), (this.source = e));
-      } catch (e) {
-        if (t !== this.requestId) return;
-        ((this.source = null),
-          (this.currentProfile = null),
-          this.clearAppliedPalette(),
-          Luminous.Logger.warn(
-            `Palette`,
-            `Failed to create adaptive background effects`,
-            e,
-          ));
-      }
-    }
-    static async extractProfile(e) {
-      let t = await this.loadImage(e),
-        n = document.createElement(`canvas`);
-      ((n.width = m), (n.height = m));
-      let r = n.getContext(`2d`, { willReadFrequently: !0 });
-      if (!r) throw Error(`Canvas context unavailable`);
-      ((r.imageSmoothingEnabled = !0),
-        (r.imageSmoothingQuality = `high`),
-        r.drawImage(t, 0, 0, m, m));
-      let i = r.getImageData(0, 0, m, m).data;
-      return this.analyzePixels(i);
-    }
-    static loadImage(e) {
-      return new Promise((t, n) => {
-        let r = new Image();
-        ((r.crossOrigin = `anonymous`),
-          (r.decoding = `async`),
-          (r.onload = () => t(r)),
-          (r.onerror = () => n(Error(`Failed to load cover image`))),
-          (r.src = e));
-      });
-    }
-    static analyzePixels(e) {
-      let t = new Map(),
-        n = 0,
-        r = 0,
-        i = 0,
-        a = 0,
-        o = 0,
-        s = 0,
-        c = 0,
-        l = 0,
-        u = 0,
-        d = 0,
-        f = 0;
-      for (let p = 0; p < e.length; p += 4) {
-        let m = e[p + 3] / 255;
-        if (m < 0.45) continue;
-        let h = { red: e[p], green: e[p + 1], blue: e[p + 2] },
-          g = this.rgbToHsl(h),
-          _ = m * (0.62 + g.saturation * 0.78);
-        if (
-          ((n += _),
-          (r += h.red * _),
-          (i += h.green * _),
-          (a += h.blue * _),
-          (o += g.saturation * _),
-          (s += g.lightness * _),
-          (c += g.lightness * g.lightness * _),
-          (l +=
-            ((h.red - h.blue) / 255 + ((h.green - h.blue) / 255) * 0.28) * _),
-          g.saturation > 0.08 && g.lightness > 0.04 && g.lightness < 0.96)
-        ) {
-          let e = g.hue * Math.PI * 2,
-            t = _ * g.saturation;
-          ((u += Math.cos(e) * t), (d += Math.sin(e) * t), (f += t));
-        }
-        if (g.lightness < 0.025 || g.lightness > 0.975) continue;
-        let v = `${h.red >> 5}:${h.green >> 5}:${h.blue >> 5}`,
-          y =
-            _ *
-            (0.72 + g.saturation * 0.96) *
-            (0.82 + (1 - Math.abs(g.lightness - 0.52)) * 0.34),
-          b = t.get(v) ?? { red: 0, green: 0, blue: 0, weight: 0 };
-        ((b.red += h.red * y),
-          (b.green += h.green * y),
-          (b.blue += h.blue * y),
-          (b.weight += y),
-          t.set(v, b));
-      }
-      if (n === 0) throw Error(`Cover image has no usable pixels`);
-      t.size === 0 &&
-        t.set(`fallback`, { red: r, green: i, blue: a, weight: n });
-      let p = s / n,
-        m = Math.max(0, c / n - p ** 2),
-        h = f > 0 ? Math.hypot(u, d) / f : 1,
-        g = {
-          averageSaturation: o / n,
-          averageLightness: p,
-          contrast: Math.min(1, Math.sqrt(m) / 0.3),
-          hueDiversity: Math.min(1, Math.max(0, 1 - h)),
-          warmth: l / n,
-        },
-        _ = Array.from(t.values())
-          .map((e) => {
-            let t = {
-              red: Math.round(e.red / e.weight),
-              green: Math.round(e.green / e.weight),
-              blue: Math.round(e.blue / e.weight),
-            };
-            return { rgb: t, hsl: this.rgbToHsl(t), score: e.weight };
-          })
-          .sort((e, t) => t.score - e.score)
-          .slice(0, 36),
-        v = _.reduce((e, t) =>
-          t.score * (0.82 + t.hsl.saturation * 0.5) >
-          e.score * (0.82 + e.hsl.saturation * 0.5)
-            ? t
-            : e,
-        ),
-        y = this.selectDistinctColor(_, [v], 0.14),
-        b = this.selectDistinctColor(_, [v, y], 0.1),
-        x = this.getVisualChroma(v.hsl.saturation, g),
-        S = this.selectScene(v.hsl.hue, x, g),
-        C = this.selectEnergy(x, g),
-        w = this.selectTone(g.averageLightness),
-        {
-          primary: T,
-          secondary: E,
-          accent: D,
-        } = this.createSceneColors(S, v, y, b),
-        ee = [T, E, D].reduce((e, t) =>
-          this.relativeLuminance(t) > this.relativeLuminance(e) ? t : e,
-        ),
-        O = [T, E, D].reduce((e, t) =>
-          this.relativeLuminance(t) < this.relativeLuminance(e) ? t : e,
-        );
-      return {
-        primary: this.toHex(T),
-        secondary: this.toHex(E),
-        accent: this.toHex(D),
-        light: this.toHex(
-          this.mix(ee, { red: 255, green: 255, blue: 255 }, 0.34),
-        ),
-        dark: this.toHex(this.mix(O, { red: 0, green: 0, blue: 0 }, 0.62)),
-        scene: S,
-        energy: C,
-        tone: w,
-        angle: Math.round(v.hsl.hue * 360),
-        saturation: Number((0.92 + Math.min(0.68, x * 0.9)).toFixed(2)),
-        brightness: w === `dark` ? 1.08 : w === `light` ? 0.9 : 1,
-        contrast: Number((0.94 + g.contrast * 0.16).toFixed(2)),
-        baseDurations: this.getBaseDurations(C),
-      };
-    }
-    static selectDistinctColor(e, t, n) {
-      let r = e[0]?.score ?? 1,
-        i = e[0],
-        a = -1 / 0;
-      if (
-        (e.forEach((e) => {
-          let o = Math.min(...t.map((t) => this.colorDistance(e.rgb, t.rgb)));
-          if (o < n) return;
-          let s = Math.max(
-              ...t.map((t) => Math.abs(e.hsl.lightness - t.hsl.lightness)),
-            ),
-            c = (e.score / r) * 0.46 + o * 0.42 + s * 0.12;
-          c > a && ((i = e), (a = c));
-        }),
-        a > -1 / 0)
-      )
-        return i;
-      let o = t[t.length - 1],
-        s = {
-          hue: (o.hsl.hue + 0.42) % 1,
-          saturation: Math.max(0.28, o.hsl.saturation),
-          lightness: Math.min(0.72, Math.max(0.28, 1 - o.hsl.lightness * 0.72)),
-        };
-      return { rgb: this.hslToRgb(s), hsl: s, score: 0 };
-    }
-    static createSceneColors(e, t, n, r) {
-      if (e === `halo`) {
-        let e = this.normalizeColor(t.rgb, 0, 0.22, 0.72),
-          n = this.rgbToHsl(e),
-          r = n.saturation > 0.05 ? n.hue : 0.61;
-        return {
-          primary: e,
-          secondary: this.mix(e, { red: 255, green: 255, blue: 255 }, 0.3),
-          accent: this.hslToRgb({
-            hue: r,
-            saturation: Math.max(0.08, n.saturation * 0.72),
-            lightness: Math.min(0.74, Math.max(0.38, n.lightness + 0.12)),
-          }),
-        };
-      }
-      let [i, a] = {
-          aurora: [-0.12, -0.22],
-          ember: [0.08, 0.14],
-          bloom: [0.1, 0.2],
-          prism: [0.33, 0.66],
-        }[e],
-        o = n.score > 0 ? n.rgb : this.createHarmonyColor(t.hsl, i, 0.5),
-        s = r.score > 0 ? r.rgb : this.createHarmonyColor(t.hsl, a, 0.58);
-      return {
-        primary: this.normalizeColor(t.rgb, 0.34, 0.24, 0.74),
-        secondary: this.normalizeColor(o, 0.38, 0.2, 0.78),
-        accent: this.normalizeColor(s, 0.46, 0.34, 0.78),
-      };
-    }
-    static createHarmonyColor(e, t, n) {
-      return this.hslToRgb({
-        hue: (e.hue + t + 1) % 1,
-        saturation: Math.max(n, e.saturation),
-        lightness: Math.min(0.7, Math.max(0.38, e.lightness + 0.08)),
-      });
-    }
-    static getVisualChroma(e, t) {
-      let n = e * (0.52 + t.contrast * 0.24);
-      return Math.min(1, Math.max(t.averageSaturation, n));
-    }
-    static selectScene(e, t, n) {
-      if (t < 0.18) return `halo`;
-      if (n.hueDiversity > 0.43 && t > 0.38) return `prism`;
-      let r = e * 360;
-      return r >= 68 && r < 166
-        ? `bloom`
-        : n.warmth > 0.08 || r < 58 || r >= 334
-          ? `ember`
-          : `aurora`;
-    }
-    static selectEnergy(e, t) {
-      if (e < 0.18) return `soft`;
-      let n = e * 0.48 + t.contrast * 0.34 + t.hueDiversity * 0.18;
-      return n < 0.34 ? `soft` : n < 0.57 ? `flow` : `vivid`;
-    }
-    static selectTone(e) {
-      return e < 0.31 ? `dark` : e > 0.68 ? `light` : `balanced`;
-    }
-    static getBaseDurations(e) {
-      return e === `soft`
-        ? [42, 51, 60, 70]
-        : e === `vivid`
-          ? [14, 18, 23, 29]
-          : [24, 31, 38, 46];
-    }
-    static normalizeColor(e, t, n, r) {
-      let i = this.rgbToHsl(e);
-      return this.hslToRgb({
-        hue: i.hue,
-        saturation: Math.max(t, i.saturation),
-        lightness: Math.min(r, Math.max(n, i.lightness)),
-      });
-    }
-    static rgbToHsl({ red: e, green: t, blue: n }) {
-      let r = e / 255,
-        i = t / 255,
-        a = n / 255,
-        o = Math.max(r, i, a),
-        s = Math.min(r, i, a),
-        c = o - s,
-        l = (o + s) / 2;
-      if (c === 0) return { hue: 0, saturation: 0, lightness: l };
-      let u = c / (1 - Math.abs(2 * l - 1)),
-        d;
-      return (
-        (d =
-          o === r
-            ? ((i - a) / c) % 6
-            : o === i
-              ? (a - r) / c + 2
-              : (r - i) / c + 4),
-        { hue: ((d * 60 + 360) % 360) / 360, saturation: u, lightness: l }
-      );
-    }
-    static hslToRgb({ hue: e, saturation: t, lightness: n }) {
-      let r = (1 - Math.abs(2 * n - 1)) * t,
-        i = (e * 360) / 60,
-        a = r * (1 - Math.abs((i % 2) - 1)),
-        o = n - r / 2,
-        s = 0,
-        c = 0,
-        l = 0;
-      return (
-        i < 1
-          ? ((s = r), (c = a))
-          : i < 2
-            ? ((s = a), (c = r))
-            : i < 3
-              ? ((c = r), (l = a))
-              : i < 4
-                ? ((c = a), (l = r))
-                : i < 5
-                  ? ((s = a), (l = r))
-                  : ((s = r), (l = a)),
-        {
-          red: Math.round((s + o) * 255),
-          green: Math.round((c + o) * 255),
-          blue: Math.round((l + o) * 255),
-        }
-      );
-    }
-    static colorDistance(e, t) {
-      let n = (e.red - t.red) / 255,
-        r = (e.green - t.green) / 255,
-        i = (e.blue - t.blue) / 255;
-      return Math.min(1, Math.sqrt(n * n * 0.3 + r * r * 0.59 + i * i * 0.11));
-    }
-    static relativeLuminance({ red: e, green: t, blue: n }) {
-      return (0.2126 * e + 0.7152 * t + 0.0722 * n) / 255;
-    }
-    static mix(e, t, n) {
-      return {
-        red: Math.round(e.red + (t.red - e.red) * n),
-        green: Math.round(e.green + (t.green - e.green) * n),
-        blue: Math.round(e.blue + (t.blue - e.blue) * n),
-      };
-    }
-    static toHex({ red: e, green: t, blue: n }) {
-      return `#${[e, t, n].map((e) => e.toString(16).padStart(2, `0`)).join(``)}`;
-    }
-    static getCachedPalette(e) {
-      let t = this.cache.get(e);
-      return t ? (this.cache.delete(e), this.cache.set(e, t), t) : null;
-    }
-    static cachePalette(e, t) {
-      for (this.cache.set(e, t); this.cache.size > h;) {
-        let e = this.cache.keys().next().value;
-        if (!e) return;
-        this.cache.delete(e);
-      }
-    }
-    static applyProfile(e) {
-      let t = document.documentElement;
-      (t.style.setProperty(`--luminous-palette-primary`, e.primary),
-        t.style.setProperty(`--luminous-palette-secondary`, e.secondary),
-        t.style.setProperty(`--luminous-palette-accent`, e.accent),
-        t.style.setProperty(`--luminous-palette-light`, e.light),
-        t.style.setProperty(`--luminous-palette-dark`, e.dark),
-        t.style.setProperty(`--luminous-effect-angle`, `${e.angle}deg`),
-        t.style.setProperty(
-          `--luminous-effect-saturation`,
-          String(e.saturation),
-        ),
-        t.style.setProperty(
-          `--luminous-effect-brightness`,
-          String(e.brightness),
-        ),
-        t.style.setProperty(`--luminous-effect-contrast`, String(e.contrast)),
-        p.forEach((e) => t.classList.remove(e)),
-        t.classList.add(
-          `luminous-effect-${e.scene}`,
-          `luminous-effect-energy-${e.energy}`,
-          `luminous-effect-tone-${e.tone}`,
-          d,
-        ),
-        (this.currentProfile = e),
-        this.applyDurations(e.baseDurations));
-    }
-    static applyDurations(e) {
-      e.forEach((e, t) => {
-        let n = Math.max(7, e * this.motionScale);
-        document.documentElement.style.setProperty(
-          `--luminous-blob-${t + 1}-duration`,
-          `${Number(n.toFixed(1))}s`,
-        );
-      });
-    }
-    static clearAppliedPalette() {
-      let e = document.documentElement;
-      (f.forEach((t) => {
-        e.style.removeProperty(t);
-      }),
-        p.forEach((t) => e.classList.remove(t)),
-        e.classList.remove(d));
-    }
-  },
-  v = class {
-    static STORAGE_KEY = `luminous-settings`;
-    static PERSIST_DELAY_MS = 180;
-    static registry = new Map();
-    static values = new Map();
-    static listeners = new Map();
-    static savedValues = new Map();
-    static persistTimer = null;
-    static initialized = !1;
-    static batchDepth = 0;
-    static persistQueued = !1;
-    static handlePageHide = () => {
-      this.flushPersist();
-    };
-    static init() {
-      this.initialized ||
-        ((this.initialized = !0),
-        this.savedValues.clear(),
-        Object.entries(this.readSavedValues()).forEach(([e, t]) => {
-          this.savedValues.set(e, t);
-        }),
-        this.registry.forEach((e, t) => {
-          let n = this.normalizeValue(e, this.savedValues.get(t));
-          (this.values.set(t, n),
-            this.savedValues.set(t, n),
-            this.apply(t, e, n));
-        }),
-        window.addEventListener(`pagehide`, this.handlePageHide),
-        this.persistNow());
-    }
-    static destroy() {
-      (this.persistTimer !== null &&
-        (window.clearTimeout(this.persistTimer), (this.persistTimer = null)),
-        this.initialized &&
-          (this.persistNow(),
-          window.removeEventListener(`pagehide`, this.handlePageHide)),
-        this.listeners.clear(),
-        this.values.clear(),
-        this.savedValues.clear(),
-        this.registry.clear(),
-        (this.batchDepth = 0),
-        (this.persistQueued = !1),
-        (this.initialized = !1));
-    }
-    static register(e, t) {
-      if ((this.registry.set(e, t), !this.initialized)) return;
-      let n = this.normalizeValue(
-        t,
-        this.values.get(e) ?? this.savedValues.get(e),
-      );
-      (this.values.set(e, n),
-        this.savedValues.set(e, n),
-        this.apply(e, t, n),
-        this.schedulePersist());
-    }
-    static get(e) {
-      return this.values.has(e)
-        ? this.values.get(e)
-        : this.registry.get(e)?.default;
-    }
-    static has(e) {
-      return this.registry.has(e);
-    }
-    static set(e, t) {
-      this.setInternal(e, t, !0);
-    }
-    static setMany(e) {
-      this.batch(() => {
-        Object.entries(e).forEach(([e, t]) => {
-          this.setInternal(e, t, !0);
-        });
-      });
-    }
-    static reset(e) {
-      let t = this.registry.get(e);
-      t && this.set(e, t.default);
-    }
-    static resetMany(e) {
-      this.batch(() => {
-        e.forEach((e) => {
-          let t = this.registry.get(e);
-          t && this.setInternal(e, t.default, !0);
-        });
-      });
-    }
-    static resetAll() {
-      this.resetMany([...this.registry.keys()]);
-    }
-    static snapshot() {
-      let e = {};
-      return (
-        this.registry.forEach((t, n) => {
-          e[n] = this.values.get(n) ?? t.default;
-        }),
-        e
-      );
-    }
-    static subscribe(e, t, n = {}) {
-      if ((this.getListeners(e).add(t), n.immediate)) {
-        let n = this.values.get(e) ?? this.registry.get(e)?.default;
-        n !== void 0 && this.callListener(e, t, n);
-      }
-      return () => {
-        this.listeners.get(e)?.delete(t);
-      };
-    }
-    static getVar(e) {
-      return getComputedStyle(document.documentElement)
-        .getPropertyValue(e)
-        .trim();
-    }
-    static setVar(e, t) {
-      document.documentElement.style.setProperty(e, t);
-    }
-    static removeVar(e) {
-      document.documentElement.style.removeProperty(e);
-    }
-    static toggleClass(e, t) {
-      document.documentElement.classList.toggle(e, t);
-    }
-    static hasClass(e) {
-      return document.documentElement.classList.contains(e);
-    }
-    static setInternal(e, t, n) {
-      let r = this.registry.get(e);
-      if (!r) {
-        Luminous.Logger.warn(`Settings`, `Unknown setting: ${e}`);
-        return;
-      }
-      let i = this.normalizeValue(r, t);
-      Object.is(this.values.get(e), i) ||
-        (this.values.set(e, i),
-        this.savedValues.set(e, i),
-        this.apply(e, r, i),
-        n && this.emit(e, i),
-        this.schedulePersist());
-    }
-    static batch(e) {
-      this.batchDepth++;
-      try {
-        e();
-      } finally {
-        (this.batchDepth--,
-          this.batchDepth === 0 &&
-            this.persistQueued &&
-            ((this.persistQueued = !1), this.schedulePersist()));
-      }
-    }
-    static readSavedValues() {
-      try {
-        let e = Spicetify.LocalStorage.get(this.STORAGE_KEY);
-        if (!e) return {};
-        let t = JSON.parse(e);
-        if (typeof t == `object` && t && !Array.isArray(t)) return t;
-      } catch (e) {
-        Luminous.Logger.warn(`Settings`, `Failed to read saved settings`, e);
-      }
-      return {};
-    }
-    static normalizeValue(e, t) {
-      let n = t ?? e.default;
-      if (e.normalize)
-        try {
-          n = e.normalize(n);
-        } catch (t) {
-          return (
-            Luminous.Logger.warn(
-              `Settings`,
-              `Failed to normalize setting value`,
-              t,
-            ),
-            e.default
-          );
-        }
-      return typeof n == typeof e.default &&
-        (typeof n != `number` || Number.isFinite(n))
-        ? n
-        : (Luminous.Logger.warn(
-            `Settings`,
-            `Invalid setting value, using default`,
-          ),
-          e.default);
-    }
-    static apply(e, t, n) {
-      try {
-        t.apply?.(n);
-      } catch (t) {
-        Luminous.Logger.error(`Settings`, `Failed to apply setting: ${e}`, t);
-      }
-    }
-    static schedulePersist() {
-      if (this.batchDepth > 0) {
-        this.persistQueued = !0;
-        return;
-      }
-      (this.persistTimer !== null && window.clearTimeout(this.persistTimer),
-        (this.persistTimer = window.setTimeout(() => {
-          ((this.persistTimer = null), this.persistNow());
-        }, this.PERSIST_DELAY_MS)));
-    }
-    static flushPersist() {
-      (this.persistTimer !== null &&
-        (window.clearTimeout(this.persistTimer), (this.persistTimer = null)),
-        (this.persistQueued = !1),
-        this.persistNow());
-    }
-    static persistNow() {
-      let e = {};
-      (this.savedValues.forEach((t, n) => {
-        (typeof t == `string` ||
-          typeof t == `boolean` ||
-          (typeof t == `number` && Number.isFinite(t))) &&
-          (e[n] = t);
-      }),
-        this.registry.forEach((t, n) => {
-          e[n] = this.values.get(n) ?? t.default;
-        }));
-      try {
-        Spicetify.LocalStorage.set(this.STORAGE_KEY, JSON.stringify(e));
-      } catch (e) {
-        Luminous.Logger.error(`Settings`, `Failed to persist settings`, e);
-      }
-    }
-    static emit(e, t) {
-      this.listeners.get(e)?.forEach((n) => {
-        this.callListener(e, n, t);
-      });
-    }
-    static callListener(e, t, n) {
-      try {
-        t(n, e);
-      } catch (t) {
-        Luminous.Logger.error(`Settings`, `Setting listener failed: ${e}`, t);
-      }
-    }
-    static getListeners(e) {
-      let t = this.listeners.get(e);
-      return (t || ((t = new Set()), this.listeners.set(e, t)), t);
-    }
-  },
-  y = class {
-    static PLAYER_TIMEOUT_MESSAGE = `Spicetify Player not available`;
-    static INITIAL_TRACK_SYNC_INTERVAL = 100;
-    static current = null;
-    static currentSignature = null;
-    static listeners = new Map();
-    static ready = !1;
-    static eventsBound = !1;
-    static initPromise = null;
-    static initialTrackTimer = null;
-    static readyPromise = Promise.resolve();
-    static readyResolve = () => void 0;
-    static handleSongChange = (e) => {
-      let t = e;
-      this.handleTrack(t?.data?.item ?? Spicetify.Player.data?.item ?? null);
-    };
-    static {
-      this.resetReadyPromise();
-    }
-    static init(e = 15e3) {
-      return this.eventsBound
-        ? Promise.resolve()
-        : ((this.initPromise ||= this.initialize(e).finally(() => {
-            this.initPromise = null;
-          })),
-          this.initPromise);
-    }
-    static destroy() {
-      if (this.eventsBound)
-        try {
-          Spicetify.Player.removeEventListener(
-            `songchange`,
-            this.handleSongChange,
-          );
-        } catch (e) {
-          Luminous.Logger.warn(`Song`, `Failed to remove player listener`, e);
-        }
-      (this.initialTrackTimer !== null &&
-        (window.clearTimeout(this.initialTrackTimer),
-        (this.initialTrackTimer = null)),
-        this.listeners.clear(),
-        (this.current = null),
-        (this.currentSignature = null),
-        (this.ready = !1),
-        (this.eventsBound = !1),
-        (this.initPromise = null),
-        this.resetReadyPromise());
-    }
-    static addEventListener(e, t) {
-      (this.getListeners(e).add(t),
-        !this.eventsBound &&
-          !this.initPromise &&
-          this.init().catch((e) => {
-            Luminous.Logger.error(`Song`, `Initialization retry failed`, e);
-          }),
-        this.current &&
-          (e === `change` || (e === `ready` && this.ready)) &&
-          this.callListener(t, this.createPayload(this.current)));
-    }
-    static removeEventListener(e, t) {
-      this.listeners.get(e)?.delete(t);
-    }
-    static async get(e = 15e3) {
-      let t = Date.now();
-      if (!this.eventsBound)
-        try {
-          await this.init(e);
-        } catch {
-          return null;
-        }
-      if (!this.ready) {
-        let n = Math.max(0, e - (Date.now() - t));
-        if (!(await this.waitForReady(n))) return null;
-      }
-      return this.current ? this.createPayload(this.current) : null;
-    }
-    static getSync() {
-      return this.current ? this.createPayload(this.current) : null;
-    }
-    static async initialize(e) {
-      (await this.waitForPlayer(e),
-        this.bindEvents(),
-        this.syncCurrentTrack() || this.startInitialTrackSync(e));
-    }
-    static waitForPlayer(e) {
-      return new Promise((t, n) => {
-        let r = performance.now(),
-          i = () => {
-            if (
-              typeof Spicetify < `u` &&
-              typeof Spicetify.Player?.addEventListener == `function`
-            ) {
-              t();
-              return;
-            }
-            if (performance.now() - r > e) {
-              n(Error(this.PLAYER_TIMEOUT_MESSAGE));
-              return;
-            }
-            requestAnimationFrame(i);
-          };
-        i();
-      });
-    }
-    static bindEvents() {
-      this.eventsBound ||
-        ((this.eventsBound = !0),
-        Spicetify.Player.addEventListener(`songchange`, this.handleSongChange));
-    }
-    static syncCurrentTrack() {
-      let e = Spicetify.Player.data?.item ?? null;
-      return (this.handleTrack(e), e !== null);
-    }
-    static startInitialTrackSync(e) {
-      if (this.initialTrackTimer !== null || this.ready) return;
-      let t = Date.now() + e,
-        n = () => {
-          ((this.initialTrackTimer = null),
-            !(this.ready || this.syncCurrentTrack() || Date.now() >= t) &&
-              (this.initialTrackTimer = window.setTimeout(
-                n,
-                this.INITIAL_TRACK_SYNC_INTERVAL,
-              )));
-        };
-      n();
-    }
-    static waitForReady(e) {
-      return this.ready
-        ? Promise.resolve(!0)
-        : e <= 0
-          ? Promise.resolve(!1)
-          : new Promise((t) => {
-              let n = !1,
-                r = (e) => {
-                  n || ((n = !0), window.clearTimeout(i), t(e));
-                },
-                i = window.setTimeout(() => r(!1), e);
-              this.readyPromise.then(() => r(!0));
+                'Background',
+                'Failed to play canvas stream',
+                error,
+              );
+              if (currentFallback) {
+                this.renderImage(currentFallback);
+              } else {
+                this.clear();
+              }
             });
-    }
-    static handleTrack(e) {
-      if (!e) return;
-      let t = this.createTrackSignature(e);
-      if (!(this.current?.uri === e.uri && this.currentSignature === t)) {
-        if (
-          (this.initialTrackTimer !== null &&
-            (window.clearTimeout(this.initialTrackTimer),
-            (this.initialTrackTimer = null)),
-          (this.current = e),
-          (this.currentSignature = t),
-          !this.ready)
-        ) {
-          ((this.ready = !0),
-            this.readyResolve(),
-            Luminous.Logger.info(`Song`, `Ready`, this.createPayload(e)),
-            this.emit(`ready`));
-          return;
+          return true;
         }
-        (Luminous.Logger.info(`Song`, `Changed`, this.createPayload(e)),
-          this.emit(`change`));
-      }
-    }
-    static createTrackSignature(e) {
-      let t = e.artists?.map((e) => e.name).join(`|`) ?? ``,
-        n = b(
-          e.images?.[0]?.url ??
-            e.album?.images?.[0]?.url ??
-            e.metadata?.image_url ??
-            null,
-        );
-      return `${e.uri}\u0000${e.name}\u0000${t}\u0000${n ?? ``}`;
-    }
-    static createPayload(e) {
-      let t = e.artists?.map((e) => e.name) ?? [],
-        n = b(
-          e.images?.[0]?.url ??
-            e.album?.images?.[0]?.url ??
-            e.metadata?.image_url ??
-            null,
-        );
-      return {
-        track: e,
-        name: e.name,
-        title: t.length ? `${e.name} - ${t.join(`, `)}` : e.name,
-        artists: t,
-        image: n,
-        uri: e.uri,
-      };
-    }
-    static emit(e) {
-      if (!this.current) return;
-      let t = this.createPayload(this.current);
-      this.getListeners(e).forEach((e) => {
-        this.callListener(e, t);
-      });
-    }
-    static callListener(e, t) {
-      try {
-        e(t);
-      } catch (e) {
-        Luminous.Logger.error(`Song`, `Listener failed`, e);
-      }
-    }
-    static getListeners(e) {
-      let t = this.listeners.get(e);
-      return (t || ((t = new Set()), this.listeners.set(e, t)), t);
-    }
-    static resetReadyPromise() {
-      this.readyPromise = new Promise((e) => {
-        this.readyResolve = e;
-      });
-    }
-  };
-function b(e) {
-  if (!e) return null;
-  if (e.startsWith(`spotify:image:`)) {
-    let t = e.slice(14);
-    return t ? `https://i.scdn.co/image/${t}` : null;
-  }
-  return e;
-}
-function x() {
-  let e = window.Luminous;
-  if (typeof e?.destroy == `function`)
-    try {
-      e.destroy();
-    } catch (e) {
-      console.warn(`[Luminous] Failed to clean previous runtime`, e);
-    }
-}
-function S(r) {
-  Object.defineProperty(window, 'Luminous', {
-    value: {
-      Background: e,
-      Canvas: t,
-      Diagnostics: l,
-      Song: y,
-      Native: u,
-      Palette: _,
-      Settings: v,
-      Logger: n,
-      destroy: r,
-      version: `2.2.2`,
-    },
-    configurable: !0,
-  });
-}
-function C() {
-  return Spicetify.React;
-}
-function w() {
-  return C().useEffect;
-}
-function T() {
-  return C().useMemo;
-}
-function E() {
-  return C().useRef;
-}
-function D() {
-  return C().useState;
-}
-function ee() {
-  let e = w(),
-    t = T(),
-    n = D(),
-    [r, i] = n(() => Luminous.Song.getSync()),
-    [o, c] = n(() => Luminous.Canvas.get()),
-    [l, u] = n(() => Luminous.Settings.get(`dynamicBackground`) !== !1),
-    [d, f] = n(() => Luminous.Settings.get(`dynamicPalette`) !== !1),
-    [p, m] = n(() => a().status !== `booting`),
-    h = t(
-      () =>
-        p
-          ? l
-            ? o.video
-              ? `canvas:${o.source ?? ``}:${o.revision}:${r?.image ?? ``}`
-              : r?.image
-                ? `image:${r.image}`
-                : `empty`
-            : `disabled`
-          : `inactive`,
-      [p, o, l, r?.image],
-    );
-  return (
-    e(() => {
-      let e = r ? `${r.uri}\u0000${r.image ?? ``}` : null,
-        t = `${o.mode ?? ``}\u0000${o.source ?? ``}\u0000${o.revision}`,
-        n = o.video,
-        a = (t) => {
-          let n = `${t.uri}\u0000${t.image ?? ``}`;
-          e !== n &&
-            ((e = n),
-            Luminous.Palette.cancel(),
-            Luminous.Background.preloadImage(t.image),
-            i(t));
-        },
-        l = (e) => {
-          let r = `${e.mode ?? ``}\u0000${e.source ?? ``}\u0000${e.revision}`;
-          (t === r && n === e.video) || ((t = r), (n = e.video), c(e));
-        };
-      (Luminous.Song.addEventListener(`ready`, a),
-        Luminous.Song.addEventListener(`change`, a),
-        Luminous.Canvas.addEventListener(`mount`, l),
-        Luminous.Canvas.addEventListener(`change`, l),
-        Luminous.Canvas.addEventListener(`unmount`, l));
-      let d = s((e) => {
-          m(e.status !== `booting`);
-        }),
-        p = Luminous.Settings.subscribe(
-          `dynamicBackground`,
-          (e) => u(e !== !1),
-          { immediate: !0 },
-        ),
-        h = Luminous.Settings.subscribe(`dynamicPalette`, (e) => f(e !== !1), {
-          immediate: !0,
-        });
-      return () => {
-        (Luminous.Song.removeEventListener(`ready`, a),
-          Luminous.Song.removeEventListener(`change`, a),
-          Luminous.Canvas.removeEventListener(`mount`, l),
-          Luminous.Canvas.removeEventListener(`change`, l),
-          Luminous.Canvas.removeEventListener(`unmount`, l),
-          d(),
-          p(),
-          h(),
-          Luminous.Background.destroy(),
-          Luminous.Palette.clear());
-      };
-    }, []),
-    e(() => {
-      if (!p || !l || !d) {
-        Luminous.Palette.clear();
-        return;
-      }
-      Luminous.Palette.applyFromImage(r?.image);
-    }, [p, d, l, r?.image]),
-    e(() => {
-      if (!p) {
-        Luminous.Background.destroy();
-        return;
-      }
-      if (!l) {
-        Luminous.Background.clear();
-        return;
-      }
-      if (o.video) {
-        Luminous.Background.render({
-          canvas: o.video,
-          canvasSource: o.source,
-          image: r?.image,
-        });
-        return;
-      }
-      if (r?.image) {
-        Luminous.Background.render({ image: r.image });
-        return;
-      }
-      Luminous.Background.render();
-    }, [h]),
-    null
-  );
-}
-var O = 600,
-  te = 2600,
-  ne = 1500,
-  re = `.Root__top-container #main-view`,
-  ie = Date.now();
-function ae() {
-  let e = C(),
-    t = w(),
-    n = T(),
-    r = E(),
-    i = D(),
-    [o, c] = i(() => k()),
-    [l, u] = i(!0),
-    [d, f] = i(() => a()),
-    [p, m] = i(() => Date.now()),
-    h = r(o ? ie : null),
-    g = r(!1);
-  (t(() => s(f), []),
-    t(() => {
-      let e = null,
-        t = () => {
-          ((e = null), c(k()));
-        },
-        n = new MutationObserver(() => {
-          e === null && (e = requestAnimationFrame(t));
-        });
-      return (
-        n.observe(document.documentElement, { childList: !0, subtree: !0 }),
-        t(),
-        () => {
-          (n.disconnect(), e !== null && cancelAnimationFrame(e));
+        static renderDirectVideo(sourceVideo, sourceKey) {
+          if (
+            this.currentType === 'canvas' &&
+            this.directVideoSource === sourceVideo &&
+            sourceVideo.isConnected &&
+            !sourceVideo.ended &&
+            sourceVideo.classList.contains(
+              'luminous-direct-video-background--active',
+            )
+          ) {
+            // Spotify can reuse the same protected <video> while currentSrc and
+            // readyState briefly change. Keep the original element promoted instead
+            // of bouncing through the artwork fallback during those media events.
+            this.directVideoKey = sourceKey;
+            this.currentCanvasKey = sourceKey;
+            return true;
+          }
+          if (
+            !sourceVideo.isConnected ||
+            sourceVideo.ended ||
+            sourceVideo.readyState < HTMLMediaElement.HAVE_CURRENT_DATA ||
+            sourceVideo.videoWidth === 0 ||
+            sourceVideo.videoHeight === 0
+          ) {
+            return false;
+          }
+          this.cancelVideoCleanup();
+          this.imageRenderId++;
+          this.videoRenderId++;
+          if (this.pendingCanvasVideo) {
+            const pendingVideo = this.pendingCanvasVideo;
+            this.clearPendingCanvas();
+            this.resetVideo(pendingVideo);
+          }
+          if (
+            this.directVideoSource &&
+            this.directVideoSource !== sourceVideo
+          ) {
+            this.deactivateDirectVideo();
+          }
+          this.cancelDirectVideoCleanup(sourceVideo);
+          const host = sourceVideo.closest('#VideoPlayerNpv_ReactPortal');
+          sourceVideo.classList.add('luminous-direct-video-background');
+          host?.classList.add('luminous-direct-video-host');
+          this.directVideoSource = sourceVideo;
+          this.directVideoKey = sourceKey;
+          this.directVideoHosts.set(sourceVideo, host);
+          this.currentCanvasSource = sourceVideo;
+          this.currentCanvasKey = sourceKey;
+          // Register the inactive direct-video style before starting its opacity
+          // transition. This layout read is intentionally limited to the rare
+          // long-form path and avoids a one-frame empty background.
+          void sourceVideo.offsetWidth;
+          sourceVideo.classList.add('luminous-direct-video-background--active');
+          this.transitionTo('canvas', sourceVideo);
+          Luminous.Logger.info(
+            'Background',
+            'Using original protected video as background',
+            sourceVideo,
+          );
+          return true;
         }
-      );
-    }, []),
-    t(() => {
-      if (!o || g.current) return;
-      h.current === null && (h.current = Date.now());
-      let e = Date.now() - h.current,
-        t = d.status === `ready` ? O : te,
-        n = Math.max(0, t - e),
-        r = window.setTimeout(() => {
-          ((g.current = !0), u(!1));
-        }, n);
-      return () => window.clearTimeout(r);
-    }, [d.status, o]),
-    t(() => {
-      if (!o || !l || d.status !== `waiting`) return;
-      let e = window.setInterval(() => {
-        m(Date.now());
-      }, 250);
-      return () => window.clearInterval(e);
-    }, [d.status, o, l]));
-  let _ = n(
-      () =>
-        d.status === `waiting` && d.brokenSince
-          ? `Waiting for Spotify UI... (${oe(p - d.brokenSince)})`
-          : d.status === `ready`
-            ? `Welcome back. Lighting up Spotify...`
-            : `Starting Luminous...`,
-      [d.brokenSince, d.status, p],
-    ),
-    v =
-      d.status === `waiting` &&
-      d.brokenSince !== null &&
-      p - d.brokenSince >= ne;
-  return o
-    ? e.createElement(
-        `div`,
-        {
-          className: `luminous-splash${l ? `` : ` luminous-splash--hidden`}`,
-          'aria-hidden': l ? `false` : `true`,
-        },
-        e.createElement(
-          `div`,
-          { className: `luminous-splash__panel` },
-          e.createElement(
-            `div`,
-            { className: `luminous-splash__mark` },
-            e.createElement(`svg`, {
-              className: `luminous-splash__luminous-icon`,
-              viewBox: `0 0 16 16`,
-              'aria-hidden': `true`,
-              focusable: `false`,
-              dangerouslySetInnerHTML: {
-                __html: Spicetify.SVGIcons?.brightness ?? ``,
-              },
-            }),
-          ),
-          e.createElement(
-            `div`,
-            { className: `luminous-splash__copy` },
-            e.createElement(`span`, null, `Luminous`),
-            e.createElement(`small`, null, _),
-          ),
-          e.createElement(
-            `div`,
-            { className: `luminous-splash__loader` },
-            e.createElement(`span`),
-          ),
-          v &&
-            e.createElement(
-              `div`,
-              { className: `luminous-splash__hint` },
-              `Spotify is taking longer than expected. The splash will close automatically.`,
-            ),
-        ),
-      )
-    : null;
-}
-function k() {
-  return document.querySelector(re) !== null;
-}
-function oe(e) {
-  return `${Math.max(0, Math.floor(e / 1e3))}s`;
-}
-var A = [`still`, `drift`, `float`],
-  j = [`auto`, `artwork`],
-  M = (e, t, n) => (r) => {
-    if (
-      (typeof r != `number` && typeof r != `string`) ||
-      (typeof r == `string` && r.trim() === ``)
-    )
-      return e;
-    let i = typeof r == `number` ? r : Number(r);
-    return Number.isFinite(i) ? Math.min(n, Math.max(t, i)) : e;
-  },
-  N = (e) => (t) => (typeof t == `boolean` ? t : e),
-  P = (e, t) => (n) => (typeof n == `string` && e.includes(n) ? n : t),
-  F = (e, t, n) => {
-    t.forEach((t) => {
-      Luminous.Settings.toggleClass(`${e}${t}`, t === n);
-    });
-  },
-  se = {
-    backgroundBlur: {
-      default: 24,
-      normalize: M(24, 0, 48),
-      apply: (e) =>
-        Luminous.Settings.setVar(`--luminous-background-blur`, `${e}px`),
-    },
-    backgroundBrightness: {
-      default: 75,
-      normalize: M(75, 30, 120),
-      apply: (e) =>
-        Luminous.Settings.setVar(
-          `--luminous-background-brightness`,
-          String(e / 100),
-        ),
-    },
-    uiBlur: {
-      default: 16,
-      normalize: M(16, 0, 32),
-      apply: (e) => Luminous.Settings.setVar(`--luminous-ui-blur`, `${e}px`),
-    },
-    paletteStrength: {
-      default: 24,
-      normalize: M(24, 0, 50),
-      apply: (e) => {
-        let t = Math.min(78, Math.round(e * 1.6));
-        Luminous.Settings.setVar(`--luminous-palette-effect-opacity`, `${t}%`);
-      },
-    },
-    backgroundEnergy: { default: `adaptive`, normalize: () => `adaptive` },
-    uiOpacity: {
-      default: 50,
-      normalize: M(50, 0, 100),
-      apply: (e) => {
-        if (Luminous.Settings.get(`dynamicBackground`) === !1) {
-          Luminous.Settings.removeVar(`--luminous-ui-opacity`);
-          return;
-        }
-        Luminous.Settings.setVar(`--luminous-ui-opacity`, `${e}%`);
-      },
-    },
-    dynamicBackground: {
-      default: !0,
-      normalize: N(!0),
-      apply: (e) => {
-        if ((Luminous.Settings.toggleClass(`hideDynamicBackground`, !e), e)) {
-          (Luminous.Settings.setVar(`--luminous-background`, `transparent`),
-            Luminous.Settings.setVar(
-              `--luminous-ui-base`,
-              `var(--spice-sidebar)`,
-            ),
-            Luminous.Settings.setVar(
-              `--luminous-ui-opacity`,
-              `${Luminous.Settings.get(`uiOpacity`) ?? 50}%`,
-            ));
-          return;
-        }
-        (Luminous.Settings.removeVar(`--luminous-background`),
-          Luminous.Settings.removeVar(`--luminous-ui-base`),
-          Luminous.Settings.removeVar(`--luminous-ui-opacity`));
-      },
-    },
-    backgroundSource: {
-      default: `auto`,
-      normalize: P(j, `auto`),
-      apply: (e) => {
-        (F(`luminous-source-`, j, e), Luminous.Canvas.setEnabled(e === `auto`));
-      },
-    },
-    dynamicPalette: {
-      default: !0,
-      normalize: N(!0),
-      apply: (e) => {
-        e || Luminous.Palette.clear();
-      },
-    },
-    backgroundMotion: {
-      default: `drift`,
-      normalize: P(A, `drift`),
-      apply: (e) => F(`luminous-motion-`, A, e),
-    },
-    motionDuration: {
-      default: 20,
-      normalize: M(20, 8, 60),
-      apply: (e) => {
-        (Luminous.Settings.setVar(`--luminous-motion-duration`, `${e}s`),
-          Luminous.Palette.setMotionDuration(e));
-      },
-    },
-    reduceMotion: {
-      default: !1,
-      normalize: N(!1),
-      apply: (e) => Luminous.Settings.toggleClass(`luminous-reduce-motion`, e),
-    },
-  },
-  I = [
-    {
-      key: `dynamicBackground`,
-      label: `Dynamic background`,
-      description: `Use artwork or Spotify video behind the interface.`,
-      section: `appearance`,
-      control: `toggle`,
-    },
-    {
-      key: `backgroundSource`,
-      label: `Background source`,
-      description: `Prefer Spotify video automatically, or always use artwork.`,
-      section: `appearance`,
-      control: `choice`,
-      options: [
-        { value: `auto`, label: `Auto` },
-        { value: `artwork`, label: `Artwork` },
-      ],
-    },
-    {
-      key: `dynamicPalette`,
-      label: `Adaptive effects`,
-      description: `Build a colour scene automatically from each track cover.`,
-      section: `appearance`,
-      control: `toggle`,
-    },
-    {
-      key: `backgroundBlur`,
-      label: `Background blur`,
-      description: `Softens artwork and video behind Spotify.`,
-      section: `appearance`,
-      control: `range`,
-      min: 0,
-      max: 48,
-      step: 1,
-      unit: `px`,
-    },
-    {
-      key: `backgroundBrightness`,
-      label: `Background brightness`,
-      description: `Controls how prominent the media remains.`,
-      section: `appearance`,
-      control: `range`,
-      min: 30,
-      max: 120,
-      step: 1,
-      unit: `%`,
-    },
-    {
-      key: `uiOpacity`,
-      label: `Surface opacity`,
-      description: `Sets the density of translucent Spotify surfaces.`,
-      section: `appearance`,
-      control: `range`,
-      min: 0,
-      max: 100,
-      step: 1,
-      unit: `%`,
-    },
-    {
-      key: `uiBlur`,
-      label: `Surface blur`,
-      description: `Controls the glass blur applied to interface surfaces.`,
-      section: `appearance`,
-      control: `range`,
-      min: 0,
-      max: 32,
-      step: 1,
-      unit: `px`,
-    },
-    {
-      key: `paletteStrength`,
-      label: `Effect intensity`,
-      description: `Controls how strongly adaptive light appears.`,
-      section: `appearance`,
-      control: `range`,
-      min: 0,
-      max: 50,
-      step: 1,
-      unit: `%`,
-    },
-    {
-      key: `backgroundMotion`,
-      label: `Background movement`,
-      description: `Choose the stable media/light motion path.`,
-      section: `motion`,
-      control: `choice`,
-      options: [
-        { value: `still`, label: `Still` },
-        { value: `drift`, label: `Drift` },
-        { value: `float`, label: `Float` },
-      ],
-    },
-    {
-      key: `motionDuration`,
-      label: `Motion speed`,
-      description: `Scales media movement and adaptive scene tempo.`,
-      section: `motion`,
-      control: `range`,
-      min: 8,
-      max: 60,
-      step: 1,
-      unit: `s`,
-    },
-    {
-      key: `reduceMotion`,
-      label: `Reduce motion`,
-      description: `Stops Luminous animation regardless of system preference.`,
-      section: `motion`,
-      control: `toggle`,
-    },
-  ],
-  ce = [
-    {
-      id: `balanced`,
-      label: `Balanced`,
-      description: `Stable default balance of clarity, colour, and motion.`,
-      values: {
-        dynamicBackground: !0,
-        backgroundSource: `auto`,
-        dynamicPalette: !0,
-        backgroundBlur: 24,
-        backgroundBrightness: 75,
-        uiOpacity: 50,
-        uiBlur: 16,
-        paletteStrength: 24,
-        backgroundMotion: `drift`,
-        motionDuration: 20,
-      },
-    },
-    {
-      id: `cinematic`,
-      label: `Cinematic`,
-      description: `Brighter media and stronger colour without extra compositor layers.`,
-      values: {
-        dynamicBackground: !0,
-        backgroundSource: `auto`,
-        dynamicPalette: !0,
-        backgroundBlur: 16,
-        backgroundBrightness: 88,
-        uiOpacity: 38,
-        uiBlur: 20,
-        paletteStrength: 36,
-        backgroundMotion: `float`,
-        motionDuration: 26,
-      },
-    },
-    {
-      id: `calm`,
-      label: `Calm`,
-      description: `Artwork-only mode with soft lighting and no movement.`,
-      values: {
-        dynamicBackground: !0,
-        backgroundSource: `artwork`,
-        dynamicPalette: !0,
-        backgroundBlur: 36,
-        backgroundBrightness: 62,
-        uiOpacity: 68,
-        uiBlur: 18,
-        paletteStrength: 14,
-        backgroundMotion: `still`,
-      },
-    },
-    {
-      id: `performance`,
-      label: `Performance`,
-      description: `Artwork-only mode with minimal motion and lower glass cost.`,
-      values: {
-        dynamicBackground: !0,
-        backgroundSource: `artwork`,
-        dynamicPalette: !0,
-        backgroundBlur: 18,
-        backgroundBrightness: 72,
-        uiOpacity: 72,
-        uiBlur: 10,
-        paletteStrength: 10,
-        backgroundMotion: `still`,
-      },
-    },
-  ];
-function le() {
-  Object.entries(se).forEach(([e, t]) => {
-    Luminous.Settings.register(e, t);
-  });
-}
-var ue = `Luminous Settings`,
-  de = `brightness`,
-  L = `luminous-theme-modal`,
-  R = `luminous-theme-modal-title`,
-  z = `luminous-theme-modal-description`,
-  fe = [
-    `button:not([disabled])`,
-    `input:not([disabled])`,
-    `[href]`,
-    `[tabindex]:not([tabindex="-1"])`,
-  ].join(`,`),
-  B = [
-    { id: `presets`, label: `Presets` },
-    { id: `appearance`, label: `Appearance` },
-    { id: `motion`, label: `Motion` },
-    { id: `advanced`, label: `Advanced` },
-  ],
-  pe = 32,
-  me = I.map((e) => e.key);
-function he() {
-  let e = C(),
-    t = w(),
-    n = E(),
-    r = D(),
-    i = n(null),
-    [a, o] = r(!1);
-  return (
-    t(() => {
-      let e = !1,
-        t = null,
-        n = () => {
-          if (((t = null), e || i.current)) return;
-          if (!Spicetify.Menu?.Item) {
-            t = window.setTimeout(n, 250);
+        static deactivateDirectVideo(immediate = false) {
+          const sourceVideo = this.directVideoSource;
+          if (!sourceVideo) return;
+          this.directVideoSource = null;
+          this.directVideoKey = null;
+          sourceVideo.classList.remove(
+            'luminous-direct-video-background--active',
+          );
+          if (immediate) {
+            this.restoreDirectVideo(sourceVideo);
             return;
           }
-          let r = new Spicetify.Menu.Item(ue, !1, () => o(!0), de);
-          (r.register(), (i.current = r));
-        };
-      return (
-        n(),
-        () => {
-          ((e = !0),
-            t !== null && window.clearTimeout(t),
-            i.current?.deregister(),
-            (i.current = null));
+          this.cancelDirectVideoCleanup(sourceVideo);
+          const timer = window.setTimeout(() => {
+            this.directVideoCleanupTimers.delete(sourceVideo);
+            this.restoreDirectVideo(sourceVideo);
+          }, this.TRANSITION_MS);
+          this.directVideoCleanupTimers.set(sourceVideo, timer);
         }
-      );
-    }, []),
-    a ? e.createElement(ge, { onClose: () => o(!1) }) : null
-  );
-}
-function ge({ onClose: e }) {
-  let t = C(),
-    n = w(),
-    r = E(),
-    i = D(),
-    a = r(null),
-    o = r(null),
-    s = r({ presets: null, appearance: null, motion: null, advanced: null }),
-    [c, l] = i(`appearance`),
-    u = (e, t = !1) => {
-      e !== c &&
-        (l(e), t && requestAnimationFrame(() => s.current[e]?.focus()));
-    };
-  (n(() => {
-    let e = document.body.style.overflow,
-      t = document.activeElement,
-      n = document.documentElement,
-      r = requestAnimationFrame(() => o.current?.focus());
-    return (
-      (document.body.style.overflow = `hidden`),
-      n.classList.add(`luminous-settings-open`),
-      () => {
-        (cancelAnimationFrame(r),
-          (document.body.style.overflow = e),
-          n.classList.remove(`luminous-settings-open`),
-          t?.focus?.());
+        static cancelDirectVideoCleanup(sourceVideo) {
+          const timer = this.directVideoCleanupTimers.get(sourceVideo);
+          if (timer === undefined) return;
+          window.clearTimeout(timer);
+          this.directVideoCleanupTimers.delete(sourceVideo);
+        }
+        static restoreDirectVideo(sourceVideo) {
+          this.cancelDirectVideoCleanup(sourceVideo);
+          sourceVideo.classList.remove(
+            'luminous-direct-video-background',
+            'luminous-direct-video-background--active',
+          );
+          const host = this.directVideoHosts.get(sourceVideo);
+          this.directVideoHosts.delete(sourceVideo);
+          if (
+            host &&
+            !host.querySelector('video.luminous-direct-video-background')
+          ) {
+            host.classList.remove('luminous-direct-video-host');
+          }
+        }
+        static restoreAllDirectVideos() {
+          this.directVideoCleanupTimers.forEach((timer) =>
+            window.clearTimeout(timer),
+          );
+          this.directVideoCleanupTimers.clear();
+          Array.from(this.directVideoHosts.keys()).forEach((video) =>
+            this.restoreDirectVideo(video),
+          );
+          this.directVideoSource = null;
+          this.directVideoKey = null;
+        }
+        static destroy() {
+          this.imageRenderId++;
+          this.videoRenderId++;
+          this.currentCanvasSource = null;
+          this.currentCanvasKey = null;
+          this.clearPendingCanvas();
+          this.restoreAllDirectVideos();
+          this.cancelVideoCleanup();
+          this.videoLayers?.forEach((video) => this.resetVideo(video));
+          this.root?.remove();
+          this.root = null;
+          this.base = null;
+          this.imageLayers = null;
+          this.videoLayers = null;
+          this.activeImage = 0;
+          this.activeVideo = 0;
+          this.currentType = 'none';
+          this.emit('change');
+        }
+        static clear() {
+          this.imageRenderId++;
+          this.videoRenderId++;
+          this.currentCanvasSource = null;
+          this.currentCanvasKey = null;
+          this.clearPendingCanvas();
+          this.transitionTo('none');
+        }
+        static transitionTo(type, activeElement = null) {
+          if (!this.imageLayers || !this.videoLayers) return;
+          if (
+            this.directVideoSource &&
+            (type !== 'canvas' || activeElement !== this.directVideoSource)
+          ) {
+            this.deactivateDirectVideo();
+          }
+          this.currentType = type;
+          if (this.base) {
+            this.base.style.opacity = type === 'none' ? '1' : '0';
+          }
+          this.imageLayers.forEach((element) => {
+            const active = type === 'image' && element === activeElement;
+            element.style.opacity = active ? '1' : '0';
+            element.classList.toggle(
+              'luminous-background-layer--active',
+              active,
+            );
+          });
+          this.videoLayers.forEach((element) => {
+            const active = type === 'canvas' && element === activeElement;
+            element.style.opacity = active ? '1' : '0';
+            element.classList.toggle(
+              'luminous-background-layer--active',
+              active,
+            );
+          });
+          this.scheduleVideoCleanup();
+          this.emit('change');
+        }
+        static isCanvasLayerUsable(element) {
+          if (!(element instanceof HTMLVideoElement) || !element.isConnected) {
+            return false;
+          }
+          const stream = element.srcObject;
+          return (
+            stream instanceof MediaStream &&
+            stream.getVideoTracks().some((track) => track.readyState === 'live')
+          );
+        }
+        static isPendingCanvas(renderId, video) {
+          return (
+            renderId === this.videoRenderId && this.pendingCanvasVideo === video
+          );
+        }
+        static clearPendingCanvas() {
+          this.pendingCanvasSource = null;
+          this.pendingCanvasKey = null;
+          this.pendingCanvasVideo = null;
+          this.pendingCanvasFallback = null;
+        }
+        static scheduleVideoCleanup() {
+          this.cancelVideoCleanup();
+          this.videoCleanupTimer = window.setTimeout(() => {
+            this.videoCleanupTimer = null;
+            const activeVideo =
+              this.currentType === 'canvas' &&
+              !this.directVideoSource &&
+              this.videoLayers
+                ? this.videoLayers[this.activeVideo]
+                : null;
+            const pendingVideo = this.pendingCanvasVideo;
+            this.videoLayers?.forEach((video) => {
+              if (video !== activeVideo && video !== pendingVideo) {
+                this.resetVideo(video);
+              }
+            });
+          }, this.TRANSITION_MS);
+        }
+        static cancelVideoCleanup() {
+          if (this.videoCleanupTimer === null) return;
+          window.clearTimeout(this.videoCleanupTimer);
+          this.videoCleanupTimer = null;
+        }
+        static getErrorName(error) {
+          if (
+            typeof error !== 'object' ||
+            error === null ||
+            !('name' in error)
+          ) {
+            return null;
+          }
+          return typeof error.name === 'string' ? error.name : null;
+        }
+        static isInterruptedPlayback(error) {
+          return this.getErrorName(error) === 'AbortError';
+        }
+        static isPermanentCanvasError(error) {
+          const name = this.getErrorName(error);
+          return name === 'NotSupportedError' || name === 'SecurityError';
+        }
+        static resetVideo(video) {
+          video.onplaying = null;
+          video.pause();
+          const stream = video.srcObject;
+          if (stream instanceof MediaStream) {
+            stream.getTracks().forEach((track) => track.stop());
+          }
+          video.srcObject = null;
+          video.removeAttribute('src');
+          video.load();
+        }
       }
-    );
-  }, []),
-    n(() => {
-      let t = (t) => {
-        if (t.key === `Escape`) {
-          (t.preventDefault(), e());
-          return;
+      exports.Background = Background;
+    },
+    'src/api/canvas.ts': (module, exports, require) => {
+      'use strict';
+      Object.defineProperty(exports, '__esModule', { value: true });
+      exports.Canvas = void 0;
+      class Canvas {
+        static NPV_VIDEO_SELECTOR = '.canvasVideoContainerNPV video';
+        static NPV_LONGFORM_VIDEO_SELECTOR =
+          '#VideoPlayerNpv_ReactPortal video';
+        static CINEMA_VIDEO_SELECTOR =
+          '.Root__top-container:has(#VideoPlayerCinema_ReactPortal) video';
+        static listeners = new Map();
+        static observer = null;
+        static checkFrame = null;
+        static currentVideo = null;
+        static currentMode = null;
+        static currentSource = null;
+        static revision = 0;
+        static observedSourceVideo = null;
+        static forceCheck = false;
+        static handleVideoSourceChange = () => {
+          this.forceCheck = true;
+          this.scheduleCheck();
+        };
+        static initialized = false;
+        static enabled = true;
+        static createPayload(video, mode) {
+          return {
+            video,
+            mode,
+            source: video?.currentSrc || video?.src || null,
+            revision: this.revision,
+          };
         }
-        if (t.key !== `Tab`) return;
-        let n = Array.from(a.current?.querySelectorAll(fe) ?? []).filter(
-          (e) => e.offsetParent !== null,
-        );
-        if (!n.length) {
-          t.preventDefault();
-          return;
+        static addEventListener(event, listener) {
+          this.getListeners(event).add(listener);
+          if (
+            (event === 'mount' || event === 'change') &&
+            this.currentVideo &&
+            this.currentMode
+          ) {
+            this.callListener(
+              listener,
+              this.createPayload(this.currentVideo, this.currentMode),
+            );
+          }
+          if (!this.initialized) {
+            this.init();
+          }
         }
-        let r = n[0],
-          i = n[n.length - 1];
-        t.shiftKey && document.activeElement === r
-          ? (t.preventDefault(), i.focus())
-          : !t.shiftKey &&
-            document.activeElement === i &&
-            (t.preventDefault(), r.focus());
+        static removeEventListener(event, listener) {
+          this.listeners.get(event)?.delete(listener);
+        }
+        static get() {
+          return this.createPayload(this.currentVideo, this.currentMode);
+        }
+        static getVideo() {
+          return this.currentVideo;
+        }
+        static init() {
+          if (this.initialized || !this.enabled) return;
+          this.initialized = true;
+          this.observer = new MutationObserver(() => this.scheduleCheck());
+          this.observer.observe(document.documentElement, {
+            childList: true,
+            subtree: true,
+            attributes: true,
+            attributeFilter: ['class', 'style', 'hidden', 'src'],
+          });
+          this.check();
+        }
+        static setEnabled(enabled) {
+          if (this.enabled === enabled) return;
+          this.enabled = enabled;
+          if (!enabled) {
+            const previousVideo = this.currentVideo;
+            const previousMode = this.currentMode;
+            this.destroy(false);
+            if (previousVideo) {
+              this.revision++;
+              this.emit('unmount', this.createPayload(null, previousMode));
+            }
+            return;
+          }
+          this.init();
+        }
+        static destroy(clearListeners = true) {
+          this.observer?.disconnect();
+          this.observer = null;
+          if (this.checkFrame !== null) {
+            cancelAnimationFrame(this.checkFrame);
+            this.checkFrame = null;
+          }
+          this.observeVideoSource(null);
+          this.currentVideo = null;
+          this.currentMode = null;
+          this.currentSource = null;
+          this.forceCheck = false;
+          this.initialized = false;
+          if (clearListeners) this.listeners.clear();
+        }
+        static scheduleCheck() {
+          if (this.checkFrame !== null) return;
+          this.checkFrame = requestAnimationFrame(() => {
+            this.checkFrame = null;
+            this.check();
+          });
+        }
+        static detect() {
+          const npv = document.querySelector(this.NPV_VIDEO_SELECTOR);
+          if (npv) {
+            return this.createPayload(npv, 'npv');
+          }
+          const npvLongform = this.findVisibleVideo(
+            this.NPV_LONGFORM_VIDEO_SELECTOR,
+          );
+          if (npvLongform) {
+            return this.createPayload(npvLongform, 'npv-video');
+          }
+          const cinema = document.querySelector(this.CINEMA_VIDEO_SELECTOR);
+          if (cinema) {
+            return this.createPayload(cinema, 'cinema');
+          }
+          return this.createPayload(null, null);
+        }
+        static findVisibleVideo(selector) {
+          const videos = document.querySelectorAll(selector);
+          return (
+            Array.from(videos).find((video) => {
+              const style = getComputedStyle(video);
+              return (
+                video.isConnected &&
+                style.display !== 'none' &&
+                style.visibility !== 'hidden' &&
+                !video.ended &&
+                video.getClientRects().length > 0
+              );
+            }) ?? null
+          );
+        }
+        static check() {
+          const { video, mode, source } = this.detect();
+          const forced = this.forceCheck;
+          this.forceCheck = false;
+          const previousVideo = this.currentVideo;
+          const previousMode = this.currentMode;
+          if (
+            !forced &&
+            previousVideo === video &&
+            previousMode === mode &&
+            this.currentSource === source
+          ) {
+            return;
+          }
+          this.currentVideo = video;
+          this.currentMode = mode;
+          this.currentSource = source;
+          this.revision++;
+          this.observeVideoSource(video);
+          if (previousVideo && !video) {
+            const payload = this.createPayload(null, previousMode);
+            Luminous.Logger.info('Canvas', 'Unmounted', payload);
+            this.emit('unmount', payload);
+            return;
+          }
+          if (!previousVideo && video) {
+            const payload = this.createPayload(video, mode);
+            Luminous.Logger.info('Canvas', 'Mounted', payload);
+            this.emit('mount', payload);
+            return;
+          }
+          const payload = this.createPayload(video, mode);
+          Luminous.Logger.info('Canvas', 'Changed', payload);
+          this.emit('change', payload);
+        }
+        static emit(event, payload) {
+          this.getListeners(event).forEach((listener) => {
+            this.callListener(listener, payload);
+          });
+        }
+        static observeVideoSource(video) {
+          if (video === this.observedSourceVideo) return;
+          const events = [
+            'loadedmetadata',
+            'loadeddata',
+            'canplay',
+            'playing',
+            'emptied',
+            'ended',
+          ];
+          events.forEach((event) => {
+            this.observedSourceVideo?.removeEventListener(
+              event,
+              this.handleVideoSourceChange,
+            );
+          });
+          this.observedSourceVideo = video;
+          events.forEach((event) => {
+            video?.addEventListener(event, this.handleVideoSourceChange);
+          });
+        }
+        static callListener(listener, payload) {
+          try {
+            listener(payload);
+          } catch (error) {
+            Luminous.Logger.error('Canvas', 'Listener failed', error);
+          }
+        }
+        static getListeners(event) {
+          let listeners = this.listeners.get(event);
+          if (!listeners) {
+            listeners = new Set();
+            this.listeners.set(event, listeners);
+          }
+          return listeners;
+        }
+      }
+      exports.Canvas = Canvas;
+    },
+    'src/types/runtime/logger.types.ts': (module, exports, require) => {
+      'use strict';
+      Object.defineProperty(exports, '__esModule', { value: true });
+    },
+    'src/api/logger.ts': (module, exports, require) => {
+      'use strict';
+      Object.defineProperty(exports, '__esModule', { value: true });
+      exports.Logger = void 0;
+      class Logger {
+        static disabledLevels = new Set();
+        static disabledChannels = new Set();
+        static levelStyles = {
+          INFO: 'color:#ccc',
+          WARN: 'color:#facc15',
+          ERROR: 'color:#ef4444',
+        };
+        static channelStyles = {
+          Runtime: 'color:#38bdf8',
+          Main: 'color:#68c4e8',
+          Background: 'color:#60a5fa',
+          Canvas: 'color:#a78bfa',
+          Palette: 'color:#f472b6',
+          Song: 'color:#34d399',
+          Settings: 'color:#fbbf24',
+          Motion: 'color:#22d3ee',
+          UI: 'color:#c084fc',
+        };
+        static baseStyle = 'color:#888';
+        static getTime() {
+          return new Date().toLocaleTimeString('en-GB', { hour12: false });
+        }
+        static shouldLog(level, channel) {
+          return (
+            !this.disabledLevels.has(level) &&
+            !this.disabledChannels.has(channel)
+          );
+        }
+        static format(channel) {
+          return `Luminous/${channel}`;
+        }
+        static log(level, channel, ...data) {
+          if (!this.shouldLog(level, channel)) return;
+          console.log(
+            `%c[${this.getTime()}] %c[${level}] %c[${this.format(channel)}]`,
+            this.baseStyle,
+            this.levelStyles[level],
+            this.channelStyles[channel],
+            ...data,
+          );
+        }
+        static info(channel, ...data) {
+          this.log('INFO', channel, ...data);
+        }
+        static warn(channel, ...data) {
+          this.log('WARN', channel, ...data);
+        }
+        static error(channel, ...data) {
+          this.log('ERROR', channel, ...data);
+        }
+        static enableLevel(level) {
+          this.disabledLevels.delete(level);
+        }
+        static disableLevel(level) {
+          this.disabledLevels.add(level);
+        }
+        static enableChannel(channel) {
+          this.disabledChannels.delete(channel);
+        }
+        static disableChannel(channel) {
+          this.disabledChannels.add(channel);
+        }
+        static printBanner() {
+          console.log(
+            `%c Luminous v${__APP_VERSION__} %c by ${__APP_AUTHOR__} `,
+            'background:#1DB954;color:#000;padding:6px 12px;border-radius:8px 0 0 8px;font-weight:600;',
+            'background:#181818;color:#1DB954;padding:6px 12px;border-radius:0 8px 8px 0;font-weight:500;',
+          );
+          console.log(
+            `%c build: ${__BUILD_TIME__} `,
+            'color:#888;font-size:12px;',
+          );
+        }
+      }
+      exports.Logger = Logger;
+    },
+    'src/ui/health.ts': (module, exports, require) => {
+      'use strict';
+      Object.defineProperty(exports, '__esModule', { value: true });
+      exports.getUiHealth = getUiHealth;
+      exports.setUiHealth = setUiHealth;
+      exports.subscribeUiHealth = subscribeUiHealth;
+      const logger_1 = require('../api/logger');
+      let state = {
+        status: 'booting',
+        brokenSince: null,
       };
-      return (
-        document.addEventListener(`keydown`, t, !0),
-        () => document.removeEventListener(`keydown`, t, !0)
-      );
-    }, [e]));
-  let d = (e, t) => {
-    let n = B.findIndex((e) => e.id === t),
-      r = null;
-    (e.key === `ArrowRight` && (r = (n + 1) % B.length),
-      e.key === `ArrowLeft` && (r = (n - 1 + B.length) % B.length),
-      e.key === `Home` && (r = 0),
-      e.key === `End` && (r = B.length - 1),
-      r !== null && (e.preventDefault(), u(B[r].id, !0)));
-  };
-  return t.createElement(
-    `div`,
-    {
-      className: `luminous-theme-modal-backdrop`,
-      onMouseDown: (t) => {
-        t.target === t.currentTarget && e();
-      },
-    },
-    t.createElement(
-      `div`,
-      {
-        ref: a,
-        id: L,
-        className: `luminous-theme-menu`,
-        role: `dialog`,
-        'aria-modal': `true`,
-        'aria-labelledby': R,
-        'aria-describedby': z,
-      },
-      t.createElement(
-        `div`,
-        { className: `luminous-theme-menu__header` },
-        t.createElement(
-          `div`,
-          { className: `luminous-theme-menu__mark` },
-          t.createElement(`svg`, {
-            className: `luminous-theme-menu__luminous-icon`,
-            viewBox: `0 0 16 16`,
-            'aria-hidden': `true`,
-            focusable: `false`,
-            dangerouslySetInnerHTML: {
-              __html: Spicetify.SVGIcons?.brightness ?? ``,
-            },
-          }),
-        ),
-        t.createElement(
-          `div`,
-          { className: `luminous-theme-menu__title` },
-          t.createElement(`span`, { id: R }, `Luminous`),
-          t.createElement(
-            `small`,
-            { id: z },
-            `Theme preferences · v${Luminous.version}`,
-          ),
-        ),
-        t.createElement(
-          `button`,
-          {
-            className: `luminous-theme-menu__reset-button`,
-            type: `button`,
-            onClick: () => {
-              (Luminous.Settings.resetMany(me),
-                Spicetify.showNotification(`Luminous settings reset`));
-            },
-          },
-          `Reset`,
-        ),
-        t.createElement(
-          `button`,
-          {
-            ref: o,
-            className: `luminous-theme-menu__icon-button`,
-            type: `button`,
-            'aria-label': `Close settings`,
-            onClick: e,
-          },
-          t.createElement(`svg`, {
-            className: `luminous-theme-menu__close-icon`,
-            'aria-hidden': `true`,
-            dangerouslySetInnerHTML: { __html: Spicetify.SVGIcons?.x ?? `` },
-          }),
-        ),
-      ),
-      t.createElement(
-        `div`,
-        {
-          className: `luminous-theme-menu__tabs`,
-          role: `tablist`,
-          'aria-label': `Luminous settings sections`,
-        },
-        B.map((e) =>
-          t.createElement(
-            `button`,
-            {
-              key: e.id,
-              ref: (t) => {
-                s.current[e.id] = t;
-              },
-              id: `${L}-${e.id}-tab`,
-              className: `luminous-theme-menu__tab${c === e.id ? ` luminous-theme-menu__tab--active` : ``}`,
-              type: `button`,
-              role: `tab`,
-              tabIndex: c === e.id ? 0 : -1,
-              'aria-selected': String(c === e.id),
-              'aria-controls': `${L}-${e.id}-panel`,
-              onClick: () => u(e.id),
-              onKeyDown: (t) => d(t, e.id),
-            },
-            e.label,
-          ),
-        ),
-      ),
-      t.createElement(
-        `div`,
-        {
-          id: `${L}-${c}-panel`,
-          className: `luminous-theme-menu__panel`,
-          role: `tabpanel`,
-          'aria-labelledby': `${L}-${c}-tab`,
-        },
-        t.createElement(
-          `div`,
-          { key: c, className: `luminous-theme-menu__panel-content` },
-          t.createElement(ve, { section: c }),
-        ),
-      ),
-      t.createElement(
-        `p`,
-        { className: `luminous-theme-menu__footer` },
-        `Changes are saved automatically.`,
-      ),
-    ),
-  );
-}
-function _e() {
-  let e = C();
-  return e.createElement(
-    e.Fragment,
-    null,
-    e.createElement(
-      `div`,
-      { className: `luminous-theme-menu__panel-heading` },
-      e.createElement(`h2`, null, `Presets`),
-      e.createElement(
-        `p`,
-        null,
-        `Apply a complete visual and performance profile in one click.`,
-      ),
-    ),
-    e.createElement(
-      `div`,
-      { className: `luminous-theme-menu__preset-grid` },
-      ce.map((t) =>
-        e.createElement(
-          `button`,
-          {
-            key: t.id,
-            type: `button`,
-            className: `luminous-theme-menu__preset-card`,
-            onClick: () => {
-              (Luminous.Settings.setMany(t.values),
-                Spicetify.showNotification(`Luminous preset: ${t.label}`));
-            },
-          },
-          e.createElement(`strong`, null, t.label),
-          e.createElement(`small`, null, t.description),
-          e.createElement(`span`, { 'aria-hidden': `true` }, `Apply`),
-        ),
-      ),
-    ),
-  );
-}
-function ve({ section: e }) {
-  let t = C();
-  if (e === `presets`) return t.createElement(_e);
-  let n = {
-      appearance: {
-        title: `Appearance`,
-        description: `Shape artwork, adaptive colour, and Spotify glass surfaces.`,
-      },
-      motion: {
-        title: `Motion`,
-        description: `Tune movement, transitions, pointer depth, and accessibility.`,
-      },
-      advanced: {
-        title: `Advanced`,
-        description: `Control rendering cost and inspect the current runtime.`,
-      },
-    }[e],
-    r = I.filter((t) => t.section === e);
-  return t.createElement(
-    t.Fragment,
-    null,
-    t.createElement(
-      `div`,
-      { className: `luminous-theme-menu__panel-heading` },
-      t.createElement(`h2`, null, n.title),
-      t.createElement(`p`, null, n.description),
-    ),
-    r.map((e) => t.createElement(ye, { key: e.key, setting: e })),
-    e === `advanced` && t.createElement(Ce),
-  );
-}
-function ye({ setting: e }) {
-  return e.control === `toggle`
-    ? C().createElement(be, { setting: e })
-    : e.control === `range`
-      ? C().createElement(xe, { setting: e })
-      : C().createElement(Se, { setting: e });
-}
-function be({ setting: e }) {
-  let t = C(),
-    n = w(),
-    [r, i] = D()(() => Luminous.Settings.get(e.key) === !0);
-  return (
-    n(
-      () =>
-        Luminous.Settings.subscribe(e.key, (e) => i(e === !0), {
-          immediate: !0,
-        }),
-      [e.key],
-    ),
-    t.createElement(
-      `label`,
-      { className: `luminous-theme-menu__row luminous-theme-menu__toggle` },
-      t.createElement(V, { setting: e }),
-      t.createElement(
-        `span`,
-        { className: `luminous-theme-menu__switch` },
-        t.createElement(`input`, {
-          type: `checkbox`,
-          checked: r,
-          onChange: (t) =>
-            Luminous.Settings.set(e.key, t.currentTarget.checked),
-        }),
-        t.createElement(`span`),
-      ),
-    )
-  );
-}
-function xe({ setting: e }) {
-  let t = C(),
-    n = w(),
-    r = E(),
-    [i, a] = D()(() => Number(Luminous.Settings.get(e.key))),
-    o = r(i),
-    s = r(null),
-    c = () => {
-      (s.current !== null &&
-        (window.clearTimeout(s.current), (s.current = null)),
-        Luminous.Settings.set(e.key, o.current));
-    },
-    l = (t) => {
-      ((o.current = t),
-        a(t),
-        s.current === null &&
-          (s.current = window.setTimeout(() => {
-            ((s.current = null), Luminous.Settings.set(e.key, o.current));
-          }, pe)));
-    };
-  return (
-    n(
-      () =>
-        Luminous.Settings.subscribe(
-          e.key,
-          (e) => {
-            let t = Number(e);
-            ((o.current = t), a(t));
-          },
-          { immediate: !0 },
-        ),
-      [e.key],
-    ),
-    n(
-      () => () => {
-        s.current !== null &&
-          (window.clearTimeout(s.current),
-          Luminous.Settings.set(e.key, o.current));
-      },
-      [e.key],
-    ),
-    t.createElement(
-      `label`,
-      { className: `luminous-theme-menu__row luminous-theme-menu__range` },
-      t.createElement(
-        `span`,
-        { className: `luminous-theme-menu__range-header` },
-        t.createElement(V, { setting: e }),
-        t.createElement(`strong`, null, `${i}${e.unit ?? ``}`),
-      ),
-      t.createElement(
-        `span`,
-        { className: `luminous-theme-menu__range-control` },
-        t.createElement(`input`, {
-          type: `range`,
-          min: e.min,
-          max: e.max,
-          step: e.step,
-          value: i,
-          onInput: (e) => l(Number(e.currentTarget.value)),
-          onPointerUp: c,
-          onKeyUp: c,
-          onBlur: c,
-        }),
-      ),
-    )
-  );
-}
-function Se({ setting: e }) {
-  let t = C(),
-    n = w(),
-    [r, i] = D()(() => String(Luminous.Settings.get(e.key)));
-  return (
-    n(
-      () =>
-        Luminous.Settings.subscribe(e.key, (e) => i(String(e)), {
-          immediate: !0,
-        }),
-      [e.key],
-    ),
-    t.createElement(
-      `div`,
-      { className: `luminous-theme-menu__row luminous-theme-menu__choice` },
-      t.createElement(V, { setting: e }),
-      t.createElement(
-        `div`,
-        {
-          className: `luminous-theme-menu__choices`,
-          role: `group`,
-          'aria-label': e.label,
-        },
-        e.options?.map((n) =>
-          t.createElement(
-            `button`,
-            {
-              key: n.value,
-              className: `luminous-theme-menu__choice-button${r === n.value ? ` luminous-theme-menu__choice-button--active` : ``}`,
-              type: `button`,
-              'aria-pressed': String(r === n.value),
-              onClick: () => Luminous.Settings.set(e.key, n.value),
-            },
-            n.label,
-          ),
-        ),
-      ),
-    )
-  );
-}
-function V({ setting: e }) {
-  let t = C();
-  return t.createElement(
-    `span`,
-    { className: `luminous-theme-menu__copy` },
-    t.createElement(`span`, null, e.label),
-    t.createElement(`small`, null, e.description),
-  );
-}
-function Ce() {
-  let e = C(),
-    t = w(),
-    [n, r] = D()(() => H());
-  return (
-    t(() => {
-      let e = () => r(H());
-      return (
-        Luminous.Background.addEventListener(`change`, e),
-        Luminous.Canvas.addEventListener(`mount`, e),
-        Luminous.Canvas.addEventListener(`change`, e),
-        Luminous.Canvas.addEventListener(`unmount`, e),
-        Luminous.Song.addEventListener(`change`, e),
-        () => {
-          (Luminous.Background.removeEventListener(`change`, e),
-            Luminous.Canvas.removeEventListener(`mount`, e),
-            Luminous.Canvas.removeEventListener(`change`, e),
-            Luminous.Canvas.removeEventListener(`unmount`, e),
-            Luminous.Song.removeEventListener(`change`, e));
+      const listeners = new Set();
+      function getUiHealth() {
+        return state;
+      }
+      function setUiHealth(nextState) {
+        const next = { ...state, ...nextState };
+        if (
+          next.status === state.status &&
+          next.brokenSince === state.brokenSince
+        ) {
+          return;
         }
-      );
-    }, []),
-    e.createElement(
-      `div`,
-      { className: `luminous-theme-menu__runtime` },
-      e.createElement(
-        `div`,
-        { className: `luminous-theme-menu__runtime-copy` },
-        e.createElement(`strong`, null, `Runtime`),
-        e.createElement(`small`, null, n),
-      ),
-      e.createElement(
-        `button`,
-        {
-          type: `button`,
-          className: `luminous-theme-menu__tool-button`,
-          onClick: async () => {
-            let e = await Luminous.Diagnostics.copy();
-            Spicetify.showNotification(
-              e ? `Luminous diagnostics copied` : `Could not copy diagnostics`,
-              !e,
+        state = next;
+        listeners.forEach((listener) => notifyListener(listener));
+      }
+      function subscribeUiHealth(listener) {
+        listeners.add(listener);
+        notifyListener(listener);
+        return () => {
+          listeners.delete(listener);
+        };
+      }
+      function notifyListener(listener) {
+        try {
+          listener(state);
+        } catch (error) {
+          logger_1.Logger.error('Main', 'UI health listener failed', error);
+        }
+      }
+    },
+    'src/api/diagnostics.ts': (module, exports, require) => {
+      'use strict';
+      Object.defineProperty(exports, '__esModule', { value: true });
+      exports.Diagnostics = void 0;
+      const health_1 = require('../ui/health');
+      class Diagnostics {
+        static get() {
+          const canvas = Luminous.Canvas.get();
+          const song = Luminous.Song.getSync();
+          return {
+            luminous: {
+              version: __APP_VERSION__,
+              buildTime: __BUILD_TIME__,
+            },
+            runtime: {
+              background: Luminous.Background.getType(),
+              canvasMode: canvas.mode,
+              canvasSource: canvas.source,
+              track: song?.title ?? null,
+              uiHealth: (0, health_1.getUiHealth)().status,
+              documentHidden: document.hidden,
+            },
+            settings: Luminous.Settings.snapshot(),
+            environment: {
+              platform: navigator.platform,
+              language: navigator.language,
+            },
+          };
+        }
+        static toText() {
+          return JSON.stringify(this.get(), null, 2);
+        }
+        static async copy() {
+          try {
+            await navigator.clipboard.writeText(this.toText());
+            return true;
+          } catch (error) {
+            Luminous.Logger.warn(
+              'Runtime',
+              'Failed to copy diagnostics',
+              error,
+            );
+            return false;
+          }
+        }
+      }
+      exports.Diagnostics = Diagnostics;
+    },
+    'src/types/runtime/native.types.ts': (module, exports, require) => {
+      'use strict';
+      Object.defineProperty(exports, '__esModule', { value: true });
+    },
+    'src/api/native.ts': (module, exports, require) => {
+      'use strict';
+      Object.defineProperty(exports, '__esModule', { value: true });
+      exports.Native = void 0;
+      class Native {
+        static isDesktop() {
+          return !!Spicetify.Platform?.NativeAPI;
+        }
+        static canFocus() {
+          return (
+            Spicetify.Platform?.FocusMainWindowAPI?.canFocusMainWindow?.() ??
+            false
+          );
+        }
+        static focus() {
+          if (!this.canFocus()) return;
+          Spicetify.Platform?.FocusMainWindowAPI?.focusMainWindow?.();
+        }
+        static getZoomCapabilities() {
+          return (
+            Spicetify.Platform?.ZoomAPI?.getCapabilities?.() ?? {
+              canGetZoomLevel: false,
+              canSetZoomLevel: false,
+              canZoomIn: false,
+              canZoomOut: false,
+            }
+          );
+        }
+        static async getZoomLevel() {
+          const zoomApi = Spicetify.Platform?.ZoomAPI;
+          if (!zoomApi?.getZoomLevel) return null;
+          try {
+            return await zoomApi.getZoomLevel();
+          } catch (error) {
+            Luminous.Logger.warn(
+              'Runtime',
+              'Failed to read Spotify zoom',
+              error,
+            );
+            return null;
+          }
+        }
+        static async setZoomLevel(level) {
+          const zoomApi = Spicetify.Platform?.ZoomAPI;
+          if (
+            !zoomApi?.setZoomLevel ||
+            !this.getZoomCapabilities().canSetZoomLevel
+          ) {
+            return false;
+          }
+          try {
+            await zoomApi.setZoomLevel(level);
+            return true;
+          } catch (error) {
+            Luminous.Logger.warn(
+              'Runtime',
+              'Failed to set Spotify zoom',
+              error,
+            );
+            return false;
+          }
+        }
+        static zoomIn() {
+          if (!this.getZoomCapabilities().canZoomIn) return;
+          Spicetify.Platform?.ZoomAPI?.zoomIn?.();
+        }
+        static zoomOut() {
+          if (!this.getZoomCapabilities().canZoomOut) return;
+          Spicetify.Platform?.ZoomAPI?.zoomOut?.();
+        }
+        static setWindowButtonsVisible(visible) {
+          Spicetify.Platform?.NativeAPI?.setWindowButtonsVisibility?.(visible);
+        }
+        static async setFullscreen(fullscreen) {
+          try {
+            if (fullscreen) {
+              await document.documentElement.requestFullscreen();
+            } else if (document.fullscreenElement) {
+              await document.exitFullscreen();
+            }
+            return true;
+          } catch (error) {
+            Luminous.Logger.warn(
+              'Runtime',
+              'Failed to change fullscreen state',
+              error,
+            );
+            return false;
+          }
+        }
+        static restart() {
+          Spicetify.Platform?.LifecycleAPI?.restart?.();
+        }
+        static shutdown() {
+          Spicetify.Platform?.LifecycleAPI?.shutdown?.();
+        }
+        static openNotificationSettings() {
+          Spicetify.Platform?.OSNotificationsAPI?.openNotificationsSetting?.();
+        }
+        static showToast(payload, callback) {
+          Spicetify.Platform?.OSNotificationsAPI?.showToast?.(
+            payload,
+            callback,
+          );
+        }
+        static async getLogFolder() {
+          const logsApi = Spicetify.Platform?.DesktopLogsAPI;
+          if (!logsApi?.getLogFolder) return null;
+          try {
+            return await logsApi.getLogFolder();
+          } catch (error) {
+            Luminous.Logger.warn(
+              'Runtime',
+              'Failed to get Spotify log folder',
+              error,
+            );
+            return null;
+          }
+        }
+        static async getVersionInfo() {
+          const updateApi = Spicetify.Platform?.UpdateAPI;
+          if (!updateApi?.getVersionInfo) return null;
+          try {
+            return await updateApi.getVersionInfo();
+          } catch (error) {
+            Luminous.Logger.warn(
+              'Runtime',
+              'Failed to get Spotify version info',
+              error,
+            );
+            return null;
+          }
+        }
+      }
+      exports.Native = Native;
+    },
+    'src/api/palette.ts': (module, exports, require) => {
+      'use strict';
+      Object.defineProperty(exports, '__esModule', { value: true });
+      exports.Palette = void 0;
+      const PALETTE_CLASS = 'luminous-dynamic-palette';
+      const PALETTE_VARIABLES = [
+        '--luminous-palette-primary',
+        '--luminous-palette-secondary',
+        '--luminous-palette-accent',
+        '--luminous-palette-light',
+        '--luminous-palette-dark',
+        '--luminous-effect-angle',
+        '--luminous-effect-saturation',
+        '--luminous-effect-brightness',
+        '--luminous-effect-contrast',
+        '--luminous-blob-1-duration',
+        '--luminous-blob-2-duration',
+        '--luminous-blob-3-duration',
+        '--luminous-blob-4-duration',
+      ];
+      const EFFECT_CLASSES = [
+        'luminous-effect-aurora',
+        'luminous-effect-ember',
+        'luminous-effect-bloom',
+        'luminous-effect-prism',
+        'luminous-effect-halo',
+        'luminous-effect-energy-soft',
+        'luminous-effect-energy-flow',
+        'luminous-effect-energy-vivid',
+        'luminous-effect-tone-dark',
+        'luminous-effect-tone-balanced',
+        'luminous-effect-tone-light',
+      ];
+      const SAMPLE_SIZE = 48;
+      const MAX_CACHED_PALETTES = 24;
+      const DEFAULT_MOTION_DURATION = 20;
+      class Palette {
+        static requestId = 0;
+        static source = null;
+        static cache = new Map();
+        static currentProfile = null;
+        static motionScale = 1;
+        static cancel() {
+          this.requestId++;
+        }
+        static clear() {
+          this.cancel();
+          this.source = null;
+          this.currentProfile = null;
+          this.clearAppliedPalette();
+        }
+        static setMotionDuration(duration) {
+          const normalized = Number.isFinite(duration)
+            ? Math.min(48, Math.max(8, duration))
+            : DEFAULT_MOTION_DURATION;
+          this.motionScale = normalized / DEFAULT_MOTION_DURATION;
+          if (this.currentProfile) {
+            this.applyDurations(this.currentProfile.baseDurations);
+          }
+        }
+        static async applyFromImage(image) {
+          if (!image) {
+            this.clear();
+            return;
+          }
+          if (
+            image === this.source &&
+            document.documentElement.classList.contains(PALETTE_CLASS)
+          ) {
+            return;
+          }
+          const requestId = ++this.requestId;
+          try {
+            const profile =
+              this.getCachedPalette(image) ??
+              (await this.extractProfile(image));
+            if (requestId !== this.requestId) return;
+            this.cachePalette(image, profile);
+            this.applyProfile(profile);
+            this.source = image;
+          } catch (error) {
+            if (requestId !== this.requestId) return;
+            this.source = null;
+            this.currentProfile = null;
+            this.clearAppliedPalette();
+            Luminous.Logger.warn(
+              'Palette',
+              'Failed to create adaptive background effects',
+              error,
+            );
+          }
+        }
+        static async extractProfile(source) {
+          const image = await this.loadImage(source);
+          const canvas = document.createElement('canvas');
+          canvas.width = SAMPLE_SIZE;
+          canvas.height = SAMPLE_SIZE;
+          const context = canvas.getContext('2d', { willReadFrequently: true });
+          if (!context) throw new Error('Canvas context unavailable');
+          context.imageSmoothingEnabled = true;
+          context.imageSmoothingQuality = 'high';
+          context.drawImage(image, 0, 0, SAMPLE_SIZE, SAMPLE_SIZE);
+          const pixels = context.getImageData(
+            0,
+            0,
+            SAMPLE_SIZE,
+            SAMPLE_SIZE,
+          ).data;
+          return this.analyzePixels(pixels);
+        }
+        static loadImage(source) {
+          return new Promise((resolve, reject) => {
+            const image = new Image();
+            image.crossOrigin = 'anonymous';
+            image.decoding = 'async';
+            image.onload = () => resolve(image);
+            image.onerror = () =>
+              reject(new Error('Failed to load cover image'));
+            image.src = source;
+          });
+        }
+        static analyzePixels(pixels) {
+          const buckets = new Map();
+          let totalWeight = 0;
+          let redTotal = 0;
+          let greenTotal = 0;
+          let blueTotal = 0;
+          let saturationTotal = 0;
+          let lightnessTotal = 0;
+          let lightnessSquaredTotal = 0;
+          let warmthTotal = 0;
+          let hueX = 0;
+          let hueY = 0;
+          let hueWeight = 0;
+          for (let index = 0; index < pixels.length; index += 4) {
+            const alpha = pixels[index + 3] / 255;
+            if (alpha < 0.45) continue;
+            const rgb = {
+              red: pixels[index],
+              green: pixels[index + 1],
+              blue: pixels[index + 2],
+            };
+            const hsl = this.rgbToHsl(rgb);
+            const metricWeight = alpha * (0.62 + hsl.saturation * 0.78);
+            totalWeight += metricWeight;
+            redTotal += rgb.red * metricWeight;
+            greenTotal += rgb.green * metricWeight;
+            blueTotal += rgb.blue * metricWeight;
+            saturationTotal += hsl.saturation * metricWeight;
+            lightnessTotal += hsl.lightness * metricWeight;
+            lightnessSquaredTotal +=
+              hsl.lightness * hsl.lightness * metricWeight;
+            warmthTotal +=
+              ((rgb.red - rgb.blue) / 255 +
+                ((rgb.green - rgb.blue) / 255) * 0.28) *
+              metricWeight;
+            if (
+              hsl.saturation > 0.08 &&
+              hsl.lightness > 0.04 &&
+              hsl.lightness < 0.96
+            ) {
+              const angle = hsl.hue * Math.PI * 2;
+              const chromaWeight = metricWeight * hsl.saturation;
+              hueX += Math.cos(angle) * chromaWeight;
+              hueY += Math.sin(angle) * chromaWeight;
+              hueWeight += chromaWeight;
+            }
+            if (hsl.lightness < 0.025 || hsl.lightness > 0.975) continue;
+            const key = `${rgb.red >> 5}:${rgb.green >> 5}:${rgb.blue >> 5}`;
+            const colorWeight =
+              metricWeight *
+              (0.72 + hsl.saturation * 0.96) *
+              (0.82 + (1 - Math.abs(hsl.lightness - 0.52)) * 0.34);
+            const bucket = buckets.get(key) ?? {
+              red: 0,
+              green: 0,
+              blue: 0,
+              weight: 0,
+            };
+            bucket.red += rgb.red * colorWeight;
+            bucket.green += rgb.green * colorWeight;
+            bucket.blue += rgb.blue * colorWeight;
+            bucket.weight += colorWeight;
+            buckets.set(key, bucket);
+          }
+          if (totalWeight === 0) {
+            throw new Error('Cover image has no usable pixels');
+          }
+          if (buckets.size === 0) {
+            buckets.set('fallback', {
+              red: redTotal,
+              green: greenTotal,
+              blue: blueTotal,
+              weight: totalWeight,
+            });
+          }
+          const averageLightness = lightnessTotal / totalWeight;
+          const lightnessVariance = Math.max(
+            0,
+            lightnessSquaredTotal / totalWeight - averageLightness ** 2,
+          );
+          const hueConcentration =
+            hueWeight > 0 ? Math.hypot(hueX, hueY) / hueWeight : 1;
+          const metrics = {
+            averageSaturation: saturationTotal / totalWeight,
+            averageLightness,
+            contrast: Math.min(1, Math.sqrt(lightnessVariance) / 0.3),
+            hueDiversity: Math.min(1, Math.max(0, 1 - hueConcentration)),
+            warmth: warmthTotal / totalWeight,
+          };
+          const candidates = Array.from(buckets.values())
+            .map((bucket) => {
+              const rgb = {
+                red: Math.round(bucket.red / bucket.weight),
+                green: Math.round(bucket.green / bucket.weight),
+                blue: Math.round(bucket.blue / bucket.weight),
+              };
+              return {
+                rgb,
+                hsl: this.rgbToHsl(rgb),
+                score: bucket.weight,
+              };
+            })
+            .sort((left, right) => right.score - left.score)
+            .slice(0, 36);
+          const primaryCandidate = candidates.reduce((best, candidate) => {
+            const candidateScore =
+              candidate.score * (0.82 + candidate.hsl.saturation * 0.5);
+            const bestScore = best.score * (0.82 + best.hsl.saturation * 0.5);
+            return candidateScore > bestScore ? candidate : best;
+          });
+          const secondaryCandidate = this.selectDistinctColor(
+            candidates,
+            [primaryCandidate],
+            0.14,
+          );
+          const accentCandidate = this.selectDistinctColor(
+            candidates,
+            [primaryCandidate, secondaryCandidate],
+            0.1,
+          );
+          const visualChroma = this.getVisualChroma(
+            primaryCandidate.hsl.saturation,
+            metrics,
+          );
+          const scene = this.selectScene(
+            primaryCandidate.hsl.hue,
+            visualChroma,
+            metrics,
+          );
+          const energy = this.selectEnergy(visualChroma, metrics);
+          const tone = this.selectTone(metrics.averageLightness);
+          const { primary, secondary, accent } = this.createSceneColors(
+            scene,
+            primaryCandidate,
+            secondaryCandidate,
+            accentCandidate,
+          );
+          const brightest = [primary, secondary, accent].reduce(
+            (best, color) =>
+              this.relativeLuminance(color) > this.relativeLuminance(best)
+                ? color
+                : best,
+          );
+          const darkest = [primary, secondary, accent].reduce((best, color) =>
+            this.relativeLuminance(color) < this.relativeLuminance(best)
+              ? color
+              : best,
+          );
+          return {
+            primary: this.toHex(primary),
+            secondary: this.toHex(secondary),
+            accent: this.toHex(accent),
+            light: this.toHex(
+              this.mix(brightest, { red: 255, green: 255, blue: 255 }, 0.34),
+            ),
+            dark: this.toHex(
+              this.mix(darkest, { red: 0, green: 0, blue: 0 }, 0.62),
+            ),
+            scene,
+            energy,
+            tone,
+            angle: Math.round(primaryCandidate.hsl.hue * 360),
+            saturation: Number(
+              (0.92 + Math.min(0.68, visualChroma * 0.9)).toFixed(2),
+            ),
+            brightness: tone === 'dark' ? 1.08 : tone === 'light' ? 0.9 : 1,
+            contrast: Number((0.94 + metrics.contrast * 0.16).toFixed(2)),
+            baseDurations: this.getBaseDurations(energy),
+          };
+        }
+        static selectDistinctColor(candidates, anchors, minimumDistance) {
+          const maxScore = candidates[0]?.score ?? 1;
+          let selected = candidates[0];
+          let selectedScore = -Infinity;
+          candidates.forEach((candidate) => {
+            const distance = Math.min(
+              ...anchors.map((anchor) =>
+                this.colorDistance(candidate.rgb, anchor.rgb),
+              ),
+            );
+            if (distance < minimumDistance) return;
+            const luminanceContrast = Math.max(
+              ...anchors.map((anchor) =>
+                Math.abs(candidate.hsl.lightness - anchor.hsl.lightness),
+              ),
+            );
+            const score =
+              (candidate.score / maxScore) * 0.46 +
+              distance * 0.42 +
+              luminanceContrast * 0.12;
+            if (score > selectedScore) {
+              selected = candidate;
+              selectedScore = score;
+            }
+          });
+          if (selectedScore > -Infinity) return selected;
+          const anchor = anchors[anchors.length - 1];
+          const fallbackHsl = {
+            hue: (anchor.hsl.hue + 0.42) % 1,
+            saturation: Math.max(0.28, anchor.hsl.saturation),
+            lightness: Math.min(
+              0.72,
+              Math.max(0.28, 1 - anchor.hsl.lightness * 0.72),
+            ),
+          };
+          return {
+            rgb: this.hslToRgb(fallbackHsl),
+            hsl: fallbackHsl,
+            score: 0,
+          };
+        }
+        static createSceneColors(
+          scene,
+          primaryCandidate,
+          secondaryCandidate,
+          accentCandidate,
+        ) {
+          if (scene === 'halo') {
+            const primary = this.normalizeColor(
+              primaryCandidate.rgb,
+              0,
+              0.22,
+              0.72,
+            );
+            const primaryHsl = this.rgbToHsl(primary);
+            const neutralHue =
+              primaryHsl.saturation > 0.05 ? primaryHsl.hue : 0.61;
+            return {
+              primary,
+              secondary: this.mix(
+                primary,
+                { red: 255, green: 255, blue: 255 },
+                0.3,
+              ),
+              accent: this.hslToRgb({
+                hue: neutralHue,
+                saturation: Math.max(0.08, primaryHsl.saturation * 0.72),
+                lightness: Math.min(
+                  0.74,
+                  Math.max(0.38, primaryHsl.lightness + 0.12),
+                ),
+              }),
+            };
+          }
+          const harmonyOffsets = {
+            aurora: [-0.12, -0.22],
+            ember: [0.08, 0.14],
+            bloom: [0.1, 0.2],
+            prism: [0.33, 0.66],
+          };
+          const [secondaryOffset, accentOffset] = harmonyOffsets[scene];
+          const secondarySource =
+            secondaryCandidate.score > 0
+              ? secondaryCandidate.rgb
+              : this.createHarmonyColor(
+                  primaryCandidate.hsl,
+                  secondaryOffset,
+                  0.5,
+                );
+          const accentSource =
+            accentCandidate.score > 0
+              ? accentCandidate.rgb
+              : this.createHarmonyColor(
+                  primaryCandidate.hsl,
+                  accentOffset,
+                  0.58,
+                );
+          return {
+            primary: this.normalizeColor(
+              primaryCandidate.rgb,
+              0.34,
+              0.24,
+              0.74,
+            ),
+            secondary: this.normalizeColor(secondarySource, 0.38, 0.2, 0.78),
+            accent: this.normalizeColor(accentSource, 0.46, 0.34, 0.78),
+          };
+        }
+        static createHarmonyColor(anchor, hueOffset, minimumSaturation) {
+          return this.hslToRgb({
+            hue: (anchor.hue + hueOffset + 1) % 1,
+            saturation: Math.max(minimumSaturation, anchor.saturation),
+            lightness: Math.min(0.7, Math.max(0.38, anchor.lightness + 0.08)),
+          });
+        }
+        static getVisualChroma(dominantSaturation, metrics) {
+          const accentContribution =
+            dominantSaturation * (0.52 + metrics.contrast * 0.24);
+          return Math.min(
+            1,
+            Math.max(metrics.averageSaturation, accentContribution),
+          );
+        }
+        static selectScene(dominantHue, visualChroma, metrics) {
+          if (visualChroma < 0.18) return 'halo';
+          if (metrics.hueDiversity > 0.43 && visualChroma > 0.38) {
+            return 'prism';
+          }
+          const hueDegrees = dominantHue * 360;
+          if (hueDegrees >= 68 && hueDegrees < 166) return 'bloom';
+          if (metrics.warmth > 0.08 || hueDegrees < 58 || hueDegrees >= 334) {
+            return 'ember';
+          }
+          return 'aurora';
+        }
+        static selectEnergy(visualChroma, metrics) {
+          if (visualChroma < 0.18) return 'soft';
+          const score =
+            visualChroma * 0.48 +
+            metrics.contrast * 0.34 +
+            metrics.hueDiversity * 0.18;
+          if (score < 0.34) return 'soft';
+          if (score < 0.57) return 'flow';
+          return 'vivid';
+        }
+        static selectTone(averageLightness) {
+          if (averageLightness < 0.31) return 'dark';
+          if (averageLightness > 0.68) return 'light';
+          return 'balanced';
+        }
+        static getBaseDurations(energy) {
+          if (energy === 'soft') return [42, 51, 60, 70];
+          if (energy === 'vivid') return [14, 18, 23, 29];
+          return [24, 31, 38, 46];
+        }
+        static normalizeColor(
+          rgb,
+          minimumSaturation,
+          minimumLightness,
+          maximumLightness,
+        ) {
+          const hsl = this.rgbToHsl(rgb);
+          return this.hslToRgb({
+            hue: hsl.hue,
+            saturation: Math.max(minimumSaturation, hsl.saturation),
+            lightness: Math.min(
+              maximumLightness,
+              Math.max(minimumLightness, hsl.lightness),
+            ),
+          });
+        }
+        static rgbToHsl({ red, green, blue }) {
+          const normalizedRed = red / 255;
+          const normalizedGreen = green / 255;
+          const normalizedBlue = blue / 255;
+          const maximum = Math.max(
+            normalizedRed,
+            normalizedGreen,
+            normalizedBlue,
+          );
+          const minimum = Math.min(
+            normalizedRed,
+            normalizedGreen,
+            normalizedBlue,
+          );
+          const delta = maximum - minimum;
+          const lightness = (maximum + minimum) / 2;
+          if (delta === 0) {
+            return { hue: 0, saturation: 0, lightness };
+          }
+          const saturation = delta / (1 - Math.abs(2 * lightness - 1));
+          let hue;
+          if (maximum === normalizedRed) {
+            hue = ((normalizedGreen - normalizedBlue) / delta) % 6;
+          } else if (maximum === normalizedGreen) {
+            hue = (normalizedBlue - normalizedRed) / delta + 2;
+          } else {
+            hue = (normalizedRed - normalizedGreen) / delta + 4;
+          }
+          return {
+            hue: ((hue * 60 + 360) % 360) / 360,
+            saturation,
+            lightness,
+          };
+        }
+        static hslToRgb({ hue, saturation, lightness }) {
+          const chroma = (1 - Math.abs(2 * lightness - 1)) * saturation;
+          const hueSection = (hue * 360) / 60;
+          const secondary = chroma * (1 - Math.abs((hueSection % 2) - 1));
+          const offset = lightness - chroma / 2;
+          let red = 0;
+          let green = 0;
+          let blue = 0;
+          if (hueSection < 1) {
+            red = chroma;
+            green = secondary;
+          } else if (hueSection < 2) {
+            red = secondary;
+            green = chroma;
+          } else if (hueSection < 3) {
+            green = chroma;
+            blue = secondary;
+          } else if (hueSection < 4) {
+            green = secondary;
+            blue = chroma;
+          } else if (hueSection < 5) {
+            red = secondary;
+            blue = chroma;
+          } else {
+            red = chroma;
+            blue = secondary;
+          }
+          return {
+            red: Math.round((red + offset) * 255),
+            green: Math.round((green + offset) * 255),
+            blue: Math.round((blue + offset) * 255),
+          };
+        }
+        static colorDistance(left, right) {
+          const red = (left.red - right.red) / 255;
+          const green = (left.green - right.green) / 255;
+          const blue = (left.blue - right.blue) / 255;
+          return Math.min(
+            1,
+            Math.sqrt(
+              red * red * 0.3 + green * green * 0.59 + blue * blue * 0.11,
+            ),
+          );
+        }
+        static relativeLuminance({ red, green, blue }) {
+          return (0.2126 * red + 0.7152 * green + 0.0722 * blue) / 255;
+        }
+        static mix(from, to, amount) {
+          return {
+            red: Math.round(from.red + (to.red - from.red) * amount),
+            green: Math.round(from.green + (to.green - from.green) * amount),
+            blue: Math.round(from.blue + (to.blue - from.blue) * amount),
+          };
+        }
+        static toHex({ red, green, blue }) {
+          return `#${[red, green, blue]
+            .map((value) => value.toString(16).padStart(2, '0'))
+            .join('')}`;
+        }
+        static getCachedPalette(source) {
+          const profile = this.cache.get(source);
+          if (!profile) return null;
+          this.cache.delete(source);
+          this.cache.set(source, profile);
+          return profile;
+        }
+        static cachePalette(source, profile) {
+          this.cache.set(source, profile);
+          while (this.cache.size > MAX_CACHED_PALETTES) {
+            const oldestSource = this.cache.keys().next().value;
+            if (!oldestSource) return;
+            this.cache.delete(oldestSource);
+          }
+        }
+        static applyProfile(profile) {
+          const root = document.documentElement;
+          root.style.setProperty('--luminous-palette-primary', profile.primary);
+          root.style.setProperty(
+            '--luminous-palette-secondary',
+            profile.secondary,
+          );
+          root.style.setProperty('--luminous-palette-accent', profile.accent);
+          root.style.setProperty('--luminous-palette-light', profile.light);
+          root.style.setProperty('--luminous-palette-dark', profile.dark);
+          root.style.setProperty(
+            '--luminous-effect-angle',
+            `${profile.angle}deg`,
+          );
+          root.style.setProperty(
+            '--luminous-effect-saturation',
+            String(profile.saturation),
+          );
+          root.style.setProperty(
+            '--luminous-effect-brightness',
+            String(profile.brightness),
+          );
+          root.style.setProperty(
+            '--luminous-effect-contrast',
+            String(profile.contrast),
+          );
+          EFFECT_CLASSES.forEach((className) =>
+            root.classList.remove(className),
+          );
+          root.classList.add(
+            `luminous-effect-${profile.scene}`,
+            `luminous-effect-energy-${profile.energy}`,
+            `luminous-effect-tone-${profile.tone}`,
+            PALETTE_CLASS,
+          );
+          this.currentProfile = profile;
+          this.applyDurations(profile.baseDurations);
+        }
+        static applyDurations(durations) {
+          durations.forEach((duration, index) => {
+            const scaled = Math.max(7, duration * this.motionScale);
+            document.documentElement.style.setProperty(
+              `--luminous-blob-${index + 1}-duration`,
+              `${Number(scaled.toFixed(1))}s`,
+            );
+          });
+        }
+        static clearAppliedPalette() {
+          const root = document.documentElement;
+          PALETTE_VARIABLES.forEach((variable) => {
+            root.style.removeProperty(variable);
+          });
+          EFFECT_CLASSES.forEach((className) =>
+            root.classList.remove(className),
+          );
+          root.classList.remove(PALETTE_CLASS);
+        }
+      }
+      exports.Palette = Palette;
+    },
+    'src/types/runtime/settings.types.ts': (module, exports, require) => {
+      'use strict';
+      Object.defineProperty(exports, '__esModule', { value: true });
+    },
+    'src/api/settings.ts': (module, exports, require) => {
+      'use strict';
+      Object.defineProperty(exports, '__esModule', { value: true });
+      exports.Settings = void 0;
+      class Settings {
+        static STORAGE_KEY = 'luminous-settings';
+        static PERSIST_DELAY_MS = 180;
+        static registry = new Map();
+        static values = new Map();
+        static listeners = new Map();
+        static savedValues = new Map();
+        static persistTimer = null;
+        static initialized = false;
+        static batchDepth = 0;
+        static persistQueued = false;
+        static handlePageHide = () => {
+          this.flushPersist();
+        };
+        static init() {
+          if (this.initialized) return;
+          this.initialized = true;
+          this.savedValues.clear();
+          Object.entries(this.readSavedValues()).forEach(([key, value]) => {
+            this.savedValues.set(key, value);
+          });
+          this.registry.forEach((definition, key) => {
+            const value = this.normalizeValue(
+              definition,
+              this.savedValues.get(key),
+            );
+            this.values.set(key, value);
+            this.savedValues.set(key, value);
+            this.apply(key, definition, value);
+          });
+          window.addEventListener('pagehide', this.handlePageHide);
+          this.persistNow();
+        }
+        static destroy() {
+          if (this.persistTimer !== null) {
+            window.clearTimeout(this.persistTimer);
+            this.persistTimer = null;
+          }
+          if (this.initialized) {
+            this.persistNow();
+            window.removeEventListener('pagehide', this.handlePageHide);
+          }
+          this.listeners.clear();
+          this.values.clear();
+          this.savedValues.clear();
+          this.registry.clear();
+          this.batchDepth = 0;
+          this.persistQueued = false;
+          this.initialized = false;
+        }
+        static register(key, definition) {
+          this.registry.set(key, definition);
+          if (!this.initialized) return;
+          const value = this.normalizeValue(
+            definition,
+            this.values.get(key) ?? this.savedValues.get(key),
+          );
+          this.values.set(key, value);
+          this.savedValues.set(key, value);
+          this.apply(key, definition, value);
+          this.schedulePersist();
+        }
+        static get(key) {
+          if (this.values.has(key)) return this.values.get(key);
+          const definition = this.registry.get(key);
+          return definition?.default;
+        }
+        static has(key) {
+          return this.registry.has(key);
+        }
+        static set(key, value) {
+          this.setInternal(key, value, true);
+        }
+        static setMany(values) {
+          this.batch(() => {
+            Object.entries(values).forEach(([key, value]) => {
+              this.setInternal(key, value, true);
+            });
+          });
+        }
+        static reset(key) {
+          const definition = this.registry.get(key);
+          if (!definition) return;
+          this.set(key, definition.default);
+        }
+        static resetMany(keys) {
+          this.batch(() => {
+            keys.forEach((key) => {
+              const definition = this.registry.get(key);
+              if (!definition) return;
+              this.setInternal(key, definition.default, true);
+            });
+          });
+        }
+        static resetAll() {
+          this.resetMany([...this.registry.keys()]);
+        }
+        static snapshot() {
+          const snapshot = {};
+          this.registry.forEach((definition, key) => {
+            snapshot[key] = this.values.get(key) ?? definition.default;
+          });
+          return snapshot;
+        }
+        static subscribe(key, listener, options = {}) {
+          this.getListeners(key).add(listener);
+          if (options.immediate) {
+            const value =
+              this.values.get(key) ?? this.registry.get(key)?.default;
+            if (value !== undefined) {
+              this.callListener(key, listener, value);
+            }
+          }
+          return () => {
+            this.listeners.get(key)?.delete(listener);
+          };
+        }
+        static getVar(name) {
+          return getComputedStyle(document.documentElement)
+            .getPropertyValue(name)
+            .trim();
+        }
+        static setVar(name, value) {
+          document.documentElement.style.setProperty(name, value);
+        }
+        static removeVar(name) {
+          document.documentElement.style.removeProperty(name);
+        }
+        static toggleClass(className, force) {
+          document.documentElement.classList.toggle(className, force);
+        }
+        static hasClass(className) {
+          return document.documentElement.classList.contains(className);
+        }
+        static setInternal(key, value, notify) {
+          const definition = this.registry.get(key);
+          if (!definition) {
+            Luminous.Logger.warn('Settings', `Unknown setting: ${key}`);
+            return;
+          }
+          const normalized = this.normalizeValue(definition, value);
+          if (Object.is(this.values.get(key), normalized)) return;
+          this.values.set(key, normalized);
+          this.savedValues.set(key, normalized);
+          this.apply(key, definition, normalized);
+          if (notify) this.emit(key, normalized);
+          this.schedulePersist();
+        }
+        static batch(callback) {
+          this.batchDepth++;
+          try {
+            callback();
+          } finally {
+            this.batchDepth--;
+            if (this.batchDepth === 0 && this.persistQueued) {
+              this.persistQueued = false;
+              this.schedulePersist();
+            }
+          }
+        }
+        static readSavedValues() {
+          try {
+            const saved = Spicetify.LocalStorage.get(this.STORAGE_KEY);
+            if (!saved) return {};
+            const parsed = JSON.parse(saved);
+            if (
+              typeof parsed === 'object' &&
+              parsed !== null &&
+              !Array.isArray(parsed)
+            ) {
+              return parsed;
+            }
+          } catch (error) {
+            Luminous.Logger.warn(
+              'Settings',
+              'Failed to read saved settings',
+              error,
+            );
+          }
+          return {};
+        }
+        static normalizeValue(definition, value) {
+          let normalized = value ?? definition.default;
+          if (definition.normalize) {
+            try {
+              normalized = definition.normalize(normalized);
+            } catch (error) {
+              Luminous.Logger.warn(
+                'Settings',
+                'Failed to normalize setting value',
+                error,
+              );
+              return definition.default;
+            }
+          }
+          if (typeof normalized === typeof definition.default) {
+            if (typeof normalized !== 'number' || Number.isFinite(normalized)) {
+              return normalized;
+            }
+          }
+          Luminous.Logger.warn(
+            'Settings',
+            'Invalid setting value, using default',
+          );
+          return definition.default;
+        }
+        static apply(key, definition, value) {
+          try {
+            definition.apply?.(value);
+          } catch (error) {
+            Luminous.Logger.error(
+              'Settings',
+              `Failed to apply setting: ${key}`,
+              error,
+            );
+          }
+        }
+        static schedulePersist() {
+          if (this.batchDepth > 0) {
+            this.persistQueued = true;
+            return;
+          }
+          if (this.persistTimer !== null) {
+            window.clearTimeout(this.persistTimer);
+          }
+          this.persistTimer = window.setTimeout(() => {
+            this.persistTimer = null;
+            this.persistNow();
+          }, this.PERSIST_DELAY_MS);
+        }
+        static flushPersist() {
+          if (this.persistTimer !== null) {
+            window.clearTimeout(this.persistTimer);
+            this.persistTimer = null;
+          }
+          this.persistQueued = false;
+          this.persistNow();
+        }
+        static persistNow() {
+          const saved = {};
+          this.savedValues.forEach((value, key) => {
+            if (
+              typeof value === 'string' ||
+              typeof value === 'boolean' ||
+              (typeof value === 'number' && Number.isFinite(value))
+            ) {
+              saved[key] = value;
+            }
+          });
+          this.registry.forEach((definition, key) => {
+            saved[key] = this.values.get(key) ?? definition.default;
+          });
+          try {
+            Spicetify.LocalStorage.set(this.STORAGE_KEY, JSON.stringify(saved));
+          } catch (error) {
+            Luminous.Logger.error(
+              'Settings',
+              'Failed to persist settings',
+              error,
+            );
+          }
+        }
+        static emit(key, value) {
+          this.listeners.get(key)?.forEach((listener) => {
+            this.callListener(key, listener, value);
+          });
+        }
+        static callListener(key, listener, value) {
+          try {
+            listener(value, key);
+          } catch (error) {
+            Luminous.Logger.error(
+              'Settings',
+              `Setting listener failed: ${key}`,
+              error,
+            );
+          }
+        }
+        static getListeners(key) {
+          let listeners = this.listeners.get(key);
+          if (!listeners) {
+            listeners = new Set();
+            this.listeners.set(key, listeners);
+          }
+          return listeners;
+        }
+      }
+      exports.Settings = Settings;
+    },
+    'src/types/runtime/song.types.ts': (module, exports, require) => {
+      'use strict';
+      Object.defineProperty(exports, '__esModule', { value: true });
+    },
+    'src/api/song.ts': (module, exports, require) => {
+      'use strict';
+      Object.defineProperty(exports, '__esModule', { value: true });
+      exports.Song = void 0;
+      class Song {
+        static PLAYER_TIMEOUT_MESSAGE = 'Spicetify Player not available';
+        static INITIAL_TRACK_SYNC_INTERVAL = 100;
+        static current = null;
+        static currentSignature = null;
+        static listeners = new Map();
+        static ready = false;
+        static eventsBound = false;
+        static initPromise = null;
+        static initialTrackTimer = null;
+        static readyPromise = Promise.resolve();
+        static readyResolve = () => undefined;
+        static handleSongChange = (event) => {
+          const playerEvent = event;
+          this.handleTrack(
+            playerEvent?.data?.item ?? Spicetify.Player.data?.item ?? null,
+          );
+        };
+        static {
+          this.resetReadyPromise();
+        }
+        static init(timeout = 15000) {
+          if (this.eventsBound) return Promise.resolve();
+          if (this.initPromise) return this.initPromise;
+          this.initPromise = this.initialize(timeout).finally(() => {
+            this.initPromise = null;
+          });
+          return this.initPromise;
+        }
+        static destroy() {
+          if (this.eventsBound) {
+            try {
+              Spicetify.Player.removeEventListener(
+                'songchange',
+                this.handleSongChange,
+              );
+            } catch (error) {
+              Luminous.Logger.warn(
+                'Song',
+                'Failed to remove player listener',
+                error,
+              );
+            }
+          }
+          if (this.initialTrackTimer !== null) {
+            window.clearTimeout(this.initialTrackTimer);
+            this.initialTrackTimer = null;
+          }
+          this.listeners.clear();
+          this.current = null;
+          this.currentSignature = null;
+          this.ready = false;
+          this.eventsBound = false;
+          this.initPromise = null;
+          this.resetReadyPromise();
+        }
+        static addEventListener(event, listener) {
+          this.getListeners(event).add(listener);
+          if (!this.eventsBound && !this.initPromise) {
+            void this.init().catch((error) => {
+              Luminous.Logger.error(
+                'Song',
+                'Initialization retry failed',
+                error,
+              );
+            });
+          }
+          if (
+            this.current &&
+            (event === 'change' || (event === 'ready' && this.ready))
+          ) {
+            this.callListener(listener, this.createPayload(this.current));
+          }
+        }
+        static removeEventListener(event, listener) {
+          this.listeners.get(event)?.delete(listener);
+        }
+        static async get(timeout = 15000) {
+          const startedAt = Date.now();
+          if (!this.eventsBound) {
+            try {
+              await this.init(timeout);
+            } catch {
+              return null;
+            }
+          }
+          if (!this.ready) {
+            const remaining = Math.max(0, timeout - (Date.now() - startedAt));
+            if (!(await this.waitForReady(remaining))) return null;
+          }
+          return this.current ? this.createPayload(this.current) : null;
+        }
+        static getSync() {
+          return this.current ? this.createPayload(this.current) : null;
+        }
+        static async initialize(timeout) {
+          await this.waitForPlayer(timeout);
+          this.bindEvents();
+          if (!this.syncCurrentTrack()) this.startInitialTrackSync(timeout);
+        }
+        static waitForPlayer(timeout) {
+          return new Promise((resolve, reject) => {
+            const start = performance.now();
+            const check = () => {
+              if (
+                typeof Spicetify !== 'undefined' &&
+                typeof Spicetify.Player?.addEventListener === 'function'
+              ) {
+                resolve();
+                return;
+              }
+              if (performance.now() - start > timeout) {
+                reject(new Error(this.PLAYER_TIMEOUT_MESSAGE));
+                return;
+              }
+              requestAnimationFrame(check);
+            };
+            check();
+          });
+        }
+        static bindEvents() {
+          if (this.eventsBound) return;
+          this.eventsBound = true;
+          Spicetify.Player.addEventListener(
+            'songchange',
+            this.handleSongChange,
+          );
+        }
+        static syncCurrentTrack() {
+          const track = Spicetify.Player.data?.item ?? null;
+          this.handleTrack(track);
+          return track !== null;
+        }
+        static startInitialTrackSync(timeout) {
+          if (this.initialTrackTimer !== null || this.ready) return;
+          const deadline = Date.now() + timeout;
+          const sync = () => {
+            this.initialTrackTimer = null;
+            if (this.ready || this.syncCurrentTrack() || Date.now() >= deadline)
+              return;
+            this.initialTrackTimer = window.setTimeout(
+              sync,
+              this.INITIAL_TRACK_SYNC_INTERVAL,
+            );
+          };
+          sync();
+        }
+        static waitForReady(timeout) {
+          if (this.ready) return Promise.resolve(true);
+          if (timeout <= 0) return Promise.resolve(false);
+          return new Promise((resolve) => {
+            let settled = false;
+            const finish = (value) => {
+              if (settled) return;
+              settled = true;
+              window.clearTimeout(timeoutId);
+              resolve(value);
+            };
+            const timeoutId = window.setTimeout(() => finish(false), timeout);
+            void this.readyPromise.then(() => finish(true));
+          });
+        }
+        static handleTrack(track) {
+          if (!track) return;
+          const signature = this.createTrackSignature(track);
+          if (
+            this.current?.uri === track.uri &&
+            this.currentSignature === signature
+          ) {
+            return;
+          }
+          if (this.initialTrackTimer !== null) {
+            window.clearTimeout(this.initialTrackTimer);
+            this.initialTrackTimer = null;
+          }
+          this.current = track;
+          this.currentSignature = signature;
+          if (!this.ready) {
+            this.ready = true;
+            this.readyResolve();
+            Luminous.Logger.info('Song', 'Ready', this.createPayload(track));
+            this.emit('ready');
+            return;
+          }
+          Luminous.Logger.info('Song', 'Changed', this.createPayload(track));
+          this.emit('change');
+        }
+        static createTrackSignature(track) {
+          const artists =
+            track.artists?.map((artist) => artist.name).join('|') ?? '';
+          const image = normalizeImageUrl(
+            track.images?.[0]?.url ??
+              track.album?.images?.[0]?.url ??
+              track.metadata?.image_url ??
+              null,
+          );
+          return `${track.uri}\u0000${track.name}\u0000${artists}\u0000${image ?? ''}`;
+        }
+        static createPayload(track) {
+          const artists = track.artists?.map((artist) => artist.name) ?? [];
+          const image = normalizeImageUrl(
+            track.images?.[0]?.url ??
+              track.album?.images?.[0]?.url ??
+              track.metadata?.image_url ??
+              null,
+          );
+          return {
+            track,
+            name: track.name,
+            title: artists.length
+              ? `${track.name} - ${artists.join(', ')}`
+              : track.name,
+            artists,
+            image,
+            uri: track.uri,
+          };
+        }
+        static emit(event) {
+          if (!this.current) return;
+          const payload = this.createPayload(this.current);
+          this.getListeners(event).forEach((listener) => {
+            this.callListener(listener, payload);
+          });
+        }
+        static callListener(listener, payload) {
+          try {
+            listener(payload);
+          } catch (error) {
+            Luminous.Logger.error('Song', 'Listener failed', error);
+          }
+        }
+        static getListeners(event) {
+          let listeners = this.listeners.get(event);
+          if (!listeners) {
+            listeners = new Set();
+            this.listeners.set(event, listeners);
+          }
+          return listeners;
+        }
+        static resetReadyPromise() {
+          this.readyPromise = new Promise((resolve) => {
+            this.readyResolve = resolve;
+          });
+        }
+      }
+      exports.Song = Song;
+      function normalizeImageUrl(image) {
+        if (!image) return null;
+        const spotifyImagePrefix = 'spotify:image:';
+        if (image.startsWith(spotifyImagePrefix)) {
+          const imageId = image.slice(spotifyImagePrefix.length);
+          return imageId ? `https://i.scdn.co/image/${imageId}` : null;
+        }
+        return image;
+      }
+    },
+    'src/api/global.ts': (module, exports, require) => {
+      'use strict';
+      Object.defineProperty(exports, '__esModule', { value: true });
+      exports.destroyExistingRuntime = destroyExistingRuntime;
+      exports.exposeGlobalAPI = exposeGlobalAPI;
+      const background_1 = require('../render/background');
+      const canvas_1 = require('./canvas');
+      const diagnostics_1 = require('./diagnostics');
+      const logger_1 = require('./logger');
+      const native_1 = require('./native');
+      const palette_1 = require('./palette');
+      const settings_1 = require('./settings');
+      const song_1 = require('./song');
+      function destroyExistingRuntime() {
+        const existing = window.Luminous;
+        if (typeof existing?.destroy !== 'function') return;
+        try {
+          existing.destroy();
+        } catch (error) {
+          console.warn('[Luminous] Failed to clean previous runtime', error);
+        }
+      }
+      function exposeGlobalAPI(destroy) {
+        Object.defineProperty(window, 'Luminous', {
+          value: {
+            Background: background_1.Background,
+            Canvas: canvas_1.Canvas,
+            Diagnostics: diagnostics_1.Diagnostics,
+            Song: song_1.Song,
+            Native: native_1.Native,
+            Palette: palette_1.Palette,
+            Settings: settings_1.Settings,
+            Logger: logger_1.Logger,
+            destroy,
+            version: __APP_VERSION__,
+          },
+          configurable: true,
+        });
+      }
+    },
+    'src/app/react.ts': (module, exports, require) => {
+      'use strict';
+      Object.defineProperty(exports, '__esModule', { value: true });
+      exports.getReact = getReact;
+      exports.useEffect = useEffect;
+      exports.useMemo = useMemo;
+      exports.useRef = useRef;
+      exports.useState = useState;
+      function getReact() {
+        return Spicetify.React;
+      }
+      function useEffect() {
+        return getReact().useEffect;
+      }
+      function useMemo() {
+        return getReact().useMemo;
+      }
+      function useRef() {
+        return getReact().useRef;
+      }
+      function useState() {
+        return getReact().useState;
+      }
+    },
+    'src/app/features/DynamicBackgroundFeature.ts': (
+      module,
+      exports,
+      require,
+    ) => {
+      'use strict';
+      Object.defineProperty(exports, '__esModule', { value: true });
+      exports.DynamicBackgroundFeature = DynamicBackgroundFeature;
+      const react_1 = require('../react');
+      const health_1 = require('../../ui/health');
+      function DynamicBackgroundFeature() {
+        const effect = (0, react_1.useEffect)();
+        const memo = (0, react_1.useMemo)();
+        const state = (0, react_1.useState)();
+        const [song, setSong] = state(() => Luminous.Song.getSync());
+        const [canvas, setCanvas] = state(() => Luminous.Canvas.get());
+        const [enabled, setEnabled] = state(
+          () => Luminous.Settings.get('dynamicBackground') !== false,
+        );
+        const [dynamicPalette, setDynamicPalette] = state(
+          () => Luminous.Settings.get('dynamicPalette') !== false,
+        );
+        const [appActive, setAppActive] = state(
+          () => (0, health_1.getUiHealth)().status !== 'booting',
+        );
+        const renderKey = memo(() => {
+          if (!appActive) return 'inactive';
+          if (!enabled) return 'disabled';
+          if (canvas.video) {
+            return `canvas:${canvas.source ?? ''}:${canvas.revision}:${song?.image ?? ''}`;
+          }
+          if (song?.image) return `image:${song.image}`;
+          return 'empty';
+        }, [appActive, canvas, enabled, song?.image]);
+        effect(() => {
+          let songKey = song ? `${song.uri}\u0000${song.image ?? ''}` : null;
+          let canvasKey = `${canvas.mode ?? ''}\u0000${canvas.source ?? ''}\u0000${canvas.revision}`;
+          let canvasVideo = canvas.video;
+          const handleSong = (nextSong) => {
+            const nextKey = `${nextSong.uri}\u0000${nextSong.image ?? ''}`;
+            if (songKey === nextKey) return;
+            songKey = nextKey;
+            Luminous.Palette.cancel();
+            Luminous.Background.preloadImage(nextSong.image);
+            setSong(nextSong);
+          };
+          const handleCanvas = (payload) => {
+            const nextKey = `${payload.mode ?? ''}\u0000${payload.source ?? ''}\u0000${payload.revision}`;
+            if (canvasKey === nextKey && canvasVideo === payload.video) return;
+            canvasKey = nextKey;
+            canvasVideo = payload.video;
+            setCanvas(payload);
+          };
+          Luminous.Song.addEventListener('ready', handleSong);
+          Luminous.Song.addEventListener('change', handleSong);
+          Luminous.Canvas.addEventListener('mount', handleCanvas);
+          Luminous.Canvas.addEventListener('change', handleCanvas);
+          Luminous.Canvas.addEventListener('unmount', handleCanvas);
+          const unsubscribeHealth = (0, health_1.subscribeUiHealth)(
+            (health) => {
+              setAppActive(health.status !== 'booting');
+            },
+          );
+          const unsubscribeSetting = Luminous.Settings.subscribe(
+            'dynamicBackground',
+            (value) => setEnabled(value !== false),
+            { immediate: true },
+          );
+          const unsubscribePaletteSetting = Luminous.Settings.subscribe(
+            'dynamicPalette',
+            (value) => setDynamicPalette(value !== false),
+            { immediate: true },
+          );
+          return () => {
+            Luminous.Song.removeEventListener('ready', handleSong);
+            Luminous.Song.removeEventListener('change', handleSong);
+            Luminous.Canvas.removeEventListener('mount', handleCanvas);
+            Luminous.Canvas.removeEventListener('change', handleCanvas);
+            Luminous.Canvas.removeEventListener('unmount', handleCanvas);
+            unsubscribeHealth();
+            unsubscribeSetting();
+            unsubscribePaletteSetting();
+            Luminous.Background.destroy();
+            Luminous.Palette.clear();
+          };
+        }, []);
+        effect(() => {
+          if (!appActive || !enabled || !dynamicPalette) {
+            Luminous.Palette.clear();
+            return;
+          }
+          void Luminous.Palette.applyFromImage(song?.image);
+        }, [appActive, dynamicPalette, enabled, song?.image]);
+        effect(() => {
+          if (!appActive) {
+            Luminous.Background.destroy();
+            return;
+          }
+          if (!enabled) {
+            Luminous.Background.clear();
+            return;
+          }
+          if (canvas.video) {
+            Luminous.Background.render({
+              canvas: canvas.video,
+              canvasSource: canvas.source,
+              canvasMode: canvas.mode,
+              image: song?.image,
+            });
+            return;
+          }
+          if (song?.image) {
+            Luminous.Background.render({ image: song.image });
+            return;
+          }
+          Luminous.Background.render();
+        }, [renderKey]);
+        return null;
+      }
+    },
+    'src/app/features/SplashFeature.ts': (module, exports, require) => {
+      'use strict';
+      Object.defineProperty(exports, '__esModule', { value: true });
+      exports.SplashFeature = SplashFeature;
+      const react_1 = require('../react');
+      const health_1 = require('../../ui/health');
+      const MIN_VISIBLE_MS = 600;
+      const MAX_VISIBLE_MS = 2600;
+      const HELP_HINT_DELAY_MS = 1500;
+      const SPOTIFY_SHELL_SELECTOR = '.Root__top-container #main-view';
+      const SCRIPT_STARTED_AT = Date.now();
+      function SplashFeature() {
+        const React = (0, react_1.getReact)();
+        const effect = (0, react_1.useEffect)();
+        const memo = (0, react_1.useMemo)();
+        const ref = (0, react_1.useRef)();
+        const state = (0, react_1.useState)();
+        const [shellPresent, setShellPresent] = state(() => hasSpotifyShell());
+        const [visible, setVisible] = state(true);
+        const [health, setHealth] = state(() => (0, health_1.getUiHealth)());
+        const [now, setNow] = state(() => Date.now());
+        const mountedAt = ref(shellPresent ? SCRIPT_STARTED_AT : null);
+        const finished = ref(false);
+        effect(() => (0, health_1.subscribeUiHealth)(setHealth), []);
+        effect(() => {
+          let frameId = null;
+          const syncShellPresence = () => {
+            frameId = null;
+            setShellPresent(hasSpotifyShell());
+          };
+          const scheduleSync = () => {
+            if (frameId !== null) return;
+            frameId = requestAnimationFrame(syncShellPresence);
+          };
+          const observer = new MutationObserver(scheduleSync);
+          observer.observe(document.documentElement, {
+            childList: true,
+            subtree: true,
+          });
+          syncShellPresence();
+          return () => {
+            observer.disconnect();
+            if (frameId !== null) cancelAnimationFrame(frameId);
+          };
+        }, []);
+        effect(() => {
+          if (!shellPresent || finished.current) return;
+          if (mountedAt.current === null) {
+            mountedAt.current = Date.now();
+          }
+          const elapsed = Date.now() - mountedAt.current;
+          const targetDuration =
+            health.status === 'ready' ? MIN_VISIBLE_MS : MAX_VISIBLE_MS;
+          const remaining = Math.max(0, targetDuration - elapsed);
+          const timeoutId = window.setTimeout(() => {
+            finished.current = true;
+            setVisible(false);
+          }, remaining);
+          return () => window.clearTimeout(timeoutId);
+        }, [health.status, shellPresent]);
+        effect(() => {
+          if (!shellPresent || !visible || health.status !== 'waiting') return;
+          const intervalId = window.setInterval(() => {
+            setNow(Date.now());
+          }, 250);
+          return () => window.clearInterval(intervalId);
+        }, [health.status, shellPresent, visible]);
+        const message = memo(() => {
+          if (health.status === 'waiting' && health.brokenSince) {
+            return `Waiting for Spotify UI... (${formatSeconds(now - health.brokenSince)})`;
+          }
+          if (health.status === 'ready') {
+            return 'Welcome back. Lighting up Spotify...';
+          }
+          return 'Starting Luminous...';
+        }, [health.brokenSince, health.status, now]);
+        const showHelpHint =
+          health.status === 'waiting' &&
+          health.brokenSince !== null &&
+          now - health.brokenSince >= HELP_HINT_DELAY_MS;
+        if (!shellPresent) return null;
+        return React.createElement(
+          'div',
+          {
+            className: `luminous-splash${visible ? '' : ' luminous-splash--hidden'}`,
+            'aria-hidden': visible ? 'false' : 'true',
+          },
+          React.createElement(
+            'div',
+            { className: 'luminous-splash__panel' },
+            React.createElement(
+              'div',
+              { className: 'luminous-splash__mark' },
+              React.createElement('svg', {
+                className: 'luminous-splash__luminous-icon',
+                viewBox: '0 0 16 16',
+                'aria-hidden': 'true',
+                focusable: 'false',
+                dangerouslySetInnerHTML: {
+                  __html: Spicetify.SVGIcons?.brightness ?? '',
+                },
+              }),
+            ),
+            React.createElement(
+              'div',
+              { className: 'luminous-splash__copy' },
+              React.createElement('span', null, 'Luminous'),
+              React.createElement('small', null, message),
+            ),
+            React.createElement(
+              'div',
+              { className: 'luminous-splash__loader' },
+              React.createElement('span'),
+            ),
+            showHelpHint &&
+              React.createElement(
+                'div',
+                { className: 'luminous-splash__hint' },
+                'Spotify is taking longer than expected. The splash will close automatically.',
+              ),
+          ),
+        );
+      }
+      function hasSpotifyShell() {
+        return document.querySelector(SPOTIFY_SHELL_SELECTOR) !== null;
+      }
+      function formatSeconds(duration) {
+        return `${Math.max(0, Math.floor(duration / 1000))}s`;
+      }
+    },
+    'src/config/settings.ts': (module, exports, require) => {
+      'use strict';
+      Object.defineProperty(exports, '__esModule', { value: true });
+      exports.visualPresets =
+        exports.settingsUi =
+        exports.settingDefinitions =
+        exports.backgroundSources =
+        exports.motionModes =
+          void 0;
+      exports.registerLuminousSettings = registerLuminousSettings;
+      exports.motionModes = ['still', 'drift', 'float'];
+      exports.backgroundSources = ['auto', 'artwork'];
+      const numberNormalizer = (fallback, min, max) => {
+        return (value) => {
+          if (typeof value !== 'number' && typeof value !== 'string')
+            return fallback;
+          if (typeof value === 'string' && value.trim() === '') return fallback;
+          const parsed = typeof value === 'number' ? value : Number(value);
+          if (!Number.isFinite(parsed)) return fallback;
+          return Math.min(max, Math.max(min, parsed));
+        };
+      };
+      const booleanNormalizer = (fallback) => {
+        return (value) => (typeof value === 'boolean' ? value : fallback);
+      };
+      const choiceNormalizer = (values, fallback) => {
+        return (value) =>
+          typeof value === 'string' && values.includes(value)
+            ? value
+            : fallback;
+      };
+      const toggleExclusiveClasses = (prefix, values, active) => {
+        values.forEach((value) => {
+          Luminous.Settings.toggleClass(`${prefix}${value}`, value === active);
+        });
+      };
+      exports.settingDefinitions = {
+        backgroundBlur: {
+          default: 24,
+          normalize: numberNormalizer(24, 0, 48),
+          apply: (value) =>
+            Luminous.Settings.setVar(
+              '--luminous-background-blur',
+              `${value}px`,
+            ),
+        },
+        backgroundBrightness: {
+          default: 75,
+          normalize: numberNormalizer(75, 30, 120),
+          apply: (value) =>
+            Luminous.Settings.setVar(
+              '--luminous-background-brightness',
+              String(value / 100),
+            ),
+        },
+        uiBlur: {
+          default: 16,
+          normalize: numberNormalizer(16, 0, 32),
+          apply: (value) =>
+            Luminous.Settings.setVar('--luminous-ui-blur', `${value}px`),
+        },
+        paletteStrength: {
+          default: 24,
+          normalize: numberNormalizer(24, 0, 50),
+          apply: (value) => {
+            const opacity = Math.min(78, Math.round(value * 1.6));
+            Luminous.Settings.setVar(
+              '--luminous-palette-effect-opacity',
+              `${opacity}%`,
             );
           },
         },
-        `Copy diagnostics`,
-      ),
-    )
-  );
-}
-function H() {
-  let e = Luminous.Diagnostics.get(),
-    t = e.runtime.canvasMode ?? `none`;
-  return `Background: ${e.runtime.background} · Canvas: ${t} · UI: ${e.runtime.uiHealth}`;
-}
-var U = `luminous-playlist-background`,
-  W = `--luminous-playlist-background-image`,
-  G = `luminous-home-header-height`,
-  K = `--luminous-home-header-height`,
-  q = class {
-    static playlistBackground(e) {
-      let t = null,
-        n = null,
-        r = null,
-        i = null,
-        a = !1,
-        o = null,
-        s = null;
-      function c() {
-        s &&
-          (s.classList.remove(U),
-          s.style.removeProperty(W),
-          (s = null),
-          (o = null));
-      }
-      function l() {
-        if (a) return;
-        let e = document.querySelector(`.main-view-container`);
-        (e === t && t?.isConnected) ||
-          (r?.disconnect(),
-          (r = null),
-          c(),
-          (t = e),
-          t &&
-            ((r = new MutationObserver(u)),
-            r.observe(t, {
-              subtree: !0,
-              childList: !0,
-              attributes: !0,
-              attributeFilter: [`style`, `class`],
-            })));
-      }
-      function u() {
-        a ||
-          i !== null ||
-          (i = requestAnimationFrame(() => {
-            ((i = null), l(), d());
-          }));
-      }
-      function d() {
-        if (!t) return;
-        let n = t.querySelector(`.before-scroll-node > div > :first-child`),
-          r =
-            t.querySelector(
-              `section > .main-entityHeader-container, section > div > .main-entityHeader-container`,
-            ) || t.querySelector(`main > div > .main-entityHeader-container`);
-        if (!n || !r) {
-          c();
-          return;
-        }
-        let i = getComputedStyle(n).backgroundImage;
-        if (!i || i === `none`) {
-          c();
-          return;
-        }
-        (r !== s && (c(), (s = r)),
-          i !== o &&
-            ((o = i),
-            r.classList.add(U),
-            r.style.setProperty(W, i),
-            e?.onBackgroundChange?.(i, n, r)));
-      }
-      return (
-        (n = new MutationObserver(u)),
-        n.observe(document.documentElement, { subtree: !0, childList: !0 }),
-        u(),
-        {
-          disconnect() {
-            ((a = !0),
-              n?.disconnect(),
-              r?.disconnect(),
-              (n = null),
-              (r = null),
-              i !== null && (cancelAnimationFrame(i), (i = null)),
-              c(),
-              (t = null));
+        backgroundEnergy: {
+          default: 'adaptive',
+          normalize: () => 'adaptive',
+        },
+        uiOpacity: {
+          default: 50,
+          normalize: numberNormalizer(50, 0, 100),
+          apply: (value) => {
+            if (Luminous.Settings.get('dynamicBackground') === false) {
+              Luminous.Settings.removeVar('--luminous-ui-opacity');
+              return;
+            }
+            Luminous.Settings.setVar('--luminous-ui-opacity', `${value}%`);
           },
-        }
-      );
-    }
-    static homeHeaderHeight(e) {
-      let t = null,
-        n = null,
-        r = null,
-        i = null,
-        a = !1,
-        o = null,
-        s = null;
-      function c() {
-        s &&
-          (s.classList.remove(G),
-          s.style.removeProperty(K),
-          (s = null),
-          (o = null));
-      }
-      function l(e) {
-        let t = getComputedStyle(e),
-          n = Number.parseFloat(t.marginTop) || 0,
-          r = Number.parseFloat(t.marginBottom) || 0;
-        return e.offsetHeight + n + r;
-      }
-      function u() {
-        if (a) return;
-        let e = document.querySelector(`#main-view`);
-        (e === t && t?.isConnected) ||
-          (r?.disconnect(),
-          (r = null),
-          c(),
-          (t = e),
-          t &&
-            ((r = new MutationObserver(d)),
-            r.observe(t, {
-              subtree: !0,
-              childList: !0,
-              attributes: !0,
-              attributeFilter: [`style`, `class`],
-            })));
-      }
-      function d() {
-        a ||
-          i !== null ||
-          (i = requestAnimationFrame(() => {
-            ((i = null), u(), f());
-          }));
-      }
-      function f() {
-        if (!t) return;
-        let n = t.querySelector(`.main-home-homeHeader`),
-          r = t.querySelector(`.main-home-filterChipsContainer`),
-          i = t.querySelector(
-            `section[data-testid="home-page"]:has(.view-homeShortcutsGrid-shortcuts) .main-home-content section:first-child`,
-          );
-        if (!n || !r || !i) {
-          c();
-          return;
-        }
-        let a = l(r) + l(i);
-        (n !== s && (c(), (s = n)),
-          a !== o &&
-            ((o = a),
-            n.classList.add(G),
-            n.style.setProperty(K, `${a}px`),
-            e?.onHeightChange?.(a, r, i, n)));
-      }
-      return (
-        (n = new MutationObserver(d)),
-        n.observe(document.documentElement, { subtree: !0, childList: !0 }),
-        window.addEventListener(`resize`, d),
-        d(),
-        {
-          disconnect() {
-            ((a = !0),
-              n?.disconnect(),
-              r?.disconnect(),
-              window.removeEventListener(`resize`, d),
-              (n = null),
-              (r = null),
-              i !== null && (cancelAnimationFrame(i), (i = null)),
-              c(),
-              (t = null));
+        },
+        dynamicBackground: {
+          default: true,
+          normalize: booleanNormalizer(true),
+          apply: (value) => {
+            Luminous.Settings.toggleClass('hideDynamicBackground', !value);
+            if (value) {
+              Luminous.Settings.setVar('--luminous-background', 'transparent');
+              Luminous.Settings.setVar(
+                '--luminous-ui-base',
+                'var(--spice-sidebar)',
+              );
+              Luminous.Settings.setVar(
+                '--luminous-ui-opacity',
+                `${Luminous.Settings.get('uiOpacity') ?? 50}%`,
+              );
+              return;
+            }
+            Luminous.Settings.removeVar('--luminous-background');
+            Luminous.Settings.removeVar('--luminous-ui-base');
+            Luminous.Settings.removeVar('--luminous-ui-opacity');
           },
-        }
-      );
-    }
-    static uiMountWatcher() {
-      let e = null,
-        t = null,
-        r = !1,
-        i = null;
-      function a() {
-        return (
-          document.querySelector(`.Root__top-container #main-view`) !== null
-        );
-      }
-      function s() {
-        return !!(
-          document.querySelector(`.Root__main-view`) ||
-          document.querySelector(`.main-view-container`) ||
-          document.querySelector(`[data-testid="main-view"]`)
-        );
-      }
-      function c() {
-        r ||
-          t !== null ||
-          (t = requestAnimationFrame(() => {
-            ((t = null), l());
-          }));
-      }
-      function l() {
-        if (!a()) {
-          ((i = null), o({ status: `booting`, brokenSince: null }));
-          return;
-        }
-        if (s()) {
-          ((i = null), o({ status: `ready`, brokenSince: null }));
-          return;
-        }
-        (i === null &&
-          ((i = Date.now()), n.info(`Main`, `Waiting for Spotify UI mount...`)),
-          o({ status: `waiting`, brokenSince: i }));
-      }
-      return (
-        (e = new MutationObserver(c)),
-        e.observe(document.documentElement, { subtree: !0, childList: !0 }),
-        c(),
-        {
-          disconnect() {
-            ((r = !0),
-              e?.disconnect(),
-              (e = null),
-              t !== null && (cancelAnimationFrame(t), (t = null)),
-              (i = null),
-              o({ status: `booting`, brokenSince: null }));
+        },
+        backgroundSource: {
+          default: 'auto',
+          normalize: choiceNormalizer(exports.backgroundSources, 'auto'),
+          apply: (value) => {
+            toggleExclusiveClasses(
+              'luminous-source-',
+              exports.backgroundSources,
+              value,
+            );
+            Luminous.Canvas.setEnabled(value === 'auto');
           },
-        }
-      );
-    }
-    static observeCinema() {
-      let e = null;
-      function t() {
-        let e = document.documentElement;
-        (e.removeAttribute(`data-transition`),
-          [
-            `data-right-sidebar-open-preenter`,
-            `data-right-sidebar-open-preexit`,
-            `data-right-sidebar-open-duringexit`,
-            `data-right-sidebar-open-postexit`,
-          ].forEach((t) => {
-            e.removeAttribute(t);
-          }));
-      }
-      return (
-        (e = new MutationObserver(t)),
-        e.observe(document.documentElement, {
-          attributes: !0,
-          attributeFilter: [
-            `data-transition`,
-            `data-right-sidebar-open-preenter`,
-            `data-right-sidebar-open-duringenter`,
-            `data-right-sidebar-open-postenter`,
-            `data-right-sidebar-open-preexit`,
-            `data-right-sidebar-open-duringexit`,
-            `data-right-sidebar-open-postexit`,
+        },
+        dynamicPalette: {
+          default: true,
+          normalize: booleanNormalizer(true),
+          apply: (value) => {
+            if (!value) Luminous.Palette.clear();
+          },
+        },
+        backgroundMotion: {
+          default: 'drift',
+          normalize: choiceNormalizer(exports.motionModes, 'drift'),
+          apply: (value) =>
+            toggleExclusiveClasses(
+              'luminous-motion-',
+              exports.motionModes,
+              value,
+            ),
+        },
+        motionDuration: {
+          default: 20,
+          normalize: numberNormalizer(20, 8, 60),
+          apply: (value) => {
+            Luminous.Settings.setVar('--luminous-motion-duration', `${value}s`);
+            Luminous.Palette.setMotionDuration(value);
+          },
+        },
+        reduceMotion: {
+          default: false,
+          normalize: booleanNormalizer(false),
+          apply: (value) =>
+            Luminous.Settings.toggleClass('luminous-reduce-motion', value),
+        },
+      };
+      exports.settingsUi = [
+        {
+          key: 'dynamicBackground',
+          label: 'Dynamic background',
+          description: 'Use artwork or Spotify video behind the interface.',
+          section: 'appearance',
+          control: 'toggle',
+        },
+        {
+          key: 'backgroundSource',
+          label: 'Background source',
+          description:
+            'Prefer Spotify video automatically, or always use artwork.',
+          section: 'appearance',
+          control: 'choice',
+          options: [
+            { value: 'auto', label: 'Auto' },
+            { value: 'artwork', label: 'Artwork' },
           ],
-        }),
-        t(),
+        },
         {
-          disconnect() {
-            (e?.disconnect(), (e = null));
-          },
-        }
-      );
-    }
-  };
-function we() {
-  return (
-    w()(() => {
-      let e = [
-        q.uiMountWatcher(),
-        q.observeCinema(),
-        q.playlistBackground(),
-        q.homeHeaderHeight(),
+          key: 'dynamicPalette',
+          label: 'Adaptive effects',
+          description:
+            'Build a colour scene automatically from each track cover.',
+          section: 'appearance',
+          control: 'toggle',
+        },
+        {
+          key: 'backgroundBlur',
+          label: 'Background blur',
+          description: 'Softens artwork and video behind Spotify.',
+          section: 'appearance',
+          control: 'range',
+          min: 0,
+          max: 48,
+          step: 1,
+          unit: 'px',
+        },
+        {
+          key: 'backgroundBrightness',
+          label: 'Background brightness',
+          description: 'Controls how prominent the media remains.',
+          section: 'appearance',
+          control: 'range',
+          min: 30,
+          max: 120,
+          step: 1,
+          unit: '%',
+        },
+        {
+          key: 'uiOpacity',
+          label: 'Surface opacity',
+          description: 'Sets the density of translucent Spotify surfaces.',
+          section: 'appearance',
+          control: 'range',
+          min: 0,
+          max: 100,
+          step: 1,
+          unit: '%',
+        },
+        {
+          key: 'uiBlur',
+          label: 'Surface blur',
+          description: 'Controls the glass blur applied to interface surfaces.',
+          section: 'appearance',
+          control: 'range',
+          min: 0,
+          max: 32,
+          step: 1,
+          unit: 'px',
+        },
+        {
+          key: 'paletteStrength',
+          label: 'Effect intensity',
+          description: 'Controls how strongly adaptive light appears.',
+          section: 'appearance',
+          control: 'range',
+          min: 0,
+          max: 50,
+          step: 1,
+          unit: '%',
+        },
+        {
+          key: 'backgroundMotion',
+          label: 'Background movement',
+          description: 'Choose the stable media/light motion path.',
+          section: 'motion',
+          control: 'choice',
+          options: [
+            { value: 'still', label: 'Still' },
+            { value: 'drift', label: 'Drift' },
+            { value: 'float', label: 'Float' },
+          ],
+        },
+        {
+          key: 'motionDuration',
+          label: 'Motion speed',
+          description: 'Scales media movement and adaptive scene tempo.',
+          section: 'motion',
+          control: 'range',
+          min: 8,
+          max: 60,
+          step: 1,
+          unit: 's',
+        },
+        {
+          key: 'reduceMotion',
+          label: 'Reduce motion',
+          description:
+            'Stops Luminous animation regardless of system preference.',
+          section: 'motion',
+          control: 'toggle',
+        },
       ];
-      return () => {
-        e.forEach((e) => e.disconnect());
-      };
-    }, []),
-    null
-  );
-}
-function Te() {
-  let e = C();
-  return e.createElement(
-    e.Fragment,
-    null,
-    e.createElement(ae),
-    e.createElement(we),
-    e.createElement(ee),
-    e.createElement(he),
-  );
-}
-var J = `luminous-react-root`,
-  Ee = 15e3,
-  Y = null,
-  X = 0,
-  Z = null;
-function De() {
-  let e = ++X;
-  (Q(),
-    Ae(e)
-      .then(() => {
-        e === X && ke();
-      })
-      .catch((t) => {
-        e === X &&
-          Luminous.Logger.error(`Runtime`, `Failed to mount application`, t);
-      }));
-}
-function Oe() {
-  if ((X++, Q(), Y?.unmount)) (Y.unmount(), (Y = null));
-  else if (typeof Spicetify < `u` && Spicetify.ReactDOM) {
-    let e = document.getElementById(J);
-    e &&
-      Spicetify.ReactDOM.unmountComponentAtNode &&
-      Spicetify.ReactDOM.unmountComponentAtNode(e);
+      exports.visualPresets = [
+        {
+          id: 'balanced',
+          label: 'Balanced',
+          description: 'Stable default balance of clarity, colour, and motion.',
+          values: {
+            dynamicBackground: true,
+            backgroundSource: 'auto',
+            dynamicPalette: true,
+            backgroundBlur: 24,
+            backgroundBrightness: 75,
+            uiOpacity: 50,
+            uiBlur: 16,
+            paletteStrength: 24,
+            backgroundMotion: 'drift',
+            motionDuration: 20,
+          },
+        },
+        {
+          id: 'cinematic',
+          label: 'Cinematic',
+          description:
+            'Brighter media and stronger colour without extra compositor layers.',
+          values: {
+            dynamicBackground: true,
+            backgroundSource: 'auto',
+            dynamicPalette: true,
+            backgroundBlur: 16,
+            backgroundBrightness: 88,
+            uiOpacity: 38,
+            uiBlur: 20,
+            paletteStrength: 36,
+            backgroundMotion: 'float',
+            motionDuration: 26,
+          },
+        },
+        {
+          id: 'calm',
+          label: 'Calm',
+          description: 'Artwork-only mode with soft lighting and no movement.',
+          values: {
+            dynamicBackground: true,
+            backgroundSource: 'artwork',
+            dynamicPalette: true,
+            backgroundBlur: 36,
+            backgroundBrightness: 62,
+            uiOpacity: 68,
+            uiBlur: 18,
+            paletteStrength: 14,
+            backgroundMotion: 'still',
+          },
+        },
+        {
+          id: 'performance',
+          label: 'Performance',
+          description:
+            'Artwork-only mode with minimal motion and lower glass cost.',
+          values: {
+            dynamicBackground: true,
+            backgroundSource: 'artwork',
+            dynamicPalette: true,
+            backgroundBlur: 18,
+            backgroundBrightness: 72,
+            uiOpacity: 72,
+            uiBlur: 10,
+            paletteStrength: 10,
+            backgroundMotion: 'still',
+          },
+        },
+      ];
+      function registerLuminousSettings() {
+        Object.entries(exports.settingDefinitions).forEach(
+          ([key, definition]) => {
+            Luminous.Settings.register(key, definition);
+          },
+        );
+      }
+    },
+    'src/app/features/ThemeMenuFeature.ts': (module, exports, require) => {
+      'use strict';
+      Object.defineProperty(exports, '__esModule', { value: true });
+      exports.ThemeMenuFeature = ThemeMenuFeature;
+      const settings_1 = require('../../config/settings');
+      const react_1 = require('../react');
+      const MENU_ITEM_LABEL = 'Luminous Settings';
+      const MENU_ITEM_ICON = 'brightness';
+      const MODAL_ID = 'luminous-theme-modal';
+      const MODAL_TITLE_ID = 'luminous-theme-modal-title';
+      const MODAL_DESCRIPTION_ID = 'luminous-theme-modal-description';
+      const FOCUSABLE_SELECTOR = [
+        'button:not([disabled])',
+        'input:not([disabled])',
+        '[href]',
+        '[tabindex]:not([tabindex="-1"])',
+      ].join(',');
+      const tabs = [
+        { id: 'presets', label: 'Presets' },
+        { id: 'appearance', label: 'Appearance' },
+        { id: 'motion', label: 'Motion' },
+        { id: 'advanced', label: 'Advanced' },
+      ];
+      const SLIDER_APPLY_INTERVAL_MS = 32;
+      const resettableSettings = settings_1.settingsUi.map(
+        (setting) => setting.key,
+      );
+      function ThemeMenuFeature() {
+        const React = (0, react_1.getReact)();
+        const effect = (0, react_1.useEffect)();
+        const ref = (0, react_1.useRef)();
+        const state = (0, react_1.useState)();
+        const menuItemRef = ref(null);
+        const [open, setOpen] = state(false);
+        effect(() => {
+          let disposed = false;
+          let retryTimer = null;
+          const registerMenuItem = () => {
+            retryTimer = null;
+            if (disposed || menuItemRef.current) return;
+            if (!Spicetify.Menu?.Item) {
+              retryTimer = window.setTimeout(registerMenuItem, 250);
+              return;
+            }
+            const menuItem = new Spicetify.Menu.Item(
+              MENU_ITEM_LABEL,
+              false,
+              () => setOpen(true),
+              MENU_ITEM_ICON,
+            );
+            menuItem.register();
+            menuItemRef.current = menuItem;
+          };
+          registerMenuItem();
+          return () => {
+            disposed = true;
+            if (retryTimer !== null) window.clearTimeout(retryTimer);
+            menuItemRef.current?.deregister();
+            menuItemRef.current = null;
+          };
+        }, []);
+        if (!open) return null;
+        return React.createElement(ThemeSettingsModal, {
+          onClose: () => setOpen(false),
+        });
+      }
+      function ThemeSettingsModal({ onClose }) {
+        const React = (0, react_1.getReact)();
+        const effect = (0, react_1.useEffect)();
+        const ref = (0, react_1.useRef)();
+        const state = (0, react_1.useState)();
+        const dialogRef = ref(null);
+        const closeButtonRef = ref(null);
+        const tabButtonRefs = ref({
+          presets: null,
+          appearance: null,
+          motion: null,
+          advanced: null,
+        });
+        const [activeTab, setActiveTab] = state('appearance');
+        const selectTab = (tab, focus = false) => {
+          if (tab === activeTab) return;
+          setActiveTab(tab);
+          if (focus)
+            requestAnimationFrame(() => tabButtonRefs.current[tab]?.focus());
+        };
+        effect(() => {
+          const previousOverflow = document.body.style.overflow;
+          const previouslyFocused = document.activeElement;
+          const root = document.documentElement;
+          const focusFrame = requestAnimationFrame(() =>
+            closeButtonRef.current?.focus(),
+          );
+          document.body.style.overflow = 'hidden';
+          root.classList.add('luminous-settings-open');
+          return () => {
+            cancelAnimationFrame(focusFrame);
+            document.body.style.overflow = previousOverflow;
+            root.classList.remove('luminous-settings-open');
+            previouslyFocused?.focus?.();
+          };
+        }, []);
+        effect(() => {
+          const handleKeyDown = (event) => {
+            if (event.key === 'Escape') {
+              event.preventDefault();
+              onClose();
+              return;
+            }
+            if (event.key !== 'Tab') return;
+            const focusable = Array.from(
+              dialogRef.current?.querySelectorAll(FOCUSABLE_SELECTOR) ?? [],
+            ).filter((element) => element.offsetParent !== null);
+            if (!focusable.length) {
+              event.preventDefault();
+              return;
+            }
+            const first = focusable[0];
+            const last = focusable[focusable.length - 1];
+            if (event.shiftKey && document.activeElement === first) {
+              event.preventDefault();
+              last.focus();
+            } else if (!event.shiftKey && document.activeElement === last) {
+              event.preventDefault();
+              first.focus();
+            }
+          };
+          document.addEventListener('keydown', handleKeyDown, true);
+          return () =>
+            document.removeEventListener('keydown', handleKeyDown, true);
+        }, [onClose]);
+        const handleTabKeyDown = (event, tab) => {
+          const currentIndex = tabs.findIndex((item) => item.id === tab);
+          let nextIndex = null;
+          if (event.key === 'ArrowRight')
+            nextIndex = (currentIndex + 1) % tabs.length;
+          if (event.key === 'ArrowLeft') {
+            nextIndex = (currentIndex - 1 + tabs.length) % tabs.length;
+          }
+          if (event.key === 'Home') nextIndex = 0;
+          if (event.key === 'End') nextIndex = tabs.length - 1;
+          if (nextIndex === null) return;
+          event.preventDefault();
+          selectTab(tabs[nextIndex].id, true);
+        };
+        return React.createElement(
+          'div',
+          {
+            className: 'luminous-theme-modal-backdrop',
+            onMouseDown: (event) => {
+              if (event.target === event.currentTarget) onClose();
+            },
+          },
+          React.createElement(
+            'div',
+            {
+              ref: dialogRef,
+              id: MODAL_ID,
+              className: 'luminous-theme-menu',
+              role: 'dialog',
+              'aria-modal': 'true',
+              'aria-labelledby': MODAL_TITLE_ID,
+              'aria-describedby': MODAL_DESCRIPTION_ID,
+            },
+            React.createElement(
+              'div',
+              { className: 'luminous-theme-menu__header' },
+              React.createElement(
+                'div',
+                { className: 'luminous-theme-menu__mark' },
+                React.createElement('svg', {
+                  className: 'luminous-theme-menu__luminous-icon',
+                  viewBox: '0 0 16 16',
+                  'aria-hidden': 'true',
+                  focusable: 'false',
+                  dangerouslySetInnerHTML: {
+                    __html: Spicetify.SVGIcons?.brightness ?? '',
+                  },
+                }),
+              ),
+              React.createElement(
+                'div',
+                { className: 'luminous-theme-menu__title' },
+                React.createElement('span', { id: MODAL_TITLE_ID }, 'Luminous'),
+                React.createElement(
+                  'small',
+                  { id: MODAL_DESCRIPTION_ID },
+                  `Theme preferences · v${Luminous.version}`,
+                ),
+              ),
+              React.createElement(
+                'button',
+                {
+                  className: 'luminous-theme-menu__reset-button',
+                  type: 'button',
+                  onClick: () => {
+                    Luminous.Settings.resetMany(resettableSettings);
+                    Spicetify.showNotification('Luminous settings reset');
+                  },
+                },
+                'Reset',
+              ),
+              React.createElement(
+                'button',
+                {
+                  ref: closeButtonRef,
+                  className: 'luminous-theme-menu__icon-button',
+                  type: 'button',
+                  'aria-label': 'Close settings',
+                  onClick: onClose,
+                },
+                React.createElement('svg', {
+                  className: 'luminous-theme-menu__close-icon',
+                  'aria-hidden': 'true',
+                  dangerouslySetInnerHTML: {
+                    __html: Spicetify.SVGIcons?.x ?? '',
+                  },
+                }),
+              ),
+            ),
+            React.createElement(
+              'div',
+              {
+                className: 'luminous-theme-menu__tabs',
+                role: 'tablist',
+                'aria-label': 'Luminous settings sections',
+              },
+              tabs.map((tab) =>
+                React.createElement(
+                  'button',
+                  {
+                    key: tab.id,
+                    ref: (element) => {
+                      tabButtonRefs.current[tab.id] = element;
+                    },
+                    id: `${MODAL_ID}-${tab.id}-tab`,
+                    className: `luminous-theme-menu__tab${activeTab === tab.id ? ' luminous-theme-menu__tab--active' : ''}`,
+                    type: 'button',
+                    role: 'tab',
+                    tabIndex: activeTab === tab.id ? 0 : -1,
+                    'aria-selected': String(activeTab === tab.id),
+                    'aria-controls': `${MODAL_ID}-${tab.id}-panel`,
+                    onClick: () => selectTab(tab.id),
+                    onKeyDown: (event) => handleTabKeyDown(event, tab.id),
+                  },
+                  tab.label,
+                ),
+              ),
+            ),
+            React.createElement(
+              'div',
+              {
+                id: `${MODAL_ID}-${activeTab}-panel`,
+                className: 'luminous-theme-menu__panel',
+                role: 'tabpanel',
+                'aria-labelledby': `${MODAL_ID}-${activeTab}-tab`,
+              },
+              React.createElement(
+                'div',
+                {
+                  key: activeTab,
+                  className: 'luminous-theme-menu__panel-content',
+                },
+                React.createElement(SettingsSection, { section: activeTab }),
+              ),
+            ),
+            React.createElement(
+              'p',
+              { className: 'luminous-theme-menu__footer' },
+              'Changes are saved automatically.',
+            ),
+          ),
+        );
+      }
+      function PresetsSection() {
+        const React = (0, react_1.getReact)();
+        return React.createElement(
+          React.Fragment,
+          null,
+          React.createElement(
+            'div',
+            { className: 'luminous-theme-menu__panel-heading' },
+            React.createElement('h2', null, 'Presets'),
+            React.createElement(
+              'p',
+              null,
+              'Apply a complete visual and performance profile in one click.',
+            ),
+          ),
+          React.createElement(
+            'div',
+            { className: 'luminous-theme-menu__preset-grid' },
+            settings_1.visualPresets.map((preset) =>
+              React.createElement(
+                'button',
+                {
+                  key: preset.id,
+                  type: 'button',
+                  className: 'luminous-theme-menu__preset-card',
+                  onClick: () => {
+                    Luminous.Settings.setMany(preset.values);
+                    Spicetify.showNotification(
+                      `Luminous preset: ${preset.label}`,
+                    );
+                  },
+                },
+                React.createElement('strong', null, preset.label),
+                React.createElement('small', null, preset.description),
+                React.createElement('span', { 'aria-hidden': 'true' }, 'Apply'),
+              ),
+            ),
+          ),
+        );
+      }
+      function SettingsSection({ section }) {
+        const React = (0, react_1.getReact)();
+        if (section === 'presets') {
+          return React.createElement(PresetsSection);
+        }
+        const headings = {
+          appearance: {
+            title: 'Appearance',
+            description:
+              'Shape artwork, adaptive colour, and Spotify glass surfaces.',
+          },
+          motion: {
+            title: 'Motion',
+            description:
+              'Tune movement, transitions, pointer depth, and accessibility.',
+          },
+          advanced: {
+            title: 'Advanced',
+            description:
+              'Control rendering cost and inspect the current runtime.',
+          },
+        };
+        const heading = headings[section];
+        const rows = settings_1.settingsUi.filter(
+          (setting) => setting.section === section,
+        );
+        return React.createElement(
+          React.Fragment,
+          null,
+          React.createElement(
+            'div',
+            { className: 'luminous-theme-menu__panel-heading' },
+            React.createElement('h2', null, heading.title),
+            React.createElement('p', null, heading.description),
+          ),
+          rows.map((setting) =>
+            React.createElement(SettingRow, { key: setting.key, setting }),
+          ),
+          section === 'advanced' && React.createElement(RuntimeTools),
+        );
+      }
+      function SettingRow({ setting }) {
+        if (setting.control === 'toggle') {
+          return (0, react_1.getReact)().createElement(ToggleSettingRow, {
+            setting,
+          });
+        }
+        if (setting.control === 'range') {
+          return (0, react_1.getReact)().createElement(NumericSettingRow, {
+            setting,
+          });
+        }
+        return (0, react_1.getReact)().createElement(ChoiceSettingRow, {
+          setting,
+        });
+      }
+      function ToggleSettingRow({ setting }) {
+        const React = (0, react_1.getReact)();
+        const effect = (0, react_1.useEffect)();
+        const state = (0, react_1.useState)();
+        const [checked, setChecked] = state(
+          () => Luminous.Settings.get(setting.key) === true,
+        );
+        effect(
+          () =>
+            Luminous.Settings.subscribe(
+              setting.key,
+              (value) => setChecked(value === true),
+              { immediate: true },
+            ),
+          [setting.key],
+        );
+        return React.createElement(
+          'label',
+          { className: 'luminous-theme-menu__row luminous-theme-menu__toggle' },
+          React.createElement(SettingCopy, { setting }),
+          React.createElement(
+            'span',
+            { className: 'luminous-theme-menu__switch' },
+            React.createElement('input', {
+              type: 'checkbox',
+              checked,
+              onChange: (event) =>
+                Luminous.Settings.set(setting.key, event.currentTarget.checked),
+            }),
+            React.createElement('span'),
+          ),
+        );
+      }
+      function NumericSettingRow({ setting }) {
+        const React = (0, react_1.getReact)();
+        const effect = (0, react_1.useEffect)();
+        const ref = (0, react_1.useRef)();
+        const state = (0, react_1.useState)();
+        const [value, setValue] = state(() =>
+          Number(Luminous.Settings.get(setting.key)),
+        );
+        const pendingValue = ref(value);
+        const applyTimer = ref(null);
+        const flushValue = () => {
+          if (applyTimer.current !== null) {
+            window.clearTimeout(applyTimer.current);
+            applyTimer.current = null;
+          }
+          Luminous.Settings.set(setting.key, pendingValue.current);
+        };
+        const scheduleValue = (nextValue) => {
+          pendingValue.current = nextValue;
+          setValue(nextValue);
+          if (applyTimer.current !== null) return;
+          applyTimer.current = window.setTimeout(() => {
+            applyTimer.current = null;
+            Luminous.Settings.set(setting.key, pendingValue.current);
+          }, SLIDER_APPLY_INTERVAL_MS);
+        };
+        effect(
+          () =>
+            Luminous.Settings.subscribe(
+              setting.key,
+              (nextValue) => {
+                const normalized = Number(nextValue);
+                pendingValue.current = normalized;
+                setValue(normalized);
+              },
+              { immediate: true },
+            ),
+          [setting.key],
+        );
+        effect(() => {
+          return () => {
+            if (applyTimer.current !== null) {
+              window.clearTimeout(applyTimer.current);
+              Luminous.Settings.set(setting.key, pendingValue.current);
+            }
+          };
+        }, [setting.key]);
+        return React.createElement(
+          'label',
+          { className: 'luminous-theme-menu__row luminous-theme-menu__range' },
+          React.createElement(
+            'span',
+            { className: 'luminous-theme-menu__range-header' },
+            React.createElement(SettingCopy, { setting }),
+            React.createElement(
+              'strong',
+              null,
+              `${value}${setting.unit ?? ''}`,
+            ),
+          ),
+          React.createElement(
+            'span',
+            { className: 'luminous-theme-menu__range-control' },
+            React.createElement('input', {
+              type: 'range',
+              min: setting.min,
+              max: setting.max,
+              step: setting.step,
+              value,
+              onInput: (event) =>
+                scheduleValue(Number(event.currentTarget.value)),
+              onPointerUp: flushValue,
+              onKeyUp: flushValue,
+              onBlur: flushValue,
+            }),
+          ),
+        );
+      }
+      function ChoiceSettingRow({ setting }) {
+        const React = (0, react_1.getReact)();
+        const effect = (0, react_1.useEffect)();
+        const state = (0, react_1.useState)();
+        const [value, setValue] = state(() =>
+          String(Luminous.Settings.get(setting.key)),
+        );
+        effect(
+          () =>
+            Luminous.Settings.subscribe(
+              setting.key,
+              (nextValue) => setValue(String(nextValue)),
+              { immediate: true },
+            ),
+          [setting.key],
+        );
+        return React.createElement(
+          'div',
+          { className: 'luminous-theme-menu__row luminous-theme-menu__choice' },
+          React.createElement(SettingCopy, { setting }),
+          React.createElement(
+            'div',
+            {
+              className: 'luminous-theme-menu__choices',
+              role: 'group',
+              'aria-label': setting.label,
+            },
+            setting.options?.map((option) =>
+              React.createElement(
+                'button',
+                {
+                  key: option.value,
+                  className: `luminous-theme-menu__choice-button${
+                    value === option.value
+                      ? ' luminous-theme-menu__choice-button--active'
+                      : ''
+                  }`,
+                  type: 'button',
+                  'aria-pressed': String(value === option.value),
+                  onClick: () =>
+                    Luminous.Settings.set(setting.key, option.value),
+                },
+                option.label,
+              ),
+            ),
+          ),
+        );
+      }
+      function SettingCopy({ setting }) {
+        const React = (0, react_1.getReact)();
+        return React.createElement(
+          'span',
+          { className: 'luminous-theme-menu__copy' },
+          React.createElement('span', null, setting.label),
+          React.createElement('small', null, setting.description),
+        );
+      }
+      function RuntimeTools() {
+        const React = (0, react_1.getReact)();
+        const effect = (0, react_1.useEffect)();
+        const state = (0, react_1.useState)();
+        const [summary, setSummary] = state(() => getRuntimeSummary());
+        effect(() => {
+          const refresh = () => setSummary(getRuntimeSummary());
+          Luminous.Background.addEventListener('change', refresh);
+          Luminous.Canvas.addEventListener('mount', refresh);
+          Luminous.Canvas.addEventListener('change', refresh);
+          Luminous.Canvas.addEventListener('unmount', refresh);
+          Luminous.Song.addEventListener('change', refresh);
+          return () => {
+            Luminous.Background.removeEventListener('change', refresh);
+            Luminous.Canvas.removeEventListener('mount', refresh);
+            Luminous.Canvas.removeEventListener('change', refresh);
+            Luminous.Canvas.removeEventListener('unmount', refresh);
+            Luminous.Song.removeEventListener('change', refresh);
+          };
+        }, []);
+        return React.createElement(
+          'div',
+          { className: 'luminous-theme-menu__runtime' },
+          React.createElement(
+            'div',
+            { className: 'luminous-theme-menu__runtime-copy' },
+            React.createElement('strong', null, 'Runtime'),
+            React.createElement('small', null, summary),
+          ),
+          React.createElement(
+            'button',
+            {
+              type: 'button',
+              className: 'luminous-theme-menu__tool-button',
+              onClick: async () => {
+                const copied = await Luminous.Diagnostics.copy();
+                Spicetify.showNotification(
+                  copied
+                    ? 'Luminous diagnostics copied'
+                    : 'Could not copy diagnostics',
+                  !copied,
+                );
+              },
+            },
+            'Copy diagnostics',
+          ),
+        );
+      }
+      function getRuntimeSummary() {
+        const diagnostics = Luminous.Diagnostics.get();
+        const canvas = diagnostics.runtime.canvasMode ?? 'none';
+        return `Background: ${diagnostics.runtime.background} · Canvas: ${canvas} · UI: ${diagnostics.runtime.uiHealth}`;
+      }
+    },
+    'src/types/runtime/dynamic.types.ts': (module, exports, require) => {
+      'use strict';
+      Object.defineProperty(exports, '__esModule', { value: true });
+    },
+    'src/ui/synchronize.ts': (module, exports, require) => {
+      'use strict';
+      Object.defineProperty(exports, '__esModule', { value: true });
+      exports.Synchronize = void 0;
+      const logger_1 = require('../api/logger');
+      const health_1 = require('./health');
+      const PLAYLIST_BACKGROUND_CLASS = 'luminous-playlist-background';
+      const PLAYLIST_BACKGROUND_VAR = '--luminous-playlist-background-image';
+      const HOME_HEADER_HEIGHT_CLASS = 'luminous-home-header-height';
+      const HOME_HEADER_HEIGHT_VAR = '--luminous-home-header-height';
+      class Synchronize {
+        static playlistBackground(options) {
+          let root = null;
+          let rootObserver = null;
+          let contentObserver = null;
+          let rafId = null;
+          let disposed = false;
+          let lastBackground = null;
+          let lastTarget = null;
+          function cleanupTarget() {
+            if (!lastTarget) return;
+            lastTarget.classList.remove(PLAYLIST_BACKGROUND_CLASS);
+            lastTarget.style.removeProperty(PLAYLIST_BACKGROUND_VAR);
+            lastTarget = null;
+            lastBackground = null;
+          }
+          function attachRoot() {
+            if (disposed) return;
+            const nextRoot = document.querySelector('.main-view-container');
+            if (nextRoot === root && root?.isConnected) return;
+            contentObserver?.disconnect();
+            contentObserver = null;
+            cleanupTarget();
+            root = nextRoot;
+            if (!root) return;
+            contentObserver = new MutationObserver(scheduleSync);
+            contentObserver.observe(root, {
+              subtree: true,
+              childList: true,
+              attributes: true,
+              attributeFilter: ['style', 'class'],
+            });
+          }
+          function scheduleSync() {
+            if (disposed || rafId !== null) return;
+            rafId = requestAnimationFrame(() => {
+              rafId = null;
+              attachRoot();
+              sync();
+            });
+          }
+          function sync() {
+            if (!root) return;
+            const source = root.querySelector(
+              '.before-scroll-node > div > :first-child',
+            );
+            const target =
+              root.querySelector(
+                'section > .main-entityHeader-container, section > div > .main-entityHeader-container',
+              ) ||
+              root.querySelector('main > div > .main-entityHeader-container');
+            if (!source || !target) {
+              cleanupTarget();
+              return;
+            }
+            const background = getComputedStyle(source).backgroundImage;
+            if (!background || background === 'none') {
+              cleanupTarget();
+              return;
+            }
+            if (target !== lastTarget) {
+              cleanupTarget();
+              lastTarget = target;
+            }
+            if (background === lastBackground) return;
+            lastBackground = background;
+            target.classList.add(PLAYLIST_BACKGROUND_CLASS);
+            target.style.setProperty(PLAYLIST_BACKGROUND_VAR, background);
+            options?.onBackgroundChange?.(background, source, target);
+          }
+          rootObserver = new MutationObserver(scheduleSync);
+          rootObserver.observe(document.documentElement, {
+            subtree: true,
+            childList: true,
+          });
+          scheduleSync();
+          return {
+            disconnect() {
+              disposed = true;
+              rootObserver?.disconnect();
+              contentObserver?.disconnect();
+              rootObserver = null;
+              contentObserver = null;
+              if (rafId !== null) {
+                cancelAnimationFrame(rafId);
+                rafId = null;
+              }
+              cleanupTarget();
+              root = null;
+            },
+          };
+        }
+        static homeHeaderHeight(options) {
+          let root = null;
+          let rootObserver = null;
+          let contentObserver = null;
+          let rafId = null;
+          let disposed = false;
+          let lastHeight = null;
+          let lastHeader = null;
+          function cleanupHeader() {
+            if (!lastHeader) return;
+            lastHeader.classList.remove(HOME_HEADER_HEIGHT_CLASS);
+            lastHeader.style.removeProperty(HOME_HEADER_HEIGHT_VAR);
+            lastHeader = null;
+            lastHeight = null;
+          }
+          function outerHeight(element) {
+            const style = getComputedStyle(element);
+            const marginTop = Number.parseFloat(style.marginTop) || 0;
+            const marginBottom = Number.parseFloat(style.marginBottom) || 0;
+            return element.offsetHeight + marginTop + marginBottom;
+          }
+          function attachRoot() {
+            if (disposed) return;
+            const nextRoot = document.querySelector('#main-view');
+            if (nextRoot === root && root?.isConnected) return;
+            contentObserver?.disconnect();
+            contentObserver = null;
+            cleanupHeader();
+            root = nextRoot;
+            if (!root) return;
+            contentObserver = new MutationObserver(scheduleSync);
+            contentObserver.observe(root, {
+              subtree: true,
+              childList: true,
+              attributes: true,
+              attributeFilter: ['style', 'class'],
+            });
+          }
+          function scheduleSync() {
+            if (disposed || rafId !== null) return;
+            rafId = requestAnimationFrame(() => {
+              rafId = null;
+              attachRoot();
+              sync();
+            });
+          }
+          function sync() {
+            if (!root) return;
+            const header = root.querySelector('.main-home-homeHeader');
+            const chips = root.querySelector('.main-home-filterChipsContainer');
+            const firstSection = root.querySelector(
+              'section[data-testid="home-page"]:has(.view-homeShortcutsGrid-shortcuts) .main-home-content section:first-child',
+            );
+            if (!header || !chips || !firstSection) {
+              cleanupHeader();
+              return;
+            }
+            const height = outerHeight(chips) + outerHeight(firstSection);
+            if (header !== lastHeader) {
+              cleanupHeader();
+              lastHeader = header;
+            }
+            if (height === lastHeight) return;
+            lastHeight = height;
+            header.classList.add(HOME_HEADER_HEIGHT_CLASS);
+            header.style.setProperty(HOME_HEADER_HEIGHT_VAR, `${height}px`);
+            options?.onHeightChange?.(height, chips, firstSection, header);
+          }
+          rootObserver = new MutationObserver(scheduleSync);
+          rootObserver.observe(document.documentElement, {
+            subtree: true,
+            childList: true,
+          });
+          window.addEventListener('resize', scheduleSync);
+          scheduleSync();
+          return {
+            disconnect() {
+              disposed = true;
+              rootObserver?.disconnect();
+              contentObserver?.disconnect();
+              window.removeEventListener('resize', scheduleSync);
+              rootObserver = null;
+              contentObserver = null;
+              if (rafId !== null) {
+                cancelAnimationFrame(rafId);
+                rafId = null;
+              }
+              cleanupHeader();
+              root = null;
+            },
+          };
+        }
+        static uiMountWatcher() {
+          let observer = null;
+          let rafId = null;
+          let disposed = false;
+          let waitingSince = null;
+          function hasSpotifyShell() {
+            return (
+              document.querySelector('.Root__top-container #main-view') !== null
+            );
+          }
+          function hasSpotifyUi() {
+            return !!(
+              document.querySelector('.Root__main-view') ||
+              document.querySelector('.main-view-container') ||
+              document.querySelector('[data-testid="main-view"]')
+            );
+          }
+          function scheduleCheck() {
+            if (disposed || rafId !== null) return;
+            rafId = requestAnimationFrame(() => {
+              rafId = null;
+              check();
+            });
+          }
+          function check() {
+            if (!hasSpotifyShell()) {
+              waitingSince = null;
+              (0, health_1.setUiHealth)({
+                status: 'booting',
+                brokenSince: null,
+              });
+              return;
+            }
+            if (hasSpotifyUi()) {
+              waitingSince = null;
+              (0, health_1.setUiHealth)({ status: 'ready', brokenSince: null });
+              return;
+            }
+            if (waitingSince === null) {
+              waitingSince = Date.now();
+              logger_1.Logger.info('Main', 'Waiting for Spotify UI mount...');
+            }
+            (0, health_1.setUiHealth)({
+              status: 'waiting',
+              brokenSince: waitingSince,
+            });
+          }
+          observer = new MutationObserver(scheduleCheck);
+          observer.observe(document.documentElement, {
+            subtree: true,
+            childList: true,
+          });
+          scheduleCheck();
+          return {
+            disconnect() {
+              disposed = true;
+              observer?.disconnect();
+              observer = null;
+              if (rafId !== null) {
+                cancelAnimationFrame(rafId);
+                rafId = null;
+              }
+              waitingSince = null;
+              (0, health_1.setUiHealth)({
+                status: 'booting',
+                brokenSince: null,
+              });
+            },
+          };
+        }
+        static observeCinema() {
+          let observer = null;
+          function cleanupAttributes() {
+            const html = document.documentElement;
+            html.removeAttribute('data-transition');
+            [
+              'data-right-sidebar-open-preenter',
+              'data-right-sidebar-open-preexit',
+              'data-right-sidebar-open-duringexit',
+              'data-right-sidebar-open-postexit',
+            ].forEach((attribute) => {
+              html.removeAttribute(attribute);
+            });
+          }
+          observer = new MutationObserver(cleanupAttributes);
+          observer.observe(document.documentElement, {
+            attributes: true,
+            attributeFilter: [
+              'data-transition',
+              'data-right-sidebar-open-preenter',
+              'data-right-sidebar-open-duringenter',
+              'data-right-sidebar-open-postenter',
+              'data-right-sidebar-open-preexit',
+              'data-right-sidebar-open-duringexit',
+              'data-right-sidebar-open-postexit',
+            ],
+          });
+          cleanupAttributes();
+          return {
+            disconnect() {
+              observer?.disconnect();
+              observer = null;
+            },
+          };
+        }
+      }
+      exports.Synchronize = Synchronize;
+    },
+    'src/app/features/SynchronizeFeature.ts': (module, exports, require) => {
+      'use strict';
+      Object.defineProperty(exports, '__esModule', { value: true });
+      exports.SynchronizeFeature = SynchronizeFeature;
+      const react_1 = require('../react');
+      const synchronize_1 = require('../../ui/synchronize');
+      function SynchronizeFeature() {
+        const effect = (0, react_1.useEffect)();
+        effect(() => {
+          const controllers = [
+            synchronize_1.Synchronize.uiMountWatcher(),
+            synchronize_1.Synchronize.observeCinema(),
+            synchronize_1.Synchronize.playlistBackground(),
+            synchronize_1.Synchronize.homeHeaderHeight(),
+          ];
+          return () => {
+            controllers.forEach((controller) => controller.disconnect());
+          };
+        }, []);
+        return null;
+      }
+    },
+    'src/app/App.ts': (module, exports, require) => {
+      'use strict';
+      Object.defineProperty(exports, '__esModule', { value: true });
+      exports.App = App;
+      const DynamicBackgroundFeature_1 = require('./features/DynamicBackgroundFeature');
+      const SplashFeature_1 = require('./features/SplashFeature');
+      const ThemeMenuFeature_1 = require('./features/ThemeMenuFeature');
+      const SynchronizeFeature_1 = require('./features/SynchronizeFeature');
+      const react_1 = require('./react');
+      function App() {
+        const React = (0, react_1.getReact)();
+        return React.createElement(
+          React.Fragment,
+          null,
+          React.createElement(SplashFeature_1.SplashFeature),
+          React.createElement(SynchronizeFeature_1.SynchronizeFeature),
+          React.createElement(
+            DynamicBackgroundFeature_1.DynamicBackgroundFeature,
+          ),
+          React.createElement(ThemeMenuFeature_1.ThemeMenuFeature),
+        );
+      }
+    },
+    'src/app/runtime.ts': (module, exports, require) => {
+      'use strict';
+      Object.defineProperty(exports, '__esModule', { value: true });
+      exports.mountLuminousApp = mountLuminousApp;
+      exports.unmountLuminousApp = unmountLuminousApp;
+      const App_1 = require('./App');
+      const react_1 = require('./react');
+      const ROOT_ID = 'luminous-react-root';
+      const REACT_READY_TIMEOUT = 15000;
+      let root = null;
+      let mountRevision = 0;
+      let reactWaitFrame = null;
+      function mountLuminousApp() {
+        const revision = ++mountRevision;
+        cancelReactWait();
+        waitForReactRuntime(revision)
+          .then(() => {
+            if (revision !== mountRevision) return;
+            renderApp();
+          })
+          .catch((error) => {
+            if (revision !== mountRevision) return;
+            Luminous.Logger.error(
+              'Runtime',
+              'Failed to mount application',
+              error,
+            );
+          });
+      }
+      function unmountLuminousApp() {
+        mountRevision++;
+        cancelReactWait();
+        if (root?.unmount) {
+          root.unmount();
+          root = null;
+        } else if (typeof Spicetify !== 'undefined' && Spicetify.ReactDOM) {
+          const container = document.getElementById(ROOT_ID);
+          if (container && Spicetify.ReactDOM.unmountComponentAtNode) {
+            Spicetify.ReactDOM.unmountComponentAtNode(container);
+          }
+        }
+        document.getElementById(ROOT_ID)?.remove();
+      }
+      function renderApp() {
+        const React = (0, react_1.getReact)();
+        const { ReactDOM } = Spicetify;
+        const container = ensureRoot();
+        const element = React.createElement(App_1.App);
+        if (ReactDOM.createRoot) {
+          const mountedRoot = root ?? ReactDOM.createRoot(container);
+          root = mountedRoot;
+          mountedRoot.render(element);
+          return;
+        }
+        ReactDOM.render(element, container);
+      }
+      function waitForReactRuntime(revision) {
+        return new Promise((resolve, reject) => {
+          const start = performance.now();
+          const check = () => {
+            reactWaitFrame = null;
+            if (revision !== mountRevision) {
+              reject(new Error('Luminous mount superseded'));
+              return;
+            }
+            if (
+              typeof Spicetify !== 'undefined' &&
+              Spicetify.React &&
+              Spicetify.ReactDOM &&
+              document.body
+            ) {
+              resolve();
+              return;
+            }
+            if (performance.now() - start > REACT_READY_TIMEOUT) {
+              reject(new Error('Spicetify React runtime not available'));
+              return;
+            }
+            reactWaitFrame = requestAnimationFrame(check);
+          };
+          check();
+        });
+      }
+      function cancelReactWait() {
+        if (reactWaitFrame === null) return;
+        cancelAnimationFrame(reactWaitFrame);
+        reactWaitFrame = null;
+      }
+      function ensureRoot() {
+        let container = document.getElementById(ROOT_ID);
+        if (!container) {
+          container = document.createElement('div');
+          container.id = ROOT_ID;
+          container.style.display = 'contents';
+          document.body.appendChild(container);
+        }
+        return container;
+      }
+    },
+    'src/app/lifecycle.ts': (module, exports, require) => {
+      'use strict';
+      Object.defineProperty(exports, '__esModule', { value: true });
+      exports.destroyLuminousRuntime = destroyLuminousRuntime;
+      exports.markLuminousRuntimeActive = markLuminousRuntimeActive;
+      const runtime_1 = require('./runtime');
+      const ROOT_CLASSES = [
+        'luminous-runtime-active',
+        'hideDynamicBackground',
+        'luminous-dynamic-palette',
+        'luminous-palette-transitioning',
+        'luminous-track-changing',
+        'luminous-glass-highlights',
+        'luminous-reduce-motion',
+        'luminous-runtime-suspended',
+        'luminous-settings-open',
+        'luminous-parallax-enabled',
+        'luminous-source-auto',
+        'luminous-source-artwork',
+        'luminous-motion-still',
+        'luminous-motion-drift',
+        'luminous-motion-float',
+        'luminous-motion-orbit',
+        'luminous-quality-full',
+        'luminous-quality-balanced',
+        'luminous-quality-lite',
+        'luminous-effect-aurora',
+        'luminous-effect-ember',
+        'luminous-effect-bloom',
+        'luminous-effect-prism',
+        'luminous-effect-halo',
+        'luminous-effect-nebula',
+        'luminous-effect-energy-soft',
+        'luminous-effect-energy-flow',
+        'luminous-effect-energy-vivid',
+        'luminous-effect-tone-dark',
+        'luminous-effect-tone-balanced',
+        'luminous-effect-tone-light',
+      ];
+      const ROOT_VARIABLES = [
+        '--luminous-background',
+        '--luminous-background-blur',
+        '--luminous-background-brightness',
+        '--luminous-ui-opacity',
+        '--luminous-ui-blur',
+        '--luminous-ui-base',
+        '--luminous-palette-effect-opacity',
+        '--luminous-motion-duration',
+        '--luminous-transition-duration',
+        '--luminous-vignette-opacity',
+        '--luminous-grain-opacity',
+        '--luminous-parallax-strength',
+        '--luminous-parallax-x',
+        '--luminous-parallax-y',
+      ];
+      let destroyed = false;
+      function destroyLuminousRuntime() {
+        if (destroyed) return;
+        destroyed = true;
+        (0, runtime_1.unmountLuminousApp)();
+        Luminous.Background.destroy();
+        Luminous.Palette.clear();
+        Luminous.Canvas.destroy();
+        Luminous.Song.destroy();
+        Luminous.Settings.destroy();
+        const root = document.documentElement;
+        ROOT_CLASSES.forEach((className) => root.classList.remove(className));
+        ROOT_VARIABLES.forEach((variable) =>
+          root.style.removeProperty(variable),
+        );
+        Luminous.Logger.info('Runtime', 'Destroyed');
+      }
+      function markLuminousRuntimeActive() {
+        destroyed = false;
+        document.documentElement.classList.add('luminous-runtime-active');
+      }
+    },
+    'src/index.ts': (module, exports, require) => {
+      'use strict';
+      Object.defineProperty(exports, '__esModule', { value: true });
+      const global_1 = require('./api/global');
+      const lifecycle_1 = require('./app/lifecycle');
+      const runtime_1 = require('./app/runtime');
+      const settings_1 = require('./config/settings');
+      (0, global_1.destroyExistingRuntime)();
+      (0, global_1.exposeGlobalAPI)(lifecycle_1.destroyLuminousRuntime);
+      (0, lifecycle_1.markLuminousRuntimeActive)();
+      Luminous.Logger.printBanner();
+      (0, settings_1.registerLuminousSettings)();
+      Luminous.Settings.init();
+      void Luminous.Song.init().catch((error) => {
+        Luminous.Logger.error('Song', 'Initialization failed', error);
+      });
+      (0, runtime_1.mountLuminousApp)();
+    },
+  };
+  const __cache = {};
+  function __resolve(from, spec) {
+    if (!spec.startsWith('.'))
+      throw new Error('External runtime import: ' + spec);
+    const base = from.slice(0, from.lastIndexOf('/') + 1) + spec;
+    const parts = [];
+    for (const p of base.split('/')) {
+      if (!p || p === '.') continue;
+      if (p === '..') parts.pop();
+      else parts.push(p);
+    }
+    const raw = parts.join('/');
+    for (const c of [raw, raw + '.ts', raw + '/index.ts']) {
+      if (__mods[c]) return c;
+    }
+    throw new Error('Cannot resolve ' + spec + ' from ' + from);
   }
-  document.getElementById(J)?.remove();
-}
-function ke() {
-  let e = C(),
-    { ReactDOM: t } = Spicetify,
-    n = je(),
-    r = e.createElement(Te);
-  if (t.createRoot) {
-    let e = Y ?? t.createRoot(n);
-    ((Y = e), e.render(r));
-    return;
+  function __req(id) {
+    if (__cache[id]) return __cache[id].exports;
+    const module = { exports: {} };
+    __cache[id] = module;
+    __mods[id](module, module.exports, (s) => __req(__resolve(id, s)));
+    return module.exports;
   }
-  t.render(r, n);
-}
-function Ae(e) {
-  return new Promise((t, n) => {
-    let r = performance.now(),
-      i = () => {
-        if (((Z = null), e !== X)) {
-          n(Error(`Luminous mount superseded`));
-          return;
-        }
-        if (
-          typeof Spicetify < `u` &&
-          Spicetify.React &&
-          Spicetify.ReactDOM &&
-          document.body
-        ) {
-          t();
-          return;
-        }
-        if (performance.now() - r > Ee) {
-          n(Error(`Spicetify React runtime not available`));
-          return;
-        }
-        Z = requestAnimationFrame(i);
-      };
-    i();
-  });
-}
-function Q() {
-  Z !== null && (cancelAnimationFrame(Z), (Z = null));
-}
-function je() {
-  let e = document.getElementById(J);
-  return (
-    e ||
-      ((e = document.createElement(`div`)),
-      (e.id = J),
-      (e.style.display = `contents`),
-      document.body.appendChild(e)),
-    e
-  );
-}
-var Me =
-    `luminous-runtime-active.hideDynamicBackground.luminous-dynamic-palette.luminous-palette-transitioning.luminous-track-changing.luminous-glass-highlights.luminous-reduce-motion.luminous-runtime-suspended.luminous-settings-open.luminous-parallax-enabled.luminous-source-auto.luminous-source-artwork.luminous-motion-still.luminous-motion-drift.luminous-motion-float.luminous-motion-orbit.luminous-quality-full.luminous-quality-balanced.luminous-quality-lite.luminous-effect-aurora.luminous-effect-ember.luminous-effect-bloom.luminous-effect-prism.luminous-effect-halo.luminous-effect-nebula.luminous-effect-energy-soft.luminous-effect-energy-flow.luminous-effect-energy-vivid.luminous-effect-tone-dark.luminous-effect-tone-balanced.luminous-effect-tone-light`.split(
-      `.`,
-    ),
-  Ne = [
-    `--luminous-background`,
-    `--luminous-background-blur`,
-    `--luminous-background-brightness`,
-    `--luminous-ui-opacity`,
-    `--luminous-ui-blur`,
-    `--luminous-ui-base`,
-    `--luminous-palette-effect-opacity`,
-    `--luminous-motion-duration`,
-    `--luminous-transition-duration`,
-    `--luminous-vignette-opacity`,
-    `--luminous-grain-opacity`,
-    `--luminous-parallax-strength`,
-    `--luminous-parallax-x`,
-    `--luminous-parallax-y`,
-  ],
-  $ = !1;
-function Pe() {
-  if ($) return;
-  (($ = !0),
-    Oe(),
-    Luminous.Background.destroy(),
-    Luminous.Palette.clear(),
-    Luminous.Canvas.destroy(),
-    Luminous.Song.destroy(),
-    Luminous.Settings.destroy());
-  let e = document.documentElement;
-  (Me.forEach((t) => e.classList.remove(t)),
-    Ne.forEach((t) => e.style.removeProperty(t)),
-    Luminous.Logger.info(`Runtime`, `Destroyed`));
-}
-function Fe() {
-  (($ = !1), document.documentElement.classList.add(`luminous-runtime-active`));
-}
-(x(),
-  S(Pe),
-  Fe(),
-  Luminous.Logger.printBanner(),
-  le(),
-  Luminous.Settings.init(),
-  Luminous.Song.init().catch((e) => {
-    Luminous.Logger.error(`Song`, `Initialization failed`, e);
-  }),
-  De());
+  __req('src/index.ts');
+})();
