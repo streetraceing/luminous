@@ -702,12 +702,12 @@ var e = class {
     }
     static printBanner() {
       (console.log(
-        `%c Luminous v2.2.1 %c by streetraceing `,
+        `%c Luminous v2.2.2 %c by streetraceing `,
         `background:#1DB954;color:#000;padding:6px 12px;border-radius:8px 0 0 8px;font-weight:600;`,
         `background:#181818;color:#1DB954;padding:6px 12px;border-radius:0 8px 8px 0;font-weight:500;`,
       ),
         console.log(
-          `%c build: 08/08/2026 02:57:37 UTC+03:00 `,
+          `%c build: 08/08/2026 04:08:35 UTC+03:00 `,
           `color:#888;font-size:12px;`,
         ));
     }
@@ -744,8 +744,8 @@ var l = class {
         t = Luminous.Song.getSync();
       return {
         luminous: {
-          version: `2.2.1`,
-          buildTime: `08/08/2026 02:57:37 UTC+03:00`,
+          version: `2.2.2`,
+          buildTime: `08/08/2026 04:08:35 UTC+03:00`,
         },
         runtime: {
           background: Luminous.Background.getType(),
@@ -1814,7 +1814,7 @@ function S(r) {
       Settings: v,
       Logger: n,
       destroy: r,
-      version: `2.2.1`,
+      version: `2.2.2`,
     },
     configurable: !0,
   });

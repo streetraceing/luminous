@@ -1537,6 +1537,12 @@ html.hideDynamicBackground
   opacity: 0 !important;
   pointer-events: none !important;
 }
+:is(
+  .main-nowPlayingView-aboutArtist > div,
+  .main-nowPlayingView-aboutArtist > div > div > div:last-child
+) {
+  background: 0 0;
+}
 .Root__right-sidebar .main-nowPlayingView-section {
   --section-background-base: var(--luminous-ui-background);
 }
