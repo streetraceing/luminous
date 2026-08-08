@@ -6,12 +6,12 @@ Luminous is not an independent web application. It is injected into Spotify by S
 
 ## Documents
 
-- [Architecture](./architecture.md) — boot sequence, lifecycle, modules, event/data flow, invariants, and teardown.
-- [Background pipeline](./background.md) — image/video double buffering, Canvas capture, source identity, fallback policy, transitions, suspension, and effect layers.
-- [Palette engine](./palette.md) — cover sampling, metrics, colour selection, scene/energy/tone selection, caching, cancellation, and CSS output.
-- [Settings](./settings.md) — complete setting schema, persistence, batching, UI metadata, presets, CSS classes/variables, and migration behavior.
-- [UI and Spotify integration](./ui.md) — React shell, settings dialog, motion controller, shell synchronization, accessibility, and DOM compatibility.
-- [Development](./development.md) — scripts, release flow, validation, debugging, compatibility checklist, and change rules.
+- [Architecture](./architecture.md) - boot sequence, lifecycle, modules, event/data flow, invariants, and teardown.
+- [Background pipeline](./background.md) - image/video double buffering, Canvas capture, source identity, fallback policy, transitions, suspension, and effect layers.
+- [Palette engine](./palette.md) - cover sampling, metrics, colour selection, scene/energy/tone selection, caching, cancellation, and CSS output.
+- [Settings](./settings.md) - complete setting schema, persistence, batching, UI metadata, presets, CSS classes/variables, and migration behavior.
+- [UI and Spotify integration](./ui.md) - React shell, settings dialog, motion controller, shell synchronization, accessibility, and DOM compatibility.
+- [Development](./development.md) - scripts, release flow, validation, debugging, compatibility checklist, and change rules.
 
 ## Architectural priorities
 

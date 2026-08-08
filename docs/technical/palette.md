@@ -37,12 +37,12 @@ Scene-specific normalization limits saturation and lightness to useful ranges be
 
 Current automatic scene families:
 
-- `halo` — low-chroma artwork;
-- `prism` — diverse, chromatic artwork;
-- `nebula` — dark-to-mid violet/magenta artwork with useful chroma;
-- `bloom` — green-dominant artwork;
-- `ember` — warm/red/orange artwork or positive warmth metric;
-- `aurora` — remaining cool palettes.
+- `halo` - low-chroma artwork;
+- `prism` - diverse, chromatic artwork;
+- `nebula` - dark-to-mid violet/magenta artwork with useful chroma;
+- `bloom` - green-dominant artwork;
+- `ember` - warm/red/orange artwork or positive warmth metric;
+- `aurora` - remaining cool palettes.
 
 Scene selection is deterministic for the extracted metrics; there is no random visual identity change between launches.
 

@@ -60,11 +60,11 @@ Console messages are grouped by channels: Runtime, Main, Background, Canvas, Pal
 
 Useful checks:
 
-- `Luminous.Background.getType()` — `none`, `image`, or `canvas`.
-- `Luminous.Canvas.get()` — selected Spotify source/mode/revision.
-- `Luminous.Song.getSync()` — normalized current track.
-- `Luminous.Settings.snapshot()` — effective settings after normalization.
-- `Luminous.Diagnostics.toText()` — complete report string.
+- `Luminous.Background.getType()` - `none`, `image`, or `canvas`.
+- `Luminous.Canvas.get()` - selected Spotify source/mode/revision.
+- `Luminous.Song.getSync()` - normalized current track.
+- `Luminous.Settings.snapshot()` - effective settings after normalization.
+- `Luminous.Diagnostics.toText()` - complete report string.
 
 ## Canvas troubleshooting
 

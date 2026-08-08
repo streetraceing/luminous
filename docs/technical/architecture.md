@@ -17,10 +17,10 @@ Boot order:
 
 `App` contains:
 
-- `SplashFeature` — startup status overlay using the original stable shell-health behavior;
-- `SynchronizeFeature` — observes Spotify structural UI state;
-- `DynamicBackgroundFeature` — the pre-refactor coordinator joining Song, Canvas, Palette, Background, and UI health;
-- `ThemeMenuFeature` — settings menu/modal.
+- `SplashFeature` - startup status overlay using the original stable shell-health behavior;
+- `SynchronizeFeature` - observes Spotify structural UI state;
+- `DynamicBackgroundFeature` - the pre-refactor coordinator joining Song, Canvas, Palette, Background, and UI health;
+- `ThemeMenuFeature` - settings menu/modal.
 
 The previous always-running `MotionFeature` is no longer mounted. System reduced-motion is handled by CSS; the explicit Reduce motion setting toggles the same stable root class directly.
 

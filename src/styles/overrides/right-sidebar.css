@@ -77,6 +77,13 @@
   pointer-events: none !important;
 }
 
+:is(
+  .main-nowPlayingView-aboutArtist > div,
+  .main-nowPlayingView-aboutArtist > div > div > div:last-child
+) {
+  background: transparent;
+}
+
 /* Colors */
 
 .Root__right-sidebar .main-nowPlayingView-section {

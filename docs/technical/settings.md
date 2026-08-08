@@ -29,10 +29,10 @@ Saved values for removed keys are ignored and disappear on the next persisted se
 
 Presets remain in a dedicated tab and use one batched `setMany()` operation:
 
-- **Balanced** — auto Canvas, adaptive palette, Drift.
-- **Cinematic** — brighter media, stronger palette, Float; no experimental compositor layers.
-- **Calm** — artwork-only, Still, subdued palette.
-- **Performance** — artwork-only, Still, higher surface opacity and lower blur cost.
+- **Balanced** - auto Canvas, adaptive palette, Drift.
+- **Cinematic** - brighter media, stronger palette, Float; no experimental compositor layers.
+- **Calm** - artwork-only, Still, subdued palette.
+- **Performance** - artwork-only, Still, higher surface opacity and lower blur cost.
 
 ## Settings UI performance
 
