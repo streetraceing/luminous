@@ -1,23 +1,61 @@
 import {
+  HomeHeaderHeightSyncOptions,
   PlaylistBackgroundSyncOptions,
   SyncController,
-  HomeHeaderHeightSyncOptions,
 } from '../types/runtime/dynamic.types';
 import { Logger } from '../api/logger';
 import { setUiHealth } from './health';
+import {
+  DomPulse,
+  mutationAddsOrRemovesSelector,
+  mutationTouchesSelector,
+} from './domPulse';
+import { MainViewPulse } from './mainViewPulse';
 
 const PLAYLIST_BACKGROUND_CLASS = 'luminous-playlist-background';
 const PLAYLIST_BACKGROUND_VAR = '--luminous-playlist-background-image';
 const HOME_HEADER_HEIGHT_CLASS = 'luminous-home-header-height';
 const HOME_HEADER_HEIGHT_VAR = '--luminous-home-header-height';
 
+const PLAYLIST_STRUCTURE_SELECTOR = [
+  '.main-view-container',
+  '.before-scroll-node',
+  '.main-entityHeader-container',
+  '.playlist-playlist-page',
+  '.main-trackList-trackListContainer',
+].join(',');
+
+const HOME_STRUCTURE_SELECTOR = [
+  '.main-home-homeHeader',
+  '.main-home-filterChipsContainer',
+  '.view-homeShortcutsGrid-shortcuts',
+  '.main-home-content',
+  'section[data-testid="home-page"]',
+].join(',');
+
+const MAIN_VIEW_STATE_SELECTOR = [
+  '.playlist-playlist-page',
+  '.main-trackList-trackListContainer',
+  '.marketplace-content',
+  '#searchPage',
+  'section[data-testid="episode"]',
+  'section[data-test-uri^="spotify:artist:"]',
+  '.main-home-filterChipsContainer',
+  '.view-homeShortcutsGrid-shortcuts',
+  '.main-shelf-shelf',
+  'div[data-testid="test-ref-div"]',
+  '.main-entityHeader-image',
+  '.main-actionBarBackground-background',
+  '.playlist-playlist-actionBarBackground-background',
+].join(',');
+
 export class Synchronize {
   static playlistBackground(
     options?: PlaylistBackgroundSyncOptions,
   ): SyncController {
     let root: HTMLElement | null = null;
-    let rootObserver: MutationObserver | null = null;
-    let contentObserver: MutationObserver | null = null;
+    let sourceObserver: MutationObserver | null = null;
+    let observedSource: HTMLElement | null = null;
     let rafId: number | null = null;
     let disposed = false;
     let lastBackground: string | null = null;
@@ -32,29 +70,34 @@ export class Synchronize {
       lastBackground = null;
     }
 
-    function attachRoot() {
-      if (disposed) return;
+    function observeSource(source: HTMLElement | null) {
+      if (source === observedSource) return;
 
-      const nextRoot = document.querySelector(
-        '.main-view-container',
-      ) as HTMLElement | null;
+      sourceObserver?.disconnect();
+      sourceObserver = null;
+      observedSource = source;
 
-      if (nextRoot === root && root?.isConnected) return;
+      if (!source) return;
 
-      contentObserver?.disconnect();
-      contentObserver = null;
-      cleanupTarget();
-      root = nextRoot;
-
-      if (!root) return;
-
-      contentObserver = new MutationObserver(scheduleSync);
-      contentObserver.observe(root, {
-        subtree: true,
-        childList: true,
+      sourceObserver = new MutationObserver(scheduleSync);
+      sourceObserver.observe(source, {
         attributes: true,
         attributeFilter: ['style', 'class'],
       });
+    }
+
+    function attachRoot() {
+      if (disposed) return;
+
+      const mainView = MainViewPulse.getRoot();
+      const nextRoot = (mainView?.querySelector('.main-view-container') ??
+        document.querySelector('.main-view-container')) as HTMLElement | null;
+
+      if (nextRoot === root && root?.isConnected) return;
+
+      observeSource(null);
+      cleanupTarget();
+      root = nextRoot;
     }
 
     function scheduleSync() {
@@ -82,6 +125,8 @@ export class Synchronize {
           'main > div > .main-entityHeader-container',
         ) as HTMLElement | null);
 
+      observeSource(source);
+
       if (!source || !target) {
         cleanupTarget();
         return;
@@ -106,20 +151,18 @@ export class Synchronize {
       options?.onBackgroundChange?.(background, source, target);
     }
 
-    rootObserver = new MutationObserver(scheduleSync);
-    rootObserver.observe(document.documentElement, {
-      subtree: true,
-      childList: true,
+    const unsubscribeMainViewPulse = MainViewPulse.subscribe(scheduleSync, {
+      filter: (records) =>
+        mutationTouchesSelector(records, PLAYLIST_STRUCTURE_SELECTOR),
     });
-    scheduleSync();
 
     return {
       disconnect() {
         disposed = true;
-        rootObserver?.disconnect();
-        contentObserver?.disconnect();
-        rootObserver = null;
-        contentObserver = null;
+        unsubscribeMainViewPulse();
+        sourceObserver?.disconnect();
+        sourceObserver = null;
+        observedSource = null;
 
         if (rafId !== null) {
           cancelAnimationFrame(rafId);
@@ -136,20 +179,29 @@ export class Synchronize {
     options?: HomeHeaderHeightSyncOptions,
   ): SyncController {
     let root: HTMLElement | null = null;
-    let rootObserver: MutationObserver | null = null;
-    let contentObserver: MutationObserver | null = null;
+    let resizeObserver: ResizeObserver | null = null;
     let rafId: number | null = null;
     let disposed = false;
     let lastHeight: number | null = null;
     let lastHeader: HTMLElement | null = null;
+    let lastChips: HTMLElement | null = null;
+    let lastSection: HTMLElement | null = null;
 
     function cleanupHeader() {
-      if (!lastHeader) return;
+      if (lastHeader) {
+        lastHeader.classList.remove(HOME_HEADER_HEIGHT_CLASS);
+        lastHeader.style.removeProperty(HOME_HEADER_HEIGHT_VAR);
+      }
 
-      lastHeader.classList.remove(HOME_HEADER_HEIGHT_CLASS);
-      lastHeader.style.removeProperty(HOME_HEADER_HEIGHT_VAR);
       lastHeader = null;
       lastHeight = null;
+    }
+
+    function clearMeasuredElements() {
+      resizeObserver?.disconnect();
+      resizeObserver = null;
+      lastChips = null;
+      lastSection = null;
     }
 
     function outerHeight(element: HTMLElement): number {
@@ -157,31 +209,32 @@ export class Synchronize {
       const marginTop = Number.parseFloat(style.marginTop) || 0;
       const marginBottom = Number.parseFloat(style.marginBottom) || 0;
 
-      return element.offsetHeight + marginTop + marginBottom;
+      return element.getBoundingClientRect().height + marginTop + marginBottom;
+    }
+
+    function observeMeasuredElements(chips: HTMLElement, section: HTMLElement) {
+      if (chips === lastChips && section === lastSection) return;
+
+      clearMeasuredElements();
+      lastChips = chips;
+      lastSection = section;
+
+      if (typeof ResizeObserver !== 'undefined') {
+        resizeObserver = new ResizeObserver(scheduleSync);
+        resizeObserver.observe(chips);
+        resizeObserver.observe(section);
+      }
     }
 
     function attachRoot() {
       if (disposed) return;
 
-      const nextRoot = document.querySelector(
-        '#main-view',
-      ) as HTMLElement | null;
+      const nextRoot = MainViewPulse.getRoot();
       if (nextRoot === root && root?.isConnected) return;
 
-      contentObserver?.disconnect();
-      contentObserver = null;
+      clearMeasuredElements();
       cleanupHeader();
       root = nextRoot;
-
-      if (!root) return;
-
-      contentObserver = new MutationObserver(scheduleSync);
-      contentObserver.observe(root, {
-        subtree: true,
-        childList: true,
-        attributes: true,
-        attributeFilter: ['style', 'class'],
-      });
     }
 
     function scheduleSync() {
@@ -203,15 +256,25 @@ export class Synchronize {
       const chips = root.querySelector(
         '.main-home-filterChipsContainer',
       ) as HTMLElement | null;
-      const firstSection = root.querySelector(
-        'section[data-testid="home-page"]:has(.view-homeShortcutsGrid-shortcuts) .main-home-content section:first-child',
+      const homePage = root.querySelector(
+        'section[data-testid="home-page"]',
       ) as HTMLElement | null;
+      const hasShortcuts = !!homePage?.querySelector(
+        '.view-homeShortcutsGrid-shortcuts',
+      );
+      const firstSection = hasShortcuts
+        ? (homePage?.querySelector(
+            '.main-home-content section:first-child',
+          ) as HTMLElement | null)
+        : null;
 
       if (!header || !chips || !firstSection) {
+        clearMeasuredElements();
         cleanupHeader();
         return;
       }
 
+      observeMeasuredElements(chips, firstSection);
       const height = outerHeight(chips) + outerHeight(firstSection);
 
       if (header !== lastHeader) {
@@ -219,7 +282,7 @@ export class Synchronize {
         lastHeader = header;
       }
 
-      if (height === lastHeight) return;
+      if (Math.abs(height - (lastHeight ?? -1)) < 0.5) return;
 
       lastHeight = height;
       header.classList.add(HOME_HEADER_HEIGHT_CLASS);
@@ -227,37 +290,272 @@ export class Synchronize {
       options?.onHeightChange?.(height, chips, firstSection, header);
     }
 
-    rootObserver = new MutationObserver(scheduleSync);
-    rootObserver.observe(document.documentElement, {
-      subtree: true,
-      childList: true,
+    const unsubscribeMainViewPulse = MainViewPulse.subscribe(scheduleSync, {
+      filter: (records) =>
+        mutationTouchesSelector(records, HOME_STRUCTURE_SELECTOR),
     });
-    window.addEventListener('resize', scheduleSync);
-    scheduleSync();
+    window.addEventListener('resize', scheduleSync, { passive: true });
 
     return {
       disconnect() {
         disposed = true;
-        rootObserver?.disconnect();
-        contentObserver?.disconnect();
+        unsubscribeMainViewPulse();
+        resizeObserver?.disconnect();
         window.removeEventListener('resize', scheduleSync);
-        rootObserver = null;
-        contentObserver = null;
+        resizeObserver = null;
 
         if (rafId !== null) {
           cancelAnimationFrame(rafId);
           rafId = null;
         }
 
+        clearMeasuredElements();
         cleanupHeader();
         root = null;
       },
     };
   }
 
-  static uiMountWatcher(): SyncController {
+  static mainViewState(): SyncController {
+    const stateClasses = [
+      'luminous-page-playlist',
+      'luminous-page-marketplace',
+      'luminous-page-search',
+      'luminous-page-episode',
+      'luminous-page-artist',
+      'luminous-page-home',
+      'luminous-page-home-shortcuts',
+      'luminous-page-shelf',
+    ] as const;
+
+    let root: HTMLElement | null = null;
+    let disposed = false;
+    let hiddenTestRefContainers = new Set<HTMLElement>();
+    let artistImageAncestors = new Set<HTMLElement>();
+    let actionBarBackgroundParents = new Set<HTMLElement>();
+
+    function clearMarkedElements(
+      elements: Set<HTMLElement>,
+      className: string,
+    ): Set<HTMLElement> {
+      elements.forEach((element) => element.classList.remove(className));
+      return new Set();
+    }
+
+    function cleanupRoot() {
+      root?.classList.remove(...stateClasses);
+      hiddenTestRefContainers = clearMarkedElements(
+        hiddenTestRefContainers,
+        'luminous-hidden-test-ref-container',
+      );
+      artistImageAncestors = clearMarkedElements(
+        artistImageAncestors,
+        'luminous-artist-image-ancestor',
+      );
+      actionBarBackgroundParents = clearMarkedElements(
+        actionBarBackgroundParents,
+        'luminous-actionbar-background-parent',
+      );
+    }
+
+    function attachRoot() {
+      const nextRoot = MainViewPulse.getRoot();
+      if (nextRoot === root && root?.isConnected) return;
+
+      cleanupRoot();
+      root = nextRoot;
+    }
+
+    function toggle(className: (typeof stateClasses)[number], value: boolean) {
+      root?.classList.toggle(className, value);
+    }
+
+    function sync() {
+      if (disposed) return;
+      attachRoot();
+      if (!root) return;
+
+      toggle(
+        'luminous-page-playlist',
+        !!root.querySelector(
+          '.playlist-playlist-page, .main-trackList-trackListContainer',
+        ),
+      );
+      toggle(
+        'luminous-page-marketplace',
+        !!root.querySelector('.marketplace-content'),
+      );
+      toggle('luminous-page-search', !!root.querySelector('#searchPage'));
+      toggle(
+        'luminous-page-episode',
+        !!root.querySelector('section[data-testid="episode"]'),
+      );
+      toggle(
+        'luminous-page-artist',
+        !!root.querySelector('section[data-test-uri^="spotify:artist:"]'),
+      );
+      toggle(
+        'luminous-page-home',
+        !!root.querySelector('.main-home-filterChipsContainer'),
+      );
+      toggle(
+        'luminous-page-home-shortcuts',
+        !!root.querySelector(
+          'section[data-testid="home-page"] .view-homeShortcutsGrid-shortcuts',
+        ),
+      );
+      toggle('luminous-page-shelf', !!root.querySelector('.main-shelf-shelf'));
+
+      const nextHiddenTestRefs = new Set<HTMLElement>();
+      root
+        .querySelectorAll<HTMLElement>('div[data-testid="test-ref-div"]')
+        .forEach((testRef) => {
+          let container = testRef.parentElement;
+          while (container?.parentElement && container.parentElement !== root) {
+            container = container.parentElement;
+          }
+
+          if (container?.parentElement === root) {
+            container.classList.add('luminous-hidden-test-ref-container');
+            nextHiddenTestRefs.add(container);
+          }
+        });
+
+      hiddenTestRefContainers.forEach((element) => {
+        if (!nextHiddenTestRefs.has(element)) {
+          element.classList.remove('luminous-hidden-test-ref-container');
+        }
+      });
+      hiddenTestRefContainers = nextHiddenTestRefs;
+
+      const nextArtistImageAncestors = new Set<HTMLElement>();
+      const artistImage = root.querySelector('.main-entityHeader-image');
+      let artistAncestor = artistImage?.parentElement ?? null;
+      while (artistAncestor && artistAncestor !== root) {
+        if (artistAncestor.tagName === 'DIV') {
+          artistAncestor.classList.add('luminous-artist-image-ancestor');
+          nextArtistImageAncestors.add(artistAncestor);
+        }
+        artistAncestor = artistAncestor.parentElement;
+      }
+      artistImageAncestors.forEach((element) => {
+        if (!nextArtistImageAncestors.has(element)) {
+          element.classList.remove('luminous-artist-image-ancestor');
+        }
+      });
+      artistImageAncestors = nextArtistImageAncestors;
+
+      const nextActionBarParents = new Set<HTMLElement>();
+      root
+        .querySelectorAll<HTMLElement>(
+          '.main-actionBarBackground-background, .playlist-playlist-actionBarBackground-background',
+        )
+        .forEach((background) => {
+          let candidate = background.parentElement;
+          while (candidate && candidate !== root) {
+            const wrapper = candidate.parentElement;
+            const section = wrapper?.parentElement;
+            const main = section?.parentElement;
+            const scrollChild = main?.parentElement;
+
+            if (
+              candidate.tagName === 'DIV' &&
+              wrapper?.tagName === 'DIV' &&
+              section?.tagName === 'SECTION' &&
+              main?.tagName === 'MAIN' &&
+              scrollChild?.classList.contains(
+                'main-view-container__scroll-node-child',
+              )
+            ) {
+              candidate.classList.add('luminous-actionbar-background-parent');
+              nextActionBarParents.add(candidate);
+              break;
+            }
+
+            candidate = candidate.parentElement;
+          }
+        });
+      actionBarBackgroundParents.forEach((element) => {
+        if (!nextActionBarParents.has(element)) {
+          element.classList.remove('luminous-actionbar-background-parent');
+        }
+      });
+      actionBarBackgroundParents = nextActionBarParents;
+    }
+
+    const unsubscribeMainViewPulse = MainViewPulse.subscribe(sync, {
+      filter: (records) =>
+        mutationTouchesSelector(records, MAIN_VIEW_STATE_SELECTOR),
+    });
+
+    return {
+      disconnect() {
+        disposed = true;
+        unsubscribeMainViewPulse();
+        cleanupRoot();
+        root = null;
+      },
+    };
+  }
+
+  static leftSidebarState(): SyncController {
+    let sidebar: HTMLElement | null = null;
     let observer: MutationObserver | null = null;
-    let rafId: number | null = null;
+    let disposed = false;
+
+    function cleanup() {
+      observer?.disconnect();
+      observer = null;
+      document.documentElement.classList.remove(
+        'luminous-left-sidebar-expanded',
+      );
+    }
+
+    function sync() {
+      if (disposed) return;
+
+      const nextSidebar = document.querySelector(
+        '#Desktop_LeftSidebar_Id',
+      ) as HTMLElement | null;
+
+      if (nextSidebar !== sidebar) {
+        observer?.disconnect();
+        observer = null;
+        sidebar = nextSidebar;
+
+        if (sidebar) {
+          observer = new MutationObserver(sync);
+          observer.observe(sidebar, {
+            attributes: true,
+            attributeFilter: ['class'],
+          });
+        }
+      }
+
+      const expanded =
+        !!sidebar && sidebar.getAttribute('class') !== 'Root__nav-bar';
+      document.documentElement.classList.toggle(
+        'luminous-left-sidebar-expanded',
+        expanded,
+      );
+    }
+
+    const unsubscribeDomPulse = DomPulse.subscribe(sync, {
+      filter: (records) =>
+        mutationAddsOrRemovesSelector(records, '#Desktop_LeftSidebar_Id'),
+    });
+
+    return {
+      disconnect() {
+        disposed = true;
+        unsubscribeDomPulse();
+        cleanup();
+        sidebar = null;
+      },
+    };
+  }
+
+  static uiMountWatcher(): SyncController {
     let disposed = false;
     let waitingSince: number | null = null;
 
@@ -273,16 +571,9 @@ export class Synchronize {
       );
     }
 
-    function scheduleCheck() {
-      if (disposed || rafId !== null) return;
-
-      rafId = requestAnimationFrame(() => {
-        rafId = null;
-        check();
-      });
-    }
-
     function check() {
+      if (disposed) return;
+
       if (!hasSpotifyShell()) {
         waitingSince = null;
         setUiHealth({ status: 'booting', brokenSince: null });
@@ -303,24 +594,27 @@ export class Synchronize {
       setUiHealth({ status: 'waiting', brokenSince: waitingSince });
     }
 
-    observer = new MutationObserver(scheduleCheck);
-    observer.observe(document.documentElement, {
-      subtree: true,
-      childList: true,
+    const unsubscribeDomPulse = DomPulse.subscribe(check, {
+      filter: (records) =>
+        mutationAddsOrRemovesSelector(
+          records,
+          '.Root__top-container,#main-view',
+        ),
     });
-    scheduleCheck();
+    const unsubscribeMainViewPulse = MainViewPulse.subscribe(check, {
+      immediate: false,
+      filter: (records) =>
+        mutationAddsOrRemovesSelector(
+          records,
+          '.Root__main-view,.main-view-container,[data-testid="main-view"]',
+        ),
+    });
 
     return {
       disconnect() {
         disposed = true;
-        observer?.disconnect();
-        observer = null;
-
-        if (rafId !== null) {
-          cancelAnimationFrame(rafId);
-          rafId = null;
-        }
-
+        unsubscribeDomPulse();
+        unsubscribeMainViewPulse();
         waitingSince = null;
         setUiHealth({ status: 'booting', brokenSince: null });
       },
@@ -329,11 +623,76 @@ export class Synchronize {
 
   static observeCinema(): SyncController {
     let observer: MutationObserver | null = null;
+    let scheduled = false;
+    let cinemaRoot: HTMLElement | null = null;
+    let markedBranches = new Set<HTMLElement>();
+
+    function clearCinemaMarkers() {
+      cinemaRoot?.classList.remove('luminous-cinema-has-video');
+      markedBranches.forEach((branch) =>
+        branch.classList.remove(
+          'luminous-cinema-video-branch',
+          'luminous-cinema-content-branch',
+        ),
+      );
+      markedBranches = new Set();
+      cinemaRoot = null;
+    }
+
+    function syncCinemaMarkers() {
+      const nextRoot = document.querySelector(
+        '.Root__cinema-view',
+      ) as HTMLElement | null;
+
+      if (nextRoot !== cinemaRoot) clearCinemaMarkers();
+      cinemaRoot = nextRoot;
+      if (!cinemaRoot) return;
+
+      cinemaRoot.classList.toggle(
+        'luminous-cinema-has-video',
+        cinemaRoot.querySelector('video') !== null,
+      );
+
+      const nextMarkedBranches = new Set<HTMLElement>();
+      const contentRoots = cinemaRoot.querySelectorAll<HTMLElement>(
+        '.main-actionBar-ActionBarContainer > div:not(.os-scrollbar)',
+      );
+
+      contentRoots.forEach((contentRoot) => {
+        for (const child of contentRoot.children) {
+          if (!(child instanceof HTMLElement)) continue;
+
+          const hasVideoPortal =
+            child.querySelector('#VideoPlayerCinema_ReactPortal') !== null;
+          child.classList.toggle(
+            'luminous-cinema-video-branch',
+            hasVideoPortal,
+          );
+          child.classList.toggle(
+            'luminous-cinema-content-branch',
+            !hasVideoPortal,
+          );
+          nextMarkedBranches.add(child);
+        }
+      });
+
+      markedBranches.forEach((branch) => {
+        if (nextMarkedBranches.has(branch)) return;
+        branch.classList.remove(
+          'luminous-cinema-video-branch',
+          'luminous-cinema-content-branch',
+        );
+      });
+      markedBranches = nextMarkedBranches;
+    }
 
     function cleanupAttributes() {
+      scheduled = false;
       const html = document.documentElement;
 
-      html.removeAttribute('data-transition');
+      if (html.hasAttribute('data-transition')) {
+        html.removeAttribute('data-transition');
+      }
 
       [
         'data-right-sidebar-open-preenter',
@@ -341,11 +700,17 @@ export class Synchronize {
         'data-right-sidebar-open-duringexit',
         'data-right-sidebar-open-postexit',
       ].forEach((attribute) => {
-        html.removeAttribute(attribute);
+        if (html.hasAttribute(attribute)) html.removeAttribute(attribute);
       });
     }
 
-    observer = new MutationObserver(cleanupAttributes);
+    function scheduleCleanup() {
+      if (scheduled) return;
+      scheduled = true;
+      queueMicrotask(cleanupAttributes);
+    }
+
+    observer = new MutationObserver(scheduleCleanup);
     observer.observe(document.documentElement, {
       attributes: true,
       attributeFilter: [
@@ -359,11 +724,24 @@ export class Synchronize {
       ],
     });
     cleanupAttributes();
+    syncCinemaMarkers();
+
+    const unsubscribeDomPulse = DomPulse.subscribe(syncCinemaMarkers, {
+      immediate: false,
+      filter: (records) =>
+        mutationTouchesSelector(
+          records,
+          '.Root__cinema-view,#VideoPlayerCinema_ReactPortal',
+        ),
+    });
 
     return {
       disconnect() {
         observer?.disconnect();
         observer = null;
+        unsubscribeDomPulse();
+        clearCinemaMarkers();
+        scheduled = false;
       },
     };
   }

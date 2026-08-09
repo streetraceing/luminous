@@ -1,4 +1,6 @@
 import { getUiHealth } from '../ui/health';
+import { DomPulse } from '../ui/domPulse';
+import { MainViewPulse } from '../ui/mainViewPulse';
 
 export type LuminousDiagnostics = {
   luminous: {
@@ -12,6 +14,10 @@ export type LuminousDiagnostics = {
     track: string | null;
     uiHealth: string;
     documentHidden: boolean;
+  };
+  performance: {
+    domPulse: ReturnType<typeof DomPulse.getStats>;
+    mainViewPulse: ReturnType<typeof MainViewPulse.getStats>;
   };
   settings: Record<string, string | number | boolean>;
   environment: {
@@ -37,6 +43,10 @@ export class Diagnostics {
         track: song?.title ?? null,
         uiHealth: getUiHealth().status,
         documentHidden: document.hidden,
+      },
+      performance: {
+        domPulse: DomPulse.getStats(),
+        mainViewPulse: MainViewPulse.getStats(),
       },
       settings: Luminous.Settings.snapshot(),
       environment: {

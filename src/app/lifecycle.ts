@@ -1,7 +1,10 @@
+import { DomPulse } from '../ui/domPulse';
+import { MainViewPulse } from '../ui/mainViewPulse';
 import { unmountLuminousApp } from './runtime';
 
 const ROOT_CLASSES = [
   'luminous-runtime-active',
+  'luminous-bootstrap-pending',
   'hideDynamicBackground',
   'luminous-dynamic-palette',
   'luminous-palette-transitioning',
@@ -10,6 +13,7 @@ const ROOT_CLASSES = [
   'luminous-reduce-motion',
   'luminous-runtime-suspended',
   'luminous-settings-open',
+  'luminous-document-hidden',
   'luminous-parallax-enabled',
   'luminous-source-auto',
   'luminous-source-artwork',
@@ -63,6 +67,8 @@ export function destroyLuminousRuntime(): void {
   Luminous.Canvas.destroy();
   Luminous.Song.destroy();
   Luminous.Settings.destroy();
+  MainViewPulse.destroy();
+  DomPulse.destroy();
 
   const root = document.documentElement;
   ROOT_CLASSES.forEach((className) => root.classList.remove(className));
@@ -73,5 +79,8 @@ export function destroyLuminousRuntime(): void {
 
 export function markLuminousRuntimeActive(): void {
   destroyed = false;
-  document.documentElement.classList.add('luminous-runtime-active');
+  document.documentElement.classList.add(
+    'luminous-runtime-active',
+    'luminous-bootstrap-pending',
+  );
 }

@@ -1,81 +1,33 @@
 # Adaptive palette engine
 
-`src/api/palette.ts` converts cover artwork into a compact visual profile used entirely through CSS variables and root classes. It does not inspect playback audio and is not beat detection.
+`src/api/palette.ts` converts cover artwork into a compact visual profile used by the Luminous background subtree. It does not inspect playback audio and is not beat detection.
 
 ## Sampling
 
-Artwork is loaded into a cross-origin `Image`, drawn to a 48 × 48 in-memory canvas, and read once. Downsampling is intentional: it bounds CPU work while preserving enough spatially aggregated colour information for scene selection.
+Artwork is loaded into a cross-origin `Image`, drawn once to a 48 × 48 in-memory canvas, and read once. The small fixed sample bounds analysis CPU work while preserving enough colour information for scene selection.
 
-Pixels with alpha below 0.45 are ignored. Remaining pixels contribute to two related analyses:
-
-- global image metrics, weighted by alpha and saturation;
-- quantized colour buckets using the upper 3 bits of each RGB channel.
-
-Near-black and near-white pixels are excluded from colour buckets so borders/text do not dominate the palette, while they can still influence overall lightness/contrast metrics.
-
-## Global metrics
-
-The pass derives:
-
-- average saturation;
-- average lightness;
-- lightness variance converted to bounded contrast;
-- hue diversity from the inverse magnitude of a saturation-weighted circular hue vector;
-- warmth from red/green versus blue contribution.
-
-A visual chroma score combines dominant saturation with image saturation and contrast.
-
-## Colour candidates
-
-Each bucket becomes an average RGB candidate with HSL and accumulated weight. The top 36 candidates are retained.
-
-Primary favours both bucket weight and saturation. Secondary and accent are selected for colour distance and lightness contrast from previous anchors. If a sufficiently distinct real candidate does not exist, a harmony colour is synthesized from the anchor hue.
-
-Scene-specific normalization limits saturation and lightness to useful ranges before producing final primary, secondary, and accent colours. Light/dark support colours are derived by mixing the brightest/darkest selected colour toward white/black.
+Pixels with alpha below 0.45 are ignored. Remaining pixels contribute to global saturation/lightness/contrast/hue-diversity/warmth metrics and to quantized RGB buckets. Near-black and near-white pixels are excluded from candidate buckets so borders and text do not dominate the palette.
 
 ## Scene selection
 
-Current automatic scene families:
+Current scene families are:
 
 - `halo` - low-chroma artwork;
-- `prism` - diverse, chromatic artwork;
-- `nebula` - dark-to-mid violet/magenta artwork with useful chroma;
+- `prism` - diverse chromatic artwork;
 - `bloom` - green-dominant artwork;
-- `ember` - warm/red/orange artwork or positive warmth metric;
+- `ember` - warm/red/orange artwork;
 - `aurora` - remaining cool palettes.
 
-Scene selection is deterministic for the extracted metrics; there is no random visual identity change between launches.
+The same metrics select `soft`, `flow`, or `vivid` energy and `dark`, `balanced`, or `light` tone. Selection is deterministic.
 
-## Energy and tone
+## Stale-work protection and cache
 
-The same metrics select an energy class (`soft`, `flow`, or `vivid`) and tone (`dark`, `balanced`, or `light`). These classes alter opacity, filters, and motion character without changing the user's global motion preference.
+Each analysis has a monotonically increasing `requestId`. A stale async image load cannot apply after a newer request. Profiles are cached by artwork URL with a fixed 24-entry bound; cache hits skip image decode and pixel analysis.
 
-The profile also stores effect angle, saturation/brightness/contrast multipliers, and four base animation durations. `motionDuration` scales those durations globally via `setMotionDuration()`.
+## CSS output and invalidation scope
 
-## Stale-work protection
+The engine writes palette colours, effect controls, four animation durations, and scene/energy/tone classes to `.luminous-background-effects` only. It does **not** mutate adaptive palette variables/classes on `<html>`.
 
-Every analysis is associated with a monotonically increasing `requestId`. `cancel()` increments it. Before an asynchronous extraction applies anything, its captured ID must still match. Track changes therefore cannot allow a slow previous image load to overwrite the new track's palette.
+That scoping is a major performance boundary: registered colour-property transitions still provide the same smooth colour morph, but style invalidation and gradient repaint are limited to the small background subtree instead of propagating inherited custom-property changes through the entire Spotify document.
 
-`DynamicBackgroundFeature` cancels immediately on normalized song changes before scheduling the new artwork.
-
-## Cache
-
-Profiles are cached by artwork source with a fixed 24-entry bound. A cache hit skips image decoding and pixel analysis. Re-applying the already-active source is also a no-op while the palette class remains present.
-
-## CSS output
-
-The engine applies:
-
-- `--luminous-palette-primary`
-- `--luminous-palette-secondary`
-- `--luminous-palette-accent`
-- `--luminous-palette-light`
-- `--luminous-palette-dark`
-- angle/filter custom properties
-- four duration custom properties
-- one scene class
-- one energy class
-- one tone class
-- `luminous-dynamic-palette`
-
-`clear()` cancels outstanding work, forgets the active profile/source, removes the palette class/effect classes, and removes owned variables. Media rendering remains independent, so artwork/video stays visible when adaptive analysis is disabled or fails.
+`clear()` removes only palette-owned state from the effect container. Media rendering remains independent, so artwork/video stays visible if analysis is disabled or fails.

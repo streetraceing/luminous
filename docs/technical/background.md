@@ -1,62 +1,53 @@
 # Background pipeline
 
-`src/render/background.ts` intentionally uses the pre-refactor rendering architecture. The large 2.2.0 compositor rewrite was rolled back because the flicker regression appeared together with that rewrite and survived multiple incremental workarounds.
-
-## Design goal
-
-The renderer follows one conservative rule: Spotify owns Spotify media nodes. Luminous never re-parents a Spotify media node. Normal Canvas is mirrored into Luminous-owned buffers; protected long-form NPV video is handled by temporarily promoting the original `<video>` to a viewport-level visual background without moving the React-owned node.
-
 ## DOM structure
 
 `Background.ensureBackground()` lazily creates `#luminous-dynamic-background` with:
 
 - one neutral base layer;
-- two `<img>` buffers;
-- two `<video>` buffers used for captured Spotify Canvas streams;
-- one adaptive-effect container containing mesh, halo, ribbons, and four blobs.
+- one `.luminous-background-media-stage` wrapper;
+- two artwork `<img>` buffers inside that stage;
+- two captured-Canvas `<video>` buffers inside that stage;
+- one adaptive-effect container containing mesh, halo, two ribbons, and four blobs.
 
-The root is fixed, clipped, pointer-inert, and isolated from Spotify input handling. Media buffers use the same transform/filter path that existed before the 2.2.0 visual refactor.
+The root is fixed, clipped, pointer-inert, isolated, and style/paint contained.
 
 ## Image rendering
 
-Artwork uses two image buffers. `preloadImage()` warms a bounded 24-entry cache. `renderImage()` selects the inactive buffer and uses a monotonic `imageRenderId` so a late load callback from an older track cannot win over a newer request.
+Artwork uses two buffers. `preloadImage()` keeps a bounded 24-entry cache. `renderImage()` activates the inactive buffer and uses a monotonic `imageRenderId`, so a late image callback from an older request cannot overwrite a newer track.
 
-A successfully cached image can be activated immediately. A not-yet-loaded image installs one-shot `load`/`error` handlers. On failure, the last valid image remains when possible; otherwise the renderer returns to the neutral base.
+## Normal Canvas
 
-## Canvas rendering
+Normal Spotify Canvas is mirrored through `HTMLVideoElement.captureStream()` into one of the two Luminous-owned video buffers. A source must be connected, not ended, and have current frame data. Streams with no video track are discarded. Pending video work is protected by `videoRenderId`; stale asynchronous `play()` continuations cannot win.
 
-Normal Canvas is mirrored using `HTMLVideoElement.captureStream()` into one of two Luminous-owned `<video>` elements. The Spotify source is never paused, moved, or assigned a new source by that path.
+Canvas discovery is disabled entirely when the dynamic background is off or the source setting is `artwork`. This removes observer/media-event work that cannot produce a visible result.
 
-Long-form NPV video (`CanvasMode = npv-video`) uses a separate protected-media path. Luminous does **not** call `captureStream()` for that mode. Instead, the original Spotify `<video>` remains in its React-owned DOM location. Luminous temporarily neutralizes clipping/containing/stacking properties on the NPV ancestor chain up to the top container, then promotes that same element to a fixed, blurred, pointer-inert viewport background behind Spotify UI. This avoids the right-sidebar containing block while keeping React ownership intact. Every temporary inline override is snapshotted and restored when the long-form source disappears or another background becomes active. No source URL or playback state is rewritten.
+## Protected long-form NPV video
 
-Before either video path is selected the source must be connected, not ended, and have current frame data. The direct long-form path also requires non-zero video dimensions. For normal capture, streams without a video track are discarded. The inactive clone receives `srcObject`, calls `play()`, and only then becomes the active Canvas buffer.
+`CanvasMode = npv-video` bypasses `captureStream()` because DRM/EME media is not reliably capturable. Spotify's original `<video>` remains React-owned and is not re-parented. Luminous temporarily opens the relevant ancestor clipping/containing/stacking chain and promotes that same element to a fixed, blurred, pointer-inert viewport background. All temporary inline overrides are snapshotted and restored during cleanup.
 
-## Pending requests and cancellation
+## Adaptive effect compositor
 
-`videoRenderId` invalidates older asynchronous `play()` continuations. The renderer stores the pending source, source key, clone, and artwork fallback. A repeat request for the same pending source only refreshes its fallback; a different request releases the previous pending clone.
+The static visual design is unchanged: mesh, halo, ribbons, and four blobs still use the same gradients, blend modes, opacity, scene profiles, and blur strengths.
+
+For performance, each effect is now represented as an animated outer node with a nested `.luminous-background-surface`. The outer node owns transforms; the inner surface owns the gradient and filter. This separation is important for Chromium/Electron: a static blurred surface can be raster-cached while the wrapper is moved by the compositor, instead of coupling transform animation to expensive filtered-gradient paint.
+
+`will-change: transform` is active only while a visible motion mode is actually animating the adaptive scene, rather than reserving compositor layers permanently in Still mode.
+
+Artwork and captured-video motion is also separated from filtered paint. Blur/brightness remains on the media buffers, while Drift/Float moves the shared `.luminous-background-media-stage`. A track switch can therefore swap opacity between buffers without coupling the expensive media filter to the continuously animated transform.
+
+## Palette scope
+
+Adaptive colours, angle/filter controls, scene/energy/tone classes, and animation durations live on `.luminous-background-effects`. They are no longer written to `<html>`. Track-to-track colour transitions therefore invalidate and repaint the background scene only, not Spotify's full UI tree.
+
+## Hidden/settings states
+
+When the document is hidden or the settings modal is open, only decorative CSS animation is paused. Background media streams are left to Chromium's own media scheduling to avoid resume artifacts.
 
 ## Cleanup
 
-Inactive Canvas clones are cleaned after the fixed 250 ms media transition. Direct long-form video classes use the same delayed cleanup so switching back to artwork does not abruptly restore the NPV element in the middle of the fade. Cleanup pauses the clone, stops all `MediaStreamTrack`s, clears `srcObject`/`src`, and calls `load()`.
+Inactive captured-video buffers are cleaned after the fixed media transition. Cleanup pauses the clone, stops `MediaStreamTrack`s, clears `srcObject`/`src`, and calls `load()`. `destroy()` invalidates pending image/video work, restores any direct-video bridge, stops streams, removes the background root, and resets state.
 
-`destroy()` invalidates pending image/video work, stops all captured streams, removes the dynamic-background root, resets active indices, and emits the final background change.
+## Performance regression checklist
 
-## Why the 2.2.0 compositor features were removed
-
-The refactor added several independent full-window compositor mechanisms at once: pointer parallax, Orbit transforms, extra grain/vignette/shimmer/sparkle layers, configurable transition timing, visibility suspension, palette handoff orchestration, Canvas snapshotting, and shell-transition guards. Even when each mechanism looked reasonable in isolation, they created many more frame-state combinations during Spotify's own track-change React/media updates.
-
-Because the user-visible regression began exactly after that change set, 2.2.1 restores the known-good renderer rather than adding another compensating state machine. Stability takes precedence over retaining experimental effects.
-
-## Regression rule
-
-Future background changes should be introduced one subsystem at a time and tested specifically across:
-
-1. artwork → artwork;
-2. artwork → Canvas;
-3. Canvas → artwork;
-4. Canvas → Canvas;
-5. rapid next/previous spam;
-6. Alt+Tab during every transition type;
-7. opening/closing Settings during playback.
-
-A change that requires global shell opacity/visibility guards to hide artifacts should be treated as a renderer regression, not as a shell problem.
+Test artwork, Canvas, protected long-form video, Settings, rapid track changes, scroll/navigation, and Alt+Tab. A performance change must not add a permanent document-wide attribute observer, a continuous JavaScript animation loop, or changing palette variables on `<html>`.

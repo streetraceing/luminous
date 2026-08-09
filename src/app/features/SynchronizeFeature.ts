@@ -9,6 +9,8 @@ export function SynchronizeFeature() {
     const controllers: SyncController[] = [
       Synchronize.uiMountWatcher(),
       Synchronize.observeCinema(),
+      Synchronize.mainViewState(),
+      Synchronize.leftSidebarState(),
       Synchronize.playlistBackground(),
       Synchronize.homeHeaderHeight(),
     ];

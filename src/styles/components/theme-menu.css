@@ -583,7 +583,7 @@ html.luminous-reduce-motion
 /* Settings performance mode: keep the underlying scene visually stable while editing. */
 html.luminous-settings-open
   :is(
-    #luminous-dynamic-background .luminous-background-layer--active,
+    #luminous-dynamic-background .luminous-background-media-stage,
     .luminous-background-effects,
     .luminous-background-effects > span
   ) {

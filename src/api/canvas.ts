@@ -4,30 +4,39 @@ import {
   CanvasMode,
   CanvasPayload,
 } from '../types/runtime/canvas.types';
+import { DomPulse, mutationTouchesSelector } from '../ui/domPulse';
 
 export class Canvas {
   private static readonly NPV_VIDEO_SELECTOR = '.canvasVideoContainerNPV video';
   private static readonly NPV_LONGFORM_VIDEO_SELECTOR =
     '#VideoPlayerNpv_ReactPortal video';
-  private static readonly CINEMA_VIDEO_SELECTOR =
-    '.Root__top-container:has(#VideoPlayerCinema_ReactPortal) video';
+  private static readonly CINEMA_PORTAL_SELECTOR =
+    '#VideoPlayerCinema_ReactPortal';
+  private static readonly STRUCTURAL_SELECTOR = [
+    '.canvasVideoContainerNPV',
+    '#VideoPlayerNpv_ReactPortal',
+    '#VideoPlayerCinema_ReactPortal',
+  ].join(',');
 
   private static listeners = new Map<CanvasEvent, Set<CanvasListener>>();
-  private static observer: MutationObserver | null = null;
+  private static unsubscribeDomPulse: (() => void) | null = null;
   private static checkFrame: number | null = null;
 
   private static currentVideo: HTMLVideoElement | null = null;
   private static currentMode: CanvasMode = null;
   private static currentSource: string | null = null;
+  private static currentPlayable = false;
   private static revision = 0;
   private static observedSourceVideo: HTMLVideoElement | null = null;
-  private static forceCheck = false;
-  private static readonly handleVideoSourceChange = () => {
-    this.forceCheck = true;
-    this.scheduleCheck();
-  };
+  private static uiSidebar: HTMLElement | null = null;
+  private static uiCanvasFrameParent: HTMLElement | null = null;
+  private static uiCanvasGridItem: HTMLElement | null = null;
   private static initialized = false;
   private static enabled = true;
+
+  private static readonly handleVideoSourceChange = () => {
+    this.scheduleCheck();
+  };
 
   private static createPayload(
     video: HTMLVideoElement | null,
@@ -55,9 +64,7 @@ export class Canvas {
       );
     }
 
-    if (!this.initialized) {
-      this.init();
-    }
+    if (!this.initialized) this.init();
   }
 
   static removeEventListener(event: CanvasEvent, listener: CanvasListener) {
@@ -76,12 +83,10 @@ export class Canvas {
     if (this.initialized || !this.enabled) return;
 
     this.initialized = true;
-    this.observer = new MutationObserver(() => this.scheduleCheck());
-    this.observer.observe(document.documentElement, {
-      childList: true,
-      subtree: true,
-      attributes: true,
-      attributeFilter: ['class', 'style', 'hidden', 'src'],
+    this.unsubscribeDomPulse = DomPulse.subscribe(() => this.scheduleCheck(), {
+      immediate: false,
+      filter: (records) =>
+        mutationTouchesSelector(records, this.STRUCTURAL_SELECTOR),
     });
     this.check();
   }
@@ -107,8 +112,8 @@ export class Canvas {
   }
 
   static destroy(clearListeners = true): void {
-    this.observer?.disconnect();
-    this.observer = null;
+    this.unsubscribeDomPulse?.();
+    this.unsubscribeDomPulse = null;
 
     if (this.checkFrame !== null) {
       cancelAnimationFrame(this.checkFrame);
@@ -116,10 +121,11 @@ export class Canvas {
     }
 
     this.observeVideoSource(null);
+    this.syncUiState(null, null);
     this.currentVideo = null;
     this.currentMode = null;
     this.currentSource = null;
-    this.forceCheck = false;
+    this.currentPlayable = false;
     this.initialized = false;
 
     if (clearListeners) this.listeners.clear();
@@ -139,22 +145,18 @@ export class Canvas {
       this.NPV_VIDEO_SELECTOR,
     ) as HTMLVideoElement | null;
 
-    if (npv) {
-      return this.createPayload(npv, 'npv');
-    }
+    if (npv) return this.createPayload(npv, 'npv');
 
     const npvLongform = this.findVisibleVideo(this.NPV_LONGFORM_VIDEO_SELECTOR);
-    if (npvLongform) {
-      return this.createPayload(npvLongform, 'npv-video');
-    }
+    if (npvLongform) return this.createPayload(npvLongform, 'npv-video');
 
-    const cinema = document.querySelector(
-      this.CINEMA_VIDEO_SELECTOR,
+    const cinemaPortal = document.querySelector(this.CINEMA_PORTAL_SELECTOR);
+    const cinemaRoot = cinemaPortal?.closest('.Root__top-container');
+    const cinema = cinemaRoot?.querySelector(
+      'video',
     ) as HTMLVideoElement | null;
 
-    if (cinema) {
-      return this.createPayload(cinema, 'cinema');
-    }
+    if (cinema) return this.createPayload(cinema, 'cinema');
 
     return this.createPayload(null, null);
   }
@@ -162,33 +164,46 @@ export class Canvas {
   private static findVisibleVideo(selector: string): HTMLVideoElement | null {
     const videos = document.querySelectorAll<HTMLVideoElement>(selector);
 
-    return (
-      Array.from(videos).find((video) => {
-        const style = getComputedStyle(video);
-        return (
-          video.isConnected &&
-          style.display !== 'none' &&
-          style.visibility !== 'hidden' &&
-          !video.ended &&
-          video.getClientRects().length > 0
-        );
-      }) ?? null
+    for (const video of videos) {
+      if (
+        !video.isConnected ||
+        video.ended ||
+        video.getClientRects().length === 0
+      ) {
+        continue;
+      }
+
+      const style = getComputedStyle(video);
+      if (style.display !== 'none' && style.visibility !== 'hidden') {
+        return video;
+      }
+    }
+
+    return null;
+  }
+
+  private static isPlayable(video: HTMLVideoElement | null): boolean {
+    return !!(
+      video &&
+      video.isConnected &&
+      !video.ended &&
+      video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA &&
+      video.videoWidth > 0 &&
+      video.videoHeight > 0
     );
   }
 
   private static check() {
     const { video, mode, source } = this.detect();
-    const forced = this.forceCheck;
-    this.forceCheck = false;
-
+    const playable = this.isPlayable(video);
     const previousVideo = this.currentVideo;
     const previousMode = this.currentMode;
 
     if (
-      !forced &&
       previousVideo === video &&
       previousMode === mode &&
-      this.currentSource === source
+      this.currentSource === source &&
+      this.currentPlayable === playable
     ) {
       return;
     }
@@ -196,8 +211,10 @@ export class Canvas {
     this.currentVideo = video;
     this.currentMode = mode;
     this.currentSource = source;
+    this.currentPlayable = playable;
     this.revision++;
     this.observeVideoSource(video);
+    this.syncUiState(video, mode);
 
     if (previousVideo && !video) {
       const payload = this.createPayload(null, previousMode);
@@ -245,8 +262,47 @@ export class Canvas {
     this.observedSourceVideo = video;
 
     events.forEach((event) => {
-      video?.addEventListener(event, this.handleVideoSourceChange);
+      video?.addEventListener(event, this.handleVideoSourceChange, {
+        passive: true,
+      });
     });
+  }
+
+  private static syncUiState(
+    video: HTMLVideoElement | null,
+    mode: CanvasMode,
+  ): void {
+    const container =
+      video && mode === 'npv'
+        ? (video.closest('.canvasVideoContainerNPV') as HTMLElement | null)
+        : null;
+    const nextSidebar = container?.closest(
+      '.Root__right-sidebar',
+    ) as HTMLElement | null;
+    const nextFrameParent = container?.parentElement?.parentElement ?? null;
+    const nextGridItem = container?.closest(
+      '.main-nowPlayingView-nowPlayingGrid > div',
+    ) as HTMLElement | null;
+
+    if (nextSidebar !== this.uiSidebar) {
+      this.uiSidebar?.classList.remove('luminous-has-canvas');
+      this.uiSidebar = nextSidebar;
+      this.uiSidebar?.classList.add('luminous-has-canvas');
+    }
+
+    if (nextFrameParent !== this.uiCanvasFrameParent) {
+      this.uiCanvasFrameParent?.classList.remove(
+        'luminous-canvas-frame-parent',
+      );
+      this.uiCanvasFrameParent = nextFrameParent;
+      this.uiCanvasFrameParent?.classList.add('luminous-canvas-frame-parent');
+    }
+
+    if (nextGridItem !== this.uiCanvasGridItem) {
+      this.uiCanvasGridItem?.classList.remove('luminous-canvas-grid-item');
+      this.uiCanvasGridItem = nextGridItem;
+      this.uiCanvasGridItem?.classList.add('luminous-canvas-grid-item');
+    }
   }
 
   private static callListener(

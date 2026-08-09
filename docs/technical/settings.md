@@ -6,8 +6,8 @@ Settings are schema-backed and persisted under the `luminous-settings` LocalStor
 
 | Key                    | Default    | Range / values            | Runtime effect                                                     |
 | ---------------------- | ---------- | ------------------------- | ------------------------------------------------------------------ |
-| `dynamicBackground`    | `true`     | boolean                   | Enables/disables the Luminous media background.                    |
-| `backgroundSource`     | `auto`     | `auto`, `artwork`         | Enables Canvas discovery or forces artwork-only mode.              |
+| `dynamicBackground`    | `true`     | boolean                   | Enables/disables media and Canvas discovery/work.                  |
+| `backgroundSource`     | `auto`     | `auto`, `artwork`         | Enables Canvas discovery or disables it for artwork-only mode.     |
 | `dynamicPalette`       | `true`     | boolean                   | Enables adaptive cover-derived lighting.                           |
 | `backgroundBlur`       | `24`       | 0–48 px                   | Media blur.                                                        |
 | `backgroundBrightness` | `75`       | 30–120 %                  | Media brightness.                                                  |

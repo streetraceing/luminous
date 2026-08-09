@@ -7,11 +7,11 @@ Luminous is not an independent web application. It is injected into Spotify by S
 ## Documents
 
 - [Architecture](./architecture.md) - boot sequence, lifecycle, modules, event/data flow, invariants, and teardown.
-- [Background pipeline](./background.md) - image/video double buffering, Canvas capture, source identity, fallback policy, transitions, suspension, and effect layers.
+- [Background pipeline](./background.md) - image/video double buffering, Canvas capture, source identity, fallback policy, transitions, media-stage compositing, and effect layers.
 - [Palette engine](./palette.md) - cover sampling, metrics, colour selection, scene/energy/tone selection, caching, cancellation, and CSS output.
 - [Settings](./settings.md) - complete setting schema, persistence, batching, UI metadata, presets, CSS classes/variables, and migration behavior.
-- [UI and Spotify integration](./ui.md) - React shell, settings dialog, motion controller, shell synchronization, accessibility, and DOM compatibility.
-- [Development](./development.md) - scripts, release flow, validation, debugging, compatibility checklist, and change rules.
+- [UI and Spotify integration](./ui.md) - React shell, settings dialog, structural synchronization, accessibility, and DOM compatibility.
+- [Development](./development.md) - scripts, validation, performance profiling, debugging, compatibility checklist, and change rules.
 
 ## Architectural priorities
 
@@ -22,5 +22,6 @@ In descending order:
 3. Keep artwork visible whenever Canvas/video is unavailable, protected, temporarily unready, or fails to play.
 4. Reject stale asynchronous work after track/source changes.
 5. Keep visual settings declarative and centralized rather than duplicating defaults in UI and runtime code.
-6. Make expensive effects optional and pause avoidable work while Spotify is hidden.
-7. Treat Spotify DOM selectors as compatibility boundaries rather than stable application APIs.
+6. Bound DOM synchronization work so Spotify/ad-block mutation churn cannot fan out across features.
+7. Keep expensive paint scoped/cached and pause avoidable decorative work while Spotify is hidden.
+8. Treat Spotify DOM selectors as compatibility boundaries rather than stable application APIs.

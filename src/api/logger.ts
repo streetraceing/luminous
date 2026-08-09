@@ -1,7 +1,7 @@
 import { LoggerLevel, LoggerChannel } from '../types/runtime/logger.types';
 
 export class Logger {
-  private static disabledLevels = new Set<LoggerLevel>();
+  private static disabledLevels = new Set<LoggerLevel>(['INFO']);
   private static disabledChannels = new Set<LoggerChannel>();
 
   private static levelStyles: Record<LoggerLevel, string> = {

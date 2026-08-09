@@ -364,12 +364,12 @@ function SettingsSection({ section }: { section: ThemeTab }) {
     },
     motion: {
       title: 'Motion',
-      description:
-        'Tune movement, transitions, pointer depth, and accessibility.',
+      description: 'Tune background movement, timing, and accessibility.',
     },
     advanced: {
       title: 'Advanced',
-      description: 'Control rendering cost and inspect the current runtime.',
+      description:
+        'Inspect the current runtime and copy diagnostics for troubleshooting.',
     },
   };
   const heading = headings[section];

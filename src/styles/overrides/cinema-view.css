@@ -1,4 +1,4 @@
-/* DEPRECATED .Root__top-container > *:has(#VideoPlayerCinema_ReactPortal):has(.main-actionBar-ActionBarContainer):has(.over-cinema-scroll) */
+/* Cinema state is bridged by Synchronize.observeCinema() runtime classes. */
 /* .Root__cinema-view */
 
 .Root__cinema-view {
@@ -19,7 +19,7 @@
 .Root__cinema-view
   .main-actionBar-ActionBarContainer
   > div:not(.os-scrollbar)
-  > div:has(#VideoPlayerCinema_ReactPortal)
+  > .luminous-cinema-video-branch
   > div
   > div
   > div
@@ -37,7 +37,7 @@
 .Root__cinema-view
   .main-actionBar-ActionBarContainer
   > div:not(.os-scrollbar)
-  > div:not(:has(#VideoPlayerCinema_ReactPortal))
+  > .luminous-cinema-content-branch
   > div
   > div
   > div
@@ -49,7 +49,7 @@
 .Root__cinema-view
   .main-actionBar-ActionBarContainer
   > div:not(.os-scrollbar)
-  > div:not(:has(#VideoPlayerCinema_ReactPortal))
+  > .luminous-cinema-content-branch
   > div {
   margin-top: 128px;
 }
@@ -64,6 +64,6 @@
   cursor: not-allowed;
 }
 
-.Root__cinema-view div:has(video) {
+.Root__cinema-view.luminous-cinema-has-video {
   --cinema-canvas-height: 70vh;
 }

@@ -9,8 +9,7 @@
   background: transparent !important;
 }
 
-.Root__right-sidebar:has(.canvasVideoContainerNPV)
-  .main-nowPlayingView-headerWrapper {
+.Root__right-sidebar.luminous-has-canvas .main-nowPlayingView-headerWrapper {
   --background-base: var(--luminous-ui-base);
   box-shadow: none;
   border-radius: 8px;
@@ -36,12 +35,11 @@
   );
 }
 
-.Root__right-sidebar:has(.canvasVideoContainerNPV)
-  .main-nowPlayingView-nowPlayingGrid {
+.Root__right-sidebar.luminous-has-canvas .main-nowPlayingView-nowPlayingGrid {
   gap: 0;
 }
 
-.Root__right-sidebar div:has(div > .canvasVideoContainerNPV)::after {
+.Root__right-sidebar .luminous-canvas-frame-parent::after {
   display: none;
 }
 
@@ -51,7 +49,7 @@
 
 .Root__right-sidebar
   .main-nowPlayingView-nowPlayingGrid
-  > div:has(.canvasVideoContainerNPV) {
+  > .luminous-canvas-grid-item {
   aspect-ratio: 9 / 14.5 !important;
 }
 

@@ -57,13 +57,6 @@ html:root {
     transparent
   );
   --luminous-motion-duration: 20s;
-
-  transition:
-    --luminous-palette-primary 900ms ease,
-    --luminous-palette-secondary 900ms ease,
-    --luminous-palette-accent 900ms ease,
-    --luminous-palette-light 900ms ease,
-    --luminous-palette-dark 900ms ease;
 }
 
 html.hideDynamicBackground #luminous-dynamic-background {
@@ -116,22 +109,34 @@ video.luminous-direct-video-background--active {
   opacity: 1 !important;
 }
 
+.luminous-background-media-stage {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
 .luminous-background-effects {
   position: absolute;
   z-index: 2;
   inset: 0;
   overflow: hidden;
   pointer-events: none;
+  contain: layout paint style;
   opacity: 0;
   filter: saturate(var(--luminous-effect-saturation))
     brightness(var(--luminous-effect-brightness))
     contrast(var(--luminous-effect-contrast));
   transition:
     opacity 700ms ease,
-    filter 900ms ease;
+    filter 900ms ease,
+    --luminous-palette-primary 900ms ease,
+    --luminous-palette-secondary 900ms ease,
+    --luminous-palette-accent 900ms ease,
+    --luminous-palette-light 900ms ease,
+    --luminous-palette-dark 900ms ease;
 }
 
-html.luminous-dynamic-palette .luminous-background-effects {
+.luminous-background-effects.luminous-dynamic-palette {
   opacity: var(--luminous-palette-effect-opacity);
 }
 
@@ -141,10 +146,26 @@ html.luminous-dynamic-palette .luminous-background-effects {
   pointer-events: none;
 }
 
+/*
+ * Geometry/motion lives on the outer node while the expensive blurred paint
+ * lives on a static inner surface. Chromium can cache the blur result and move
+ * only the outer compositor layer instead of re-rasterizing a filtered element
+ * on every animation frame.
+ */
+.luminous-background-surface {
+  position: absolute;
+  inset: 0;
+  display: block;
+  border-radius: inherit;
+  pointer-events: none;
+  background: var(--luminous-node-background, transparent);
+  filter: var(--luminous-node-filter, none);
+}
+
 .luminous-background-mesh {
   inset: -24%;
   opacity: 0.56;
-  background:
+  --luminous-node-background:
     radial-gradient(
       circle at 18% 24%,
       color-mix(in srgb, var(--luminous-palette-light) 78%, transparent) 0%,
@@ -163,8 +184,8 @@ html.luminous-dynamic-palette .luminous-background-effects {
       color-mix(in srgb, var(--luminous-palette-dark) 38%, transparent) 30%,
       transparent 58%
     );
+  --luminous-node-filter: blur(34px);
   mix-blend-mode: screen;
-  filter: blur(34px);
   transform: rotate(var(--luminous-effect-angle)) scale(1.08);
   transform-origin: center;
 }
@@ -176,15 +197,15 @@ html.luminous-dynamic-palette .luminous-background-effects {
   aspect-ratio: 1;
   border-radius: 50%;
   opacity: 0.48;
-  background: radial-gradient(
+  --luminous-node-background: radial-gradient(
     circle,
     color-mix(in srgb, var(--luminous-palette-light) 54%, transparent) 0%,
     color-mix(in srgb, var(--luminous-palette-primary) 38%, transparent) 20%,
     color-mix(in srgb, var(--luminous-palette-secondary) 24%, transparent) 42%,
     transparent 68%
   );
+  --luminous-node-filter: blur(24px);
   mix-blend-mode: screen;
-  filter: blur(24px);
   transform: translate3d(-50%, -50%, 0) scale(0.86);
 }
 
@@ -193,7 +214,7 @@ html.luminous-dynamic-palette .luminous-background-effects {
   height: 24vmax;
   border-radius: 50%;
   opacity: 0.44;
-  background: linear-gradient(
+  --luminous-node-background: linear-gradient(
     90deg,
     transparent 4%,
     color-mix(in srgb, var(--luminous-palette-primary) 64%, transparent) 25%,
@@ -201,8 +222,8 @@ html.luminous-dynamic-palette .luminous-background-effects {
     color-mix(in srgb, var(--luminous-palette-accent) 62%, transparent) 72%,
     transparent 96%
   );
+  --luminous-node-filter: blur(30px) saturate(1.16);
   mix-blend-mode: screen;
-  filter: blur(30px) saturate(1.16);
   transform-origin: center;
 }
 
@@ -224,14 +245,14 @@ html.luminous-dynamic-palette .luminous-background-effects {
   aspect-ratio: 1;
   border-radius: 50%;
   opacity: 0.62;
+  --luminous-node-filter: blur(44px) saturate(1.16);
   mix-blend-mode: screen;
-  filter: blur(44px) saturate(1.16);
 }
 
 .luminous-background-blob--one {
   top: -35vmax;
   left: -28vmax;
-  background: radial-gradient(
+  --luminous-node-background: radial-gradient(
     circle at 36% 34%,
     color-mix(in srgb, var(--luminous-palette-light) 84%, transparent) 0%,
     color-mix(in srgb, var(--luminous-palette-primary) 70%, transparent) 31%,
@@ -243,7 +264,7 @@ html.luminous-dynamic-palette .luminous-background-effects {
   top: -31vmax;
   right: -32vmax;
   width: 68vmax;
-  background: radial-gradient(
+  --luminous-node-background: radial-gradient(
     circle at 60% 44%,
     color-mix(in srgb, var(--luminous-palette-accent) 82%, transparent) 0%,
     color-mix(in srgb, var(--luminous-palette-secondary) 62%, transparent) 34%,
@@ -255,7 +276,7 @@ html.luminous-dynamic-palette .luminous-background-effects {
   bottom: -45vmax;
   left: -2vmax;
   width: 76vmax;
-  background: radial-gradient(
+  --luminous-node-background: radial-gradient(
     circle at 48% 30%,
     color-mix(in srgb, var(--luminous-palette-secondary) 74%, transparent) 0%,
     color-mix(in srgb, var(--luminous-palette-dark) 44%, transparent) 40%,
@@ -267,7 +288,7 @@ html.luminous-dynamic-palette .luminous-background-effects {
   right: -31vmax;
   bottom: -34vmax;
   width: 56vmax;
-  background: radial-gradient(
+  --luminous-node-background: radial-gradient(
     circle at 34% 32%,
     color-mix(in srgb, var(--luminous-palette-light) 72%, transparent) 0%,
     color-mix(in srgb, var(--luminous-palette-accent) 62%, transparent) 35%,
@@ -275,24 +296,27 @@ html.luminous-dynamic-palette .luminous-background-effects {
   );
 }
 
-html.luminous-effect-aurora .luminous-background-ribbon {
+.luminous-background-effects.luminous-effect-aurora
+  .luminous-background-ribbon {
   height: 20vmax;
   opacity: 0.58;
 }
 
-html.luminous-effect-aurora .luminous-background-ribbon--one {
+.luminous-background-effects.luminous-effect-aurora
+  .luminous-background-ribbon--one {
   top: 2%;
   left: -20%;
 }
 
-html.luminous-effect-aurora .luminous-background-ribbon--two {
+.luminous-background-effects.luminous-effect-aurora
+  .luminous-background-ribbon--two {
   right: -25%;
   bottom: 0;
   opacity: 0.42;
 }
 
-html.luminous-effect-ember .luminous-background-mesh {
-  background:
+.luminous-background-effects.luminous-effect-ember .luminous-background-mesh {
+  --luminous-node-background:
     radial-gradient(
       ellipse at 50% 88%,
       color-mix(in srgb, var(--luminous-palette-light) 72%, transparent) 0%,
@@ -311,13 +335,14 @@ html.luminous-effect-ember .luminous-background-mesh {
     );
 }
 
-html.luminous-effect-ember .luminous-background-halo {
+.luminous-background-effects.luminous-effect-ember .luminous-background-halo {
   top: 74%;
   width: 96vmax;
   opacity: 0.62;
 }
 
-html.luminous-effect-ember .luminous-background-ribbon--one {
+.luminous-background-effects.luminous-effect-ember
+  .luminous-background-ribbon--one {
   top: auto;
   bottom: 9%;
   left: -18%;
@@ -325,7 +350,8 @@ html.luminous-effect-ember .luminous-background-ribbon--one {
   transform: rotate(-7deg);
 }
 
-html.luminous-effect-ember .luminous-background-ribbon--two {
+.luminous-background-effects.luminous-effect-ember
+  .luminous-background-ribbon--two {
   right: -22%;
   bottom: 24%;
   height: 14vmax;
@@ -333,8 +359,8 @@ html.luminous-effect-ember .luminous-background-ribbon--two {
   transform: rotate(12deg);
 }
 
-html.luminous-effect-bloom .luminous-background-mesh {
-  background:
+.luminous-background-effects.luminous-effect-bloom .luminous-background-mesh {
+  --luminous-node-background:
     radial-gradient(
       ellipse at 50% 48%,
       color-mix(in srgb, var(--luminous-palette-light) 66%, transparent) 0%,
@@ -353,26 +379,28 @@ html.luminous-effect-bloom .luminous-background-mesh {
     );
 }
 
-html.luminous-effect-bloom .luminous-background-halo {
+.luminous-background-effects.luminous-effect-bloom .luminous-background-halo {
   width: 72vmax;
   opacity: 0.66;
 }
 
-html.luminous-effect-bloom .luminous-background-ribbon--one {
+.luminous-background-effects.luminous-effect-bloom
+  .luminous-background-ribbon--one {
   top: -1%;
   left: -31%;
   transform: rotate(64deg);
 }
 
-html.luminous-effect-bloom .luminous-background-ribbon--two {
+.luminous-background-effects.luminous-effect-bloom
+  .luminous-background-ribbon--two {
   right: -29%;
   bottom: -2%;
   transform: rotate(-58deg);
 }
 
-html.luminous-effect-prism .luminous-background-mesh {
+.luminous-background-effects.luminous-effect-prism .luminous-background-mesh {
   opacity: 0.72;
-  background: conic-gradient(
+  --luminous-node-background: conic-gradient(
     from var(--luminous-effect-angle) at 50% 50%,
     color-mix(in srgb, var(--luminous-palette-primary) 58%, transparent),
     color-mix(in srgb, var(--luminous-palette-accent) 62%, transparent),
@@ -380,181 +408,207 @@ html.luminous-effect-prism .luminous-background-mesh {
     color-mix(in srgb, var(--luminous-palette-secondary) 64%, transparent),
     color-mix(in srgb, var(--luminous-palette-primary) 58%, transparent)
   );
-  filter: blur(50px) saturate(1.24);
+  --luminous-node-filter: blur(50px) saturate(1.24);
 }
 
-html.luminous-effect-prism .luminous-background-halo {
+.luminous-background-effects.luminous-effect-prism .luminous-background-halo {
   opacity: 0.3;
 }
 
-html.luminous-effect-prism .luminous-background-ribbon {
+.luminous-background-effects.luminous-effect-prism .luminous-background-ribbon {
   height: 17vmax;
   opacity: 0.54;
 }
 
-html.luminous-effect-halo .luminous-background-mesh {
+.luminous-background-effects.luminous-effect-halo .luminous-background-mesh {
   opacity: 0.24;
-  filter: blur(56px) saturate(0.82);
+  --luminous-node-filter: blur(56px) saturate(0.82);
 }
 
-html.luminous-effect-halo .luminous-background-halo {
+.luminous-background-effects.luminous-effect-halo .luminous-background-halo {
   width: 94vmax;
   opacity: 0.78;
-  filter: blur(36px) saturate(0.82);
+  --luminous-node-filter: blur(36px) saturate(0.82);
 }
 
-html.luminous-effect-halo .luminous-background-ribbon {
+.luminous-background-effects.luminous-effect-halo .luminous-background-ribbon {
   opacity: 0.08;
 }
 
-html.luminous-effect-halo .luminous-background-blob {
+.luminous-background-effects.luminous-effect-halo .luminous-background-blob {
   opacity: 0.3;
-  filter: blur(58px) saturate(0.78);
+  --luminous-node-filter: blur(58px) saturate(0.78);
 }
 
-html.luminous-effect-energy-soft .luminous-background-mesh {
+.luminous-background-effects.luminous-effect-energy-soft
+  .luminous-background-mesh {
   opacity: 0.38;
 }
 
-html.luminous-effect-energy-soft .luminous-background-ribbon {
+.luminous-background-effects.luminous-effect-energy-soft
+  .luminous-background-ribbon {
   opacity: 0.24;
 }
 
-html.luminous-effect-energy-soft .luminous-background-blob {
+.luminous-background-effects.luminous-effect-energy-soft
+  .luminous-background-blob {
   opacity: 0.42;
 }
 
-html.luminous-effect-energy-soft .luminous-background-blob--four {
+.luminous-background-effects.luminous-effect-energy-soft
+  .luminous-background-blob--four {
   opacity: 0.2;
 }
 
-html.luminous-effect-energy-vivid .luminous-background-mesh {
+.luminous-background-effects.luminous-effect-energy-vivid
+  .luminous-background-mesh {
   opacity: 0.74;
 }
 
-html.luminous-effect-energy-vivid .luminous-background-ribbon {
+.luminous-background-effects.luminous-effect-energy-vivid
+  .luminous-background-ribbon {
   opacity: 0.62;
-  filter: blur(26px) saturate(1.32);
+  --luminous-node-filter: blur(26px) saturate(1.32);
 }
 
-html.luminous-effect-energy-vivid .luminous-background-blob {
+.luminous-background-effects.luminous-effect-energy-vivid
+  .luminous-background-blob {
   opacity: 0.78;
-  filter: blur(38px) saturate(1.34);
+  --luminous-node-filter: blur(38px) saturate(1.34);
 }
 
-html.luminous-effect-tone-dark .luminous-background-halo {
+.luminous-background-effects.luminous-effect-tone-dark
+  .luminous-background-halo {
   opacity: 0.68;
 }
 
-html.luminous-effect-tone-light .luminous-background-effects {
+.luminous-background-effects.luminous-effect-tone-light {
   mix-blend-mode: soft-light;
 }
 
 html:not(.luminous-reduce-motion):is(
     .luminous-motion-drift,
     .luminous-motion-float
-  ).luminous-dynamic-palette
-  .luminous-background-mesh {
-  animation: luminous-mesh-orbit var(--luminous-blob-4-duration) linear infinite;
+  )
+  .luminous-background-effects.luminous-dynamic-palette
+  > span {
   will-change: transform;
 }
 
 html:not(.luminous-reduce-motion):is(
     .luminous-motion-drift,
     .luminous-motion-float
-  ).luminous-dynamic-palette
+  )
+  .luminous-background-effects.luminous-dynamic-palette
+  .luminous-background-mesh {
+  animation: luminous-mesh-orbit var(--luminous-blob-4-duration) linear infinite;
+}
+
+html:not(.luminous-reduce-motion):is(
+    .luminous-motion-drift,
+    .luminous-motion-float
+  )
+  .luminous-background-effects.luminous-dynamic-palette
   .luminous-background-halo {
   animation: luminous-halo-breathe var(--luminous-blob-3-duration) ease-in-out
     infinite;
-  will-change: transform;
 }
 
 html:not(.luminous-reduce-motion):is(
     .luminous-motion-drift,
     .luminous-motion-float
-  ).luminous-dynamic-palette
+  )
+  .luminous-background-effects.luminous-dynamic-palette
   .luminous-background-ribbon--one {
   animation: luminous-ribbon-one var(--luminous-blob-1-duration) ease-in-out
     infinite alternate;
-  will-change: transform;
 }
 
 html:not(.luminous-reduce-motion):is(
     .luminous-motion-drift,
     .luminous-motion-float
-  ).luminous-dynamic-palette
+  )
+  .luminous-background-effects.luminous-dynamic-palette
   .luminous-background-ribbon--two {
   animation: luminous-ribbon-two var(--luminous-blob-2-duration) ease-in-out
     infinite alternate;
-  will-change: transform;
 }
 
 html:not(.luminous-reduce-motion):is(
     .luminous-motion-drift,
     .luminous-motion-float
-  ).luminous-dynamic-palette
+  )
+  .luminous-background-effects.luminous-dynamic-palette
   .luminous-background-blob--one {
   animation: luminous-blob-one var(--luminous-blob-1-duration) ease-in-out
     infinite alternate;
-  will-change: transform;
 }
 
 html:not(.luminous-reduce-motion):is(
     .luminous-motion-drift,
     .luminous-motion-float
-  ).luminous-dynamic-palette
+  )
+  .luminous-background-effects.luminous-dynamic-palette
   .luminous-background-blob--two {
   animation: luminous-blob-two var(--luminous-blob-2-duration) ease-in-out
     infinite alternate;
-  will-change: transform;
 }
 
 html:not(.luminous-reduce-motion):is(
     .luminous-motion-drift,
     .luminous-motion-float
-  ).luminous-dynamic-palette
+  )
+  .luminous-background-effects.luminous-dynamic-palette
   .luminous-background-blob--three {
   animation: luminous-blob-three var(--luminous-blob-3-duration) ease-in-out
     infinite alternate;
-  will-change: transform;
 }
 
 html:not(.luminous-reduce-motion):is(
     .luminous-motion-drift,
     .luminous-motion-float
-  ).luminous-dynamic-palette
+  )
+  .luminous-background-effects.luminous-dynamic-palette
   .luminous-background-blob--four {
   animation: luminous-blob-four var(--luminous-blob-4-duration) ease-in-out
     infinite alternate;
-  will-change: transform;
 }
 
-html:not(.luminous-reduce-motion).luminous-motion-float.luminous-dynamic-palette
-  .luminous-background-effects
+html:not(.luminous-reduce-motion).luminous-motion-float
+  .luminous-background-effects.luminous-dynamic-palette
   > span {
   animation-direction: normal;
 }
 
 html:not(.luminous-reduce-motion).luminous-motion-drift
   #luminous-dynamic-background
-  .luminous-background-layer--active {
+  .luminous-background-media-stage {
+  will-change: transform;
   animation: luminous-background-drift var(--luminous-motion-duration)
     ease-in-out infinite alternate;
-  will-change: translate;
 }
 
 html:not(.luminous-reduce-motion).luminous-motion-float
   #luminous-dynamic-background
-  .luminous-background-layer--active {
+  .luminous-background-media-stage {
+  will-change: transform;
   animation: luminous-background-float var(--luminous-motion-duration)
     ease-in-out infinite;
-  will-change: translate;
+}
+
+html.luminous-document-hidden
+  :is(
+    #luminous-dynamic-background .luminous-background-media-stage,
+    .luminous-background-effects,
+    .luminous-background-effects > span
+  ) {
+  animation-play-state: paused !important;
 }
 
 html.luminous-reduce-motion,
 html.luminous-reduce-motion
   #luminous-dynamic-background
-  .luminous-background-layer--active,
+  .luminous-background-media-stage,
 html.luminous-reduce-motion .luminous-background-effects,
 html.luminous-reduce-motion .luminous-background-effects > span {
   animation: none !important;
@@ -680,7 +734,7 @@ html.luminous-reduce-motion .luminous-background-effects > span {
 
 @media (prefers-reduced-motion: reduce) {
   html:root,
-  #luminous-dynamic-background .luminous-background-layer--active,
+  #luminous-dynamic-background .luminous-background-media-stage,
   .luminous-background-effects,
   .luminous-background-effects > span {
     animation: none !important;

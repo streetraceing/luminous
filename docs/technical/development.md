@@ -1,10 +1,10 @@
-# Development, release, and troubleshooting
+# Development, validation, and performance
 
 ## Toolchain
 
-The project is TypeScript + Vite. React is a development type dependency only; production uses Spotify's React/ReactDOM runtime. `vite.config.ts` builds the extension and aggregated CSS, and the custom Spicetify sync plugin supports local apply/delete modes.
+The project is TypeScript + Vite. React is a development type dependency only; production uses Spotify's React/ReactDOM runtime.
 
-Important commands:
+Common development commands:
 
 ```bash
 npm install
@@ -13,126 +13,77 @@ npm run typecheck
 npm run lint:check
 npm run build
 npm run check
-npm run release
+npm run watch
 npm run apply
 npm run revert
 ```
 
-`npm run release` rebuilds and recreates `release/`, copies `color.ini`, synchronizes the version query used by `manifest.json`, then best-effort stages the repository and creates a Git commit whose message is exactly the current package version (for example `2.2.0`). A missing Git repository, missing Git executable, no staged changes, or a failed commit is reported but does not make release generation itself throw.
+`npm run check` is the non-mutating validation path: typecheck, lint check, then build. Use `npm run lint:fix` only when autofixes are intentionally wanted.
 
-### Linting ambient Spicetify declarations
+## Repository agent rules
 
-`src/types/**/*.d.ts` describes the external Spotify/Spicetify runtime rather than Luminous implementation code. Some upstream-compatible surfaces are intentionally open-ended and therefore use `any`. ESLint disables only `@typescript-eslint/no-explicit-any` for those ambient declaration files; application and build TypeScript remain under the recommended rule set and must not introduce explicit `any`.
+The root `AGENTS.md` is authoritative for automated changes in this repository. In particular:
 
-`npm run check` is intentionally non-mutating. Use `npm run lint:fix` when you explicitly want ESLint autofixes.
+1. update relevant documentation when architecture, runtime behavior, settings, performance, workflow, or user-facing behavior changes materially;
+2. preserve the root `README.md` visual style/structure and change only facts when necessary;
+3. version/release automation is operator-owned. Never manually change the project version and never run, edit, create, or replace `vite/releaseScript.ts`, `npm run release`, npm version commands, or equivalent automation.
 
-## Expected outputs
+## Linting ambient Spicetify declarations
 
-A normal Vite build creates:
+`src/types/**/*.d.ts` describes the external Spotify/Spicetify runtime. Some upstream-compatible surfaces intentionally use `any`; ESLint disables `@typescript-eslint/no-explicit-any` only for those declaration files. Application/build TypeScript remains under the recommended rule set.
 
-- `dist/theme.js`
-- `dist/user.css`
+## Performance architecture
 
-A release contains:
+The most important CPU rule is to avoid multiplying Spotify/ad-block DOM churn.
 
-- `release/theme.js`
-- `release/user.css`
-- `release/color.ini`
+- `DomPulse`: one global child-list observer, no global attribute observation, and no duplicate processing of records already inside `#main-view`. Retained records are bounded; saturated streams slow to roughly 4-5 dispatches per second and force a complete catch-up only about every 750 ms.
+- `MainViewPulse`: one `#main-view` child-list observer shared by all page synchronizers with the same bounded/filterable saturation policy.
+- local attributes: only the one playlist source, left-sidebar class, and `<html>` Cinema transition attributes are observed directly.
+- Home sizing uses `ResizeObserver` on measured elements.
+- Canvas uses structural pulses plus events from only the currently selected video.
+- palette variables/classes live on `.luminous-background-effects`, not `<html>`.
+- gradient blur is painted on static inner surfaces while transforms animate outer wrappers; artwork/captured-video blur is similarly separated from Drift/Float motion through a shared media-stage wrapper.
+- INFO logging is disabled by default to avoid console serialization cost in normal use; warnings/errors remain enabled.
 
-The Marketplace manifest references the release JS/CSS with `?version=<package version>` to invalidate caches.
+## Profiling with diagnostics
+
+Use **Luminous Settings → Advanced → Copy diagnostics**. The `performance` object includes counters for `domPulse` and `mainViewPulse`.
+
+During an ad-block mutation storm, high `mutationBatches`/`observedRecords` values can be normal. What should remain bounded is `frames` and especially `dispatchedListeners`: coalesced processing should grow much more slowly than raw mutations. `ignoredMainViewRecords` confirms that the global pulse is not duplicating work owned by `MainViewPulse`. `saturatedFrames` means the bounded queue stopped retaining additional individual records; `fullSyncFrames` should remain much lower and represents the periodic catch-up used for eventual consistency.
+
+When profiling in Chromium DevTools, distinguish:
+
+- scripting: observer callbacks, selector queries, React state updates;
+- rendering/style: relational selectors and global custom-property invalidation;
+- painting: gradients, blur, `backdrop-filter`;
+- compositing: transform animation and media layers.
+
+A new optimization should target the measured category rather than blindly reducing visual settings.
 
 ## Validation order
 
 For source changes:
 
 1. format;
-2. run `npm run check` (typecheck + non-mutating lint + build);
-3. if release files changed, verify release generation/version URLs;
-4. manually test track changes, no-track startup, Canvas appear/disappear, reused Canvas source, settings persistence, reduced motion, hide/show Spotify, settings modal keyboard behavior, and hot reinjection.
-
-For narrower debugging, run `npm run typecheck`, `npm run lint:check`, and `npm run build` independently. The package post-apply workflow also runs `lint:check` after formatting and typechecking.
+2. run `npm run typecheck`;
+3. run `npm run lint:check`;
+4. run `npm run build`;
+5. manually test artwork/Canvas/protected video, track changes, navigation/scrolling, Settings, reduced motion, hide/show Spotify, and hot reinjection.
 
 For package handoff archives, additionally validate `.packagemanifest.json` and `.packageshift` with `@streetraceing/package` when available. Reserved metadata must not be listed as project payload.
 
 ## Runtime debugging
 
-Console messages are grouped by channels: Runtime, Main, Background, Canvas, Palette, Song, Settings, Motion, and UI. Prefer the **Copy diagnostics** action before requesting arbitrary console dumps.
-
 Useful checks:
 
-- `Luminous.Background.getType()` - `none`, `image`, or `canvas`.
-- `Luminous.Canvas.get()` - selected Spotify source/mode/revision.
-- `Luminous.Song.getSync()` - normalized current track.
-- `Luminous.Settings.snapshot()` - effective settings after normalization.
-- `Luminous.Diagnostics.toText()` - complete report string.
+- `Luminous.Background.getType()` - `none`, `image`, or `canvas`;
+- `Luminous.Canvas.get()` - selected Spotify source/mode/revision;
+- `Luminous.Song.getSync()` - normalized current track;
+- `Luminous.Settings.snapshot()` - effective settings;
+- `Luminous.Diagnostics.toText()` - complete report including pulse counters.
 
-## Canvas troubleshooting
-
-Artwork fallback is expected when:
-
-- no visible Canvas/NPV/cinema source exists;
-- the element has not reached current-data readiness;
-- a normal Canvas source has no usable `captureStream()`;
-- a normal captured stream has no video track yet;
-- the clone's `play()` fails;
-- a protected long-form NPV source has no current frame or usable dimensions.
-
-Protected long-form NPV video intentionally bypasses `captureStream()`. The original Spotify `<video>` stays React-owned and is promoted to a viewport-level background by temporarily opening the NPV ancestor clipping/stacking chain. This avoids both the EME/DRM capture restriction and the right-sidebar containing block.
-
-Do not mark an entire Spotify `<video>` permanently unsupported. Spotify can reuse it with another source. Permanent capture failures are cached per element + source identity.
-
-If a source is temporarily unready, media events increment Canvas revision and let the background retry.
-
-## Blank background troubleshooting
-
-Check in order:
-
-1. `dynamicBackground` is true;
-2. Song has an artwork URL;
-3. UI health is not stuck in `booting`;
-4. source mode is expected (`auto` or `artwork`);
-5. Background type in diagnostics;
-6. image load/CORS warnings;
-7. Canvas warning only if auto video is expected.
-
-The neutral base while Spotify has not supplied metadata is intentional.
-
-## Performance troubleshooting
-
-Start with the **Performance** preset. In 2.2.3 it forces artwork-only mode, still motion, higher surface opacity, and lower glass blur without enabling experimental compositor layers.
-
-If tuning manually, the largest expected reductions are usually:
-
-1. artwork source instead of auto Canvas;
-2. lite quality;
-3. still movement;
-4. keep `pauseWhenHidden` enabled; it pauses Luminous CSS motion while hidden without force-pausing the captured Canvas clone.
-
-Avoid permanent `will-change` on static elements. Luminous applies it only under motion selectors.
-
-## Hot-reload/reinjection checklist
-
-A new resource owner must have an explicit cleanup path. This includes:
-
-- Spotify Player listeners;
-- DOM/media listeners;
-- MutationObservers;
-- matchMedia listeners;
-- window/document listeners;
-- requestAnimationFrame IDs;
-- timers;
-- React roots;
-- MediaStreams/tracks;
-- root classes and inline CSS variables.
-
-The top-level `destroy()` path should remain safe to call more than once.
+INFO logs can be enabled temporarily through `Luminous.Logger.enableLevel('INFO')` when tracing lifecycle events. Keep them disabled during performance measurement.
 
 ## Compatibility philosophy
 
-Spotify DOM is an unstable dependency. Prefer graceful degradation to version-specific hard failure. Keep source modules small enough that a selector change in synchronization, a Canvas change, or a palette issue can be fixed independently.
-
-Native APIs are optional. If `Spicetify.Platform` or a native bridge is missing/changed, wrappers should return failure and log rather than assume availability.
-
-## Track-change regression policy
-
-2.2.1 deliberately restores the pre-refactor rendering core. When changing Background, Palette, Canvas discovery, Splash, UI health, or shell overrides, test track changes before combining that change with another visual subsystem. Do not compensate a renderer flash by adding global Spotify shell opacity/visibility rules.
+Spotify DOM is an unstable dependency. Prefer narrow reversible integration and graceful fallback. Every listener, observer, timer, animation frame, React root, and MediaStream must have an explicit cleanup path. Do not compensate a renderer problem with broad shell opacity/visibility rewrites.

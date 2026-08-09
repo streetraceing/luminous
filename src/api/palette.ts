@@ -120,10 +120,9 @@ export class Palette {
       return;
     }
 
-    if (
-      image === this.source &&
-      document.documentElement.classList.contains(PALETTE_CLASS)
-    ) {
+    if (image === this.source && this.currentProfile) {
+      if (this.hasAppliedPalette()) return;
+      this.applyProfile(this.currentProfile);
       return;
     }
 
@@ -667,7 +666,9 @@ export class Palette {
   }
 
   private static applyProfile(profile: PaletteProfile) {
-    const root = document.documentElement;
+    this.currentProfile = profile;
+    const root = this.getTarget();
+    if (!root) return;
     root.style.setProperty('--luminous-palette-primary', profile.primary);
     root.style.setProperty('--luminous-palette-secondary', profile.secondary);
     root.style.setProperty('--luminous-palette-accent', profile.accent);
@@ -687,7 +688,7 @@ export class Palette {
       String(profile.contrast),
     );
 
-    EFFECT_CLASSES.forEach((className) => root.classList.remove(className));
+    root.classList.remove(...EFFECT_CLASSES);
     root.classList.add(
       `luminous-effect-${profile.scene}`,
       `luminous-effect-energy-${profile.energy}`,
@@ -695,14 +696,16 @@ export class Palette {
       PALETTE_CLASS,
     );
 
-    this.currentProfile = profile;
     this.applyDurations(profile.baseDurations);
   }
 
   private static applyDurations(durations: [number, number, number, number]) {
+    const root = this.getTarget();
+    if (!root) return;
+
     durations.forEach((duration, index) => {
       const scaled = Math.max(7, duration * this.motionScale);
-      document.documentElement.style.setProperty(
+      root.style.setProperty(
         `--luminous-blob-${index + 1}-duration`,
         `${Number(scaled.toFixed(1))}s`,
       );
@@ -710,11 +713,20 @@ export class Palette {
   }
 
   private static clearAppliedPalette() {
-    const root = document.documentElement;
+    const root = this.getTarget();
+    if (!root) return;
+
     PALETTE_VARIABLES.forEach((variable) => {
       root.style.removeProperty(variable);
     });
-    EFFECT_CLASSES.forEach((className) => root.classList.remove(className));
-    root.classList.remove(PALETTE_CLASS);
+    root.classList.remove(...EFFECT_CLASSES, PALETTE_CLASS);
+  }
+
+  private static getTarget(): HTMLElement | null {
+    return document.querySelector('.luminous-background-effects');
+  }
+
+  private static hasAppliedPalette(): boolean {
+    return this.getTarget()?.classList.contains(PALETTE_CLASS) === true;
   }
 }

@@ -1,63 +1,59 @@
-# UI, motion, and Spotify integration
+# UI and Spotify integration
 
 ## Settings dialog
 
-`ThemeMenuFeature` waits for `Spicetify.Menu.Item`, registers **Luminous Settings**, and deregisters it on teardown. Opening the item mounts the modal through Spotify's React runtime.
+`ThemeMenuFeature` waits for `Spicetify.Menu.Item`, registers **Luminous Settings**, and deregisters it on teardown. The modal uses Spotify's React runtime and contains Presets, Appearance, Motion, and Advanced tabs generated from centralized setting metadata.
 
-The dialog contains Presets, Appearance, Motion, and Advanced tabs generated from centralized setting metadata. It provides:
+The dialog provides visual presets, controlled settings, reset, diagnostics, Escape close, focus trapping, tab-list keyboard navigation, and restoration of the previously focused element. Opening Settings adds `luminous-settings-open`, which pauses only Luminous decorative background animation while the user edits controls. Spotify playback and source video elements are not paused.
 
-- visual preset buttons;
-- controlled toggle/range/choice fields backed by `Settings.subscribe()`;
-- reset of all user-visible settings;
-- runtime summary;
-- copyable diagnostics;
-- Escape close;
-- focus trapping;
-- restoration of the previously focused element;
-- keyboard tab-list navigation.
+Range controls keep their displayed value responsive while expensive setting application is coalesced. The modal does not use a fullscreen `backdrop-filter`, and tab switches do not animate measured heights with synchronous layout reads.
 
-The modal changes `body.style.overflow` only while open and restores the exact previous value.
+## Structural synchronization
 
-## Motion controller
+`src/ui/domPulse.ts` and `src/ui/mainViewPulse.ts` are the synchronization backbone.
 
-`MotionFeature` owns cross-cutting motion state rather than scattering event listeners through renderers.
+`DomPulse` is the only broad structural observer. It ignores global attribute churn, ignores records already owned by `#main-view`, bounds retained records, and slows dispatch during saturated ad-block mutation storms. `MainViewPulse` is the only child-list observer for `#main-view`; consumers provide selector filters so unrelated ad-block or Spotify insertions do not trigger expensive page queries. Both services disconnect their MutationObservers while the document is hidden, discard queued DOM churn, then reconnect and run one catch-up refresh on return.
 
-Reduced motion is true when the explicit setting is on, or when `respectSystemMotion` is enabled and `matchMedia('(prefers-reduced-motion: reduce)')` matches. The resulting root class lets CSS stop custom transitions/animations globally.
+`Synchronize` uses those pulses to maintain cheap state classes for CSS:
 
-Pointer parallax maps viewport pointer coordinates to -1…1 targets and approaches them in requestAnimationFrame using smoothing factor 0.12. Tiny values snap to zero. CSS receives pixel offsets; pointer leave smoothly returns to center. No frame loop runs while the target is settled.
+- playlist/search/episode/artist/home/shelf page state;
+- Home shortcut state;
+- left sidebar expansion;
+- the direct parent used by Spotify action-bar backgrounds;
+- ad/test-ref containers that need to be hidden;
+- artist image ancestors that need transparent backgrounds.
 
-Visibility handling sets `luminous-runtime-suspended` to pause Luminous-owned decorative CSS when the Spotify document is hidden. Canvas clones are intentionally left under the browser's media throttling instead of being force-paused/restarted, avoiding black first-frame artifacts after Alt+Tab.
+This replaces the active broad `:has()` selectors used by Luminous with simple class matching while keeping the same visual rules, including right-sidebar Canvas and Cinema branch markers.
 
-## UI synchronization
+Playlist artwork synchronization keeps a single attribute observer only on the current source element. Home header sizing uses `ResizeObserver` only on the filter chips and first Home section instead of observing class/style changes over the entire main view.
 
-`src/ui/synchronize.ts` handles Spotify surfaces that are not stable public APIs. It uses MutationObservers plus requestAnimationFrame scheduling rather than performing expensive layout work on every raw mutation.
+## Canvas UI state
 
-Responsibilities include synchronizing playlist header artwork, Home header sizing, and shell health. `SynchronizeFeature` manages the aggregate subscription; `src/ui/health.ts` reports whether expected shell regions are booting, healthy, or degraded. Luminous deliberately does not rewrite Spotify's generic `data-transition` state: that attribute is transient and can also be used outside Cinema, so styling or deleting it can create one-frame UI disappearance during track changes. A missing `#main-view` must persist for 500 ms before health is downgraded to `booting`, filtering single-commit React detach/reattach cycles. Synchronizers also retain the last valid decoration while a still-connected target temporarily loses nested React children, avoiding remove/re-add flashes during Spotify commits.
+Canvas discovery is structural-event driven and media-event driven. The global observer no longer watches `class`, `style`, `hidden`, or `src` attributes across Spotify. Revisions change only when selected video, mode, source identity, or playable state actually changes.
 
-Cinema-only CSS hiding is gated by the actual `#VideoPlayerCinema_ReactPortal`, not transition attributes alone. This prevents transient `data-cinema-npv-*` flags from hiding global navigation or sidebars during an ordinary song/Canvas update. The startup splash fallback is similarly gated by `luminous-runtime-active`; once the JavaScript runtime is alive, a temporary Spotify shell remount can never reactivate the fullscreen bootstrap overlay. The splash also disconnects its document-wide observer and health subscription after its first completed startup run.
+The right-sidebar Canvas class is tracked directly instead of scanning every right sidebar on each update. Long-form protected video remains handled by the direct-video background path documented in `background.md`.
 
-`DynamicBackgroundFeature` waits until health leaves `booting` before activating media work. Degraded does not mean disabled: Spotify selectors can partially change while enough of the shell still exists for the theme to remain useful.
+## Visibility performance
+
+`PerformanceFeature` toggles `luminous-document-hidden` from `visibilitychange`. CSS pauses Luminous-owned media transforms and adaptive-effect animations while the document is hidden. Video playback itself is intentionally untouched; force-pausing captured media can produce a black first frame after Alt+Tab in Chromium/Electron.
 
 ## Splash
 
-`SplashFeature` watches for the Spotify shell and keeps its observer/frame/timer ownership local to its React effect. All handles are cancelled on unmount so hot replacement cannot accumulate startup watchers.
-
-## Selector maintenance policy
-
-Spotify may rename class names, portals, or shell structure without notice. When a selector breaks:
-
-1. confirm whether it is a visual enhancement or a required integration;
-2. prefer stable IDs/portal anchors when available;
-3. scope selectors narrowly enough not to match unrelated `<video>` or panels;
-4. preserve a fallback path;
-5. coalesce MutationObserver work through animation frames;
-6. add teardown before adding new observers/listeners;
-7. update diagnostics/health reporting if the selector represents an important shell boundary.
-
-Do not use broad DOM rewrites to force Spotify into the desired shape; overrides should be reversible and survive missing elements.
+The splash is driven by shared UI health. It does not own a document-wide MutationObserver. The bootstrap CSS fallback is controlled by `luminous-bootstrap-pending` and is removed after the Spotify shell becomes available.
 
 ## Diagnostics
 
-`Diagnostics.get()` returns a plain serializable object with build version/time, background type, Canvas mode/source, normalized track snapshot, UI health, visibility, all registered settings, and basic platform/language information.
+`Diagnostics.get()` returns build/runtime/settings/environment data plus performance counters from both pulse services:
 
-`Diagnostics.copy()` writes pretty JSON only after explicit user action. This makes reports reproducible without keeping a hidden telemetry channel; Luminous itself sends no diagnostics anywhere.
+- mutation callback batches received;
+- coalesced dispatch frames;
+- subscriber dispatch count;
+- raw mutation records observed and global records skipped because `MainViewPulse` owns them;
+- saturated frames where the bounded mutation-record buffer intentionally stopped retaining individual records;
+- rare full-sync frames used as an eventual-consistency catch-up under sustained churn.
+
+These counters make ad-block interaction measurable without telemetry. `Diagnostics.copy()` only writes the report to the clipboard after explicit user action; Luminous sends nothing externally.
+
+## Selector maintenance policy
+
+Spotify DOM is not a stable API. Prefer IDs/portal anchors, narrow observers, and reversible class bridges. Before adding a relational selector or observer, ask whether the same state can be represented by an existing pulse subscription or by a direct media/resize event. Avoid document-wide attribute observation entirely.

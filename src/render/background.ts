@@ -22,6 +22,7 @@ export class Background {
 
   private static root: HTMLDivElement | null = null;
   private static base: HTMLDivElement | null = null;
+  private static mediaStage: HTMLDivElement | null = null;
 
   private static imageLayers: [HTMLImageElement, HTMLImageElement] | null =
     null;
@@ -126,7 +127,6 @@ export class Background {
       pointerEvents: 'none',
       transition: `opacity ${this.TRANSITION_MS}ms linear`,
       opacity: '0',
-      willChange: 'opacity, transform',
     };
   }
 
@@ -159,23 +159,31 @@ export class Background {
     const effects = document.createElement('div');
     effects.className = 'luminous-background-effects';
 
-    const mesh = document.createElement('span');
-    mesh.className = 'luminous-background-mesh';
+    const createNode = (className: string) => {
+      const node = document.createElement('span');
+      node.className = className;
 
-    const halo = document.createElement('span');
-    halo.className = 'luminous-background-halo';
+      const surface = document.createElement('span');
+      surface.className = 'luminous-background-surface';
+      node.append(surface);
 
-    const ribbons = ['one', 'two'].map((variant) => {
-      const ribbon = document.createElement('span');
-      ribbon.className = `luminous-background-ribbon luminous-background-ribbon--${variant}`;
-      return ribbon;
-    });
+      return node;
+    };
 
-    const blobs = ['one', 'two', 'three', 'four'].map((variant) => {
-      const blob = document.createElement('span');
-      blob.className = `luminous-background-blob luminous-background-blob--${variant}`;
-      return blob;
-    });
+    const mesh = createNode('luminous-background-mesh');
+    const halo = createNode('luminous-background-halo');
+
+    const ribbons = ['one', 'two'].map((variant) =>
+      createNode(
+        `luminous-background-ribbon luminous-background-ribbon--${variant}`,
+      ),
+    );
+
+    const blobs = ['one', 'two', 'three', 'four'].map((variant) =>
+      createNode(
+        `luminous-background-blob luminous-background-blob--${variant}`,
+      ),
+    );
 
     effects.append(mesh, halo, ...ribbons, ...blobs);
     return effects;
@@ -198,6 +206,7 @@ export class Background {
       overflow: 'hidden',
       pointerEvents: 'none',
       isolation: 'isolate',
+      contain: 'layout paint style',
     });
 
     this.base = document.createElement('div');
@@ -211,13 +220,22 @@ export class Background {
       opacity: '1',
     });
 
+    this.mediaStage = document.createElement('div');
+    this.mediaStage.className = 'luminous-background-media-stage';
+    Object.assign(this.mediaStage.style, {
+      position: 'absolute',
+      inset: '0',
+      pointerEvents: 'none',
+    });
+
     const imageA = this.createImageLayer();
     const imageB = this.createImageLayer();
     const videoA = this.createVideoLayer();
     const videoB = this.createVideoLayer();
     const effects = this.createEffectsLayer();
 
-    this.root.append(this.base, imageA, imageB, videoA, videoB, effects);
+    this.mediaStage.append(imageA, imageB, videoA, videoB);
+    this.root.append(this.base, this.mediaStage, effects);
     this.imageLayers = [imageA, imageB];
     this.videoLayers = [videoA, videoB];
     this.activeImage = 0;
@@ -797,6 +815,7 @@ export class Background {
 
     this.root = null;
     this.base = null;
+    this.mediaStage = null;
     this.imageLayers = null;
     this.videoLayers = null;
     this.activeImage = 0;
@@ -820,6 +839,8 @@ export class Background {
   ) {
     if (!this.imageLayers || !this.videoLayers) return;
 
+    if (this.currentType === type && this.get() === activeElement) return;
+
     if (
       this.directVideoSource &&
       (type !== 'canvas' || activeElement !== this.directVideoSource)
@@ -836,13 +857,11 @@ export class Background {
     this.imageLayers.forEach((element) => {
       const active = type === 'image' && element === activeElement;
       element.style.opacity = active ? '1' : '0';
-      element.classList.toggle('luminous-background-layer--active', active);
     });
 
     this.videoLayers.forEach((element) => {
       const active = type === 'canvas' && element === activeElement;
       element.style.opacity = active ? '1' : '0';
-      element.classList.toggle('luminous-background-layer--active', active);
     });
 
     this.scheduleVideoCleanup();

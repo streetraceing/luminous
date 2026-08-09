@@ -76,6 +76,13 @@ const toggleExclusiveClasses = (
   });
 };
 
+const syncCanvasEnabled = () => {
+  const dynamicBackground =
+    Luminous.Settings.get<boolean>('dynamicBackground') !== false;
+  const source = Luminous.Settings.get<BackgroundSource>('backgroundSource');
+  Luminous.Canvas.setEnabled(dynamicBackground && source === 'auto');
+};
+
 export const settingDefinitions: {
   [K in LuminousSettingKey]: SettingDefinition<LuminousSettingValues[K]>;
 } = {
@@ -132,6 +139,7 @@ export const settingDefinitions: {
     normalize: booleanNormalizer(true),
     apply: (value) => {
       Luminous.Settings.toggleClass('hideDynamicBackground', !value);
+      syncCanvasEnabled();
 
       if (value) {
         Luminous.Settings.setVar('--luminous-background', 'transparent');
@@ -153,7 +161,7 @@ export const settingDefinitions: {
     normalize: choiceNormalizer(backgroundSources, 'auto'),
     apply: (value) => {
       toggleExclusiveClasses('luminous-source-', backgroundSources, value);
-      Luminous.Canvas.setEnabled(value === 'auto');
+      syncCanvasEnabled();
     },
   },
   dynamicPalette: {

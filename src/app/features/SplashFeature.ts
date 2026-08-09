@@ -4,7 +4,6 @@ import { getUiHealth, subscribeUiHealth, UiHealthState } from '../../ui/health';
 const MIN_VISIBLE_MS = 600;
 const MAX_VISIBLE_MS = 2600;
 const HELP_HINT_DELAY_MS = 1500;
-const SPOTIFY_SHELL_SELECTOR = '.Root__top-container #main-view';
 const SCRIPT_STARTED_AT = Date.now();
 
 export function SplashFeature() {
@@ -14,46 +13,28 @@ export function SplashFeature() {
   const ref = useRef();
   const state = useState();
 
-  const [shellPresent, setShellPresent] = state(() => hasSpotifyShell());
   const [visible, setVisible] = state(true);
   const [health, setHealth] = state<UiHealthState>(() => getUiHealth());
   const [now, setNow] = state(() => Date.now());
-  const mountedAt = ref<number | null>(shellPresent ? SCRIPT_STARTED_AT : null);
+  const mountedAt = ref<number | null>(null);
   const finished = ref(false);
-
-  effect(() => subscribeUiHealth(setHealth), []);
+  const shellPresent = health.status !== 'booting';
 
   effect(() => {
-    let frameId: number | null = null;
+    if (!shellPresent) return;
+    document.documentElement.classList.remove('luminous-bootstrap-pending');
+  }, [shellPresent]);
 
-    const syncShellPresence = () => {
-      frameId = null;
-      setShellPresent(hasSpotifyShell());
-    };
-
-    const scheduleSync = () => {
-      if (frameId !== null) return;
-      frameId = requestAnimationFrame(syncShellPresence);
-    };
-
-    const observer = new MutationObserver(scheduleSync);
-    observer.observe(document.documentElement, {
-      childList: true,
-      subtree: true,
-    });
-    syncShellPresence();
-
-    return () => {
-      observer.disconnect();
-      if (frameId !== null) cancelAnimationFrame(frameId);
-    };
-  }, []);
+  effect(() => {
+    if (!visible) return;
+    return subscribeUiHealth(setHealth);
+  }, [visible]);
 
   effect(() => {
     if (!shellPresent || finished.current) return;
 
     if (mountedAt.current === null) {
-      mountedAt.current = Date.now();
+      mountedAt.current = SCRIPT_STARTED_AT;
     }
 
     const elapsed = Date.now() - mountedAt.current;
@@ -74,7 +55,7 @@ export function SplashFeature() {
 
     const intervalId = window.setInterval(() => {
       setNow(Date.now());
-    }, 250);
+    }, 500);
 
     return () => window.clearInterval(intervalId);
   }, [health.status, shellPresent, visible]);
@@ -139,10 +120,6 @@ export function SplashFeature() {
         ),
     ),
   );
-}
-
-function hasSpotifyShell(): boolean {
-  return document.querySelector(SPOTIFY_SHELL_SELECTOR) !== null;
 }
 
 function formatSeconds(duration: number): string {

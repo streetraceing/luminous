@@ -1,6 +1,6 @@
 /* #main-view */
 
-#main-view > div:has(div[data-testid='test-ref-div']),
+#main-view > .luminous-hidden-test-ref-container,
 #main-view
   div[data-testid='hpto-parent-container']
   > div[data-testid='test-hpto-ref'] {
@@ -18,14 +18,7 @@
     .playlist-playlist-playlistContent,
     .main-actionBarBackground-background,
     .playlist-playlist-actionBarBackground-background,
-    .main-view-container__scroll-node-child
-      > main
-      > section
-      > div
-      > div:has(
-        .main-actionBarBackground-background,
-        .playlist-playlist-actionBarBackground-background
-      )
+    .luminous-actionbar-background-parent
   ) {
   background: transparent !important;
 }
@@ -36,8 +29,7 @@
 
 /* Hide when left-sidebar expanded */
 
-.Root__top-container:has(#Desktop_LeftSidebar_Id:not([class='Root__nav-bar']))
-  #main-view {
+html.luminous-left-sidebar-expanded #main-view {
   visibility: hidden;
   opacity: 0;
   transition: none;
@@ -46,19 +38,13 @@
 
 /* Playlist page */
 
-#main-view:has(.playlist-playlist-page, .main-trackList-trackListContainer)
-  .main-topBar-container {
+#main-view.luminous-page-playlist .main-topBar-container {
   display: none;
 }
 
-#main-view:has(.playlist-playlist-page, .main-trackList-trackListContainer)
-  .main-trackList-trackListHeader {
+#main-view.luminous-page-playlist .main-trackList-trackListHeader {
   top: unset !important;
   background: transparent;
-}
-
-#main-view .main-trackList-trackListHeader {
-  box-sizing: none;
 }
 
 /* Marketplace */
@@ -68,12 +54,12 @@
   background: transparent;
 }
 
-#main-view:has(.marketplace-content) .main-topBar-background {
+#main-view.luminous-page-marketplace .main-topBar-background {
   background: var(--luminous-ui-background);
   backdrop-filter: blur(var(--luminous-ui-blur));
 }
 
-#main-view:has(.marketplace-content)
+#main-view.luminous-page-marketplace
   .main-topBar-background
   > .main-topBar-overlay {
   background: transparent;
@@ -85,7 +71,7 @@
 
 /* Search */
 
-#main-view:has(#searchPage):not(:has(.main-shelf-shelf))
+#main-view.luminous-page-search:not(.luminous-page-shelf)
   main
   > div
   > div:first-child {
@@ -102,20 +88,19 @@
   background: transparent;
 }
 
-#main-view:has(section[data-testid='episode']) ul[data-encore-id='navBarList'] {
+#main-view.luminous-page-episode ul[data-encore-id='navBarList'] {
   border-bottom: none;
   background: transparent;
   position: static;
 }
 
-#main-view:has(section[data-testid='episode']) .main-topBar-container {
+#main-view.luminous-page-episode .main-topBar-container {
   display: none;
 }
 
 /* Diskography */
 
-#main-view:has(section[data-test-uri^='spotify:artist:'])
-  div:has(.main-entityHeader-image) {
+#main-view.luminous-page-artist .luminous-artist-image-ancestor {
   background: transparent;
 }
 
@@ -135,13 +120,11 @@
 
 /* Main page */
 
-#main-view:has(.main-home-filterChipsContainer)
-  .main-home-filterChipsContainer {
+#main-view.luminous-page-home .main-home-filterChipsContainer {
   top: unset !important;
 }
 
-#main-view:has(.main-home-filterChipsContainer)
-  .main-home-filterChipsSectionActive {
+#main-view.luminous-page-home .main-home-filterChipsSectionActive {
   display: none;
 }
 
@@ -152,10 +135,7 @@
   height: 0px;
 }
 
-#main-view:not(
-    :has(section[data-testid='home-page'] .view-homeShortcutsGrid-shortcuts)
-  )
-  .main-home-homeHeader {
+#main-view:not(.luminous-page-home-shortcuts) .main-home-homeHeader {
   display: none;
 }
 
@@ -171,7 +151,7 @@
 
 /* Genre */
 
-#main-view:has(.main-shelf-shelf) main div:last-child {
+#main-view.luminous-page-shelf main div:last-child {
   background: transparent;
 }
 

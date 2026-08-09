@@ -92,15 +92,6 @@ export function DynamicBackgroundFeature() {
   }, []);
 
   effect(() => {
-    if (!appActive || !enabled || !dynamicPalette) {
-      Luminous.Palette.clear();
-      return;
-    }
-
-    void Luminous.Palette.applyFromImage(song?.image);
-  }, [appActive, dynamicPalette, enabled, song?.image]);
-
-  effect(() => {
     if (!appActive) {
       Luminous.Background.destroy();
       return;
@@ -128,6 +119,15 @@ export function DynamicBackgroundFeature() {
 
     Luminous.Background.render();
   }, [renderKey]);
+
+  effect(() => {
+    if (!appActive || !enabled || !dynamicPalette) {
+      Luminous.Palette.clear();
+      return;
+    }
+
+    void Luminous.Palette.applyFromImage(song?.image);
+  }, [appActive, dynamicPalette, enabled, song?.image]);
 
   return null;
 }
