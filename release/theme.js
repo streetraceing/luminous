@@ -314,7 +314,7 @@ var e = class {
           !1
         );
       let i = (n ?? e.currentSrc) || e.src || null;
-      if (r === `npv-video`) return this.renderDirectVideo(e, i);
+      if (r === `npv-video`) return this.renderDirectVideo(e, i, t);
       if (
         this.currentType === `canvas` &&
         this.currentCanvasSource === e &&
@@ -407,15 +407,18 @@ var e = class {
         !0
       );
     }
-    static renderDirectVideo(e, t) {
+    static renderDirectVideo(e, t, n) {
       if (
         this.currentType === `canvas` &&
         this.directVideoSource === e &&
         e.isConnected &&
         !e.ended &&
         e.classList.contains(`luminous-direct-video-background--active`)
-      )
-        return ((this.directVideoKey = t), (this.currentCanvasKey = t), !0);
+      ) {
+        ((this.directVideoKey = t), (this.currentCanvasKey = t));
+        let r = this.directVideoHosts.get(e);
+        return (r && this.prepareDirectVideoPlaceholder(r, n ?? e.poster), !0);
+      }
       if (
         !e.isConnected ||
         e.ended ||
@@ -437,17 +440,18 @@ var e = class {
         this.directVideoSource !== e &&
         this.deactivateDirectVideo(),
         this.cancelDirectVideoCleanup(e));
-      let n = e.closest(`#VideoPlayerNpv_ReactPortal`);
-      return n
-        ? (this.prepareDirectVideoBridge(e, n),
+      let r = e.closest(`#VideoPlayerNpv_ReactPortal`);
+      return r
+        ? (this.prepareDirectVideoBridge(e, r),
+          this.prepareDirectVideoPlaceholder(r, n ?? e.poster),
           e.classList.add(`luminous-direct-video-background`),
-          n.classList.add(`luminous-direct-video-host`),
+          r.classList.add(`luminous-direct-video-host`),
           document.documentElement.classList.add(
             `luminous-direct-video-active`,
           ),
           (this.directVideoSource = e),
           (this.directVideoKey = t),
-          this.directVideoHosts.set(e, n),
+          this.directVideoHosts.set(e, r),
           (this.currentCanvasSource = e),
           (this.currentCanvasKey = t),
           e.offsetWidth,
@@ -499,7 +503,8 @@ var e = class {
       (this.directVideoHosts.delete(e),
         t &&
           !t.querySelector(`video.luminous-direct-video-background`) &&
-          t.classList.remove(`luminous-direct-video-host`),
+          (t.classList.remove(`luminous-direct-video-host`),
+          this.restoreDirectVideoPlaceholder(t)),
         this.restoreDirectVideoBridge(e),
         this.directVideoHosts.size === 0 &&
           document.documentElement.classList.remove(
@@ -523,11 +528,7 @@ var e = class {
       for (; i && i !== document.body;) {
         let e = getComputedStyle(i);
         if (
-          ((e.overflowX !== `visible` || e.overflowY !== `visible`) &&
-            r(i, `overflow`, `visible`),
-          e.clip !== `auto` && r(i, `clip`, `auto`),
-          e.clipPath !== `none` && r(i, `clip-path`, `none`),
-          e.transform !== `none` && r(i, `transform`, `none`),
+          (e.transform !== `none` && r(i, `transform`, `none`),
           e.translate !== `none` && r(i, `translate`, `none`),
           e.rotate !== `none` && r(i, `rotate`, `none`),
           e.scale !== `none` && r(i, `scale`, `none`),
@@ -538,12 +539,7 @@ var e = class {
           e.containerType !== `normal` && r(i, `container-type`, `normal`),
           e.contentVisibility !== `visible` &&
             r(i, `content-visibility`, `visible`),
-          e.isolation !== `auto` && r(i, `isolation`, `auto`),
-          e.mixBlendMode !== `normal` && r(i, `mix-blend-mode`, `normal`),
           e.willChange !== `auto` && r(i, `will-change`, `auto`),
-          e.position !== `static` &&
-            e.zIndex !== `auto` &&
-            r(i, `z-index`, `auto`),
           i.classList.add(`luminous-direct-video-bridge`),
           i.classList.contains(`Root__top-container`))
         )
@@ -551,6 +547,18 @@ var e = class {
         i = i.parentElement;
       }
       this.directVideoBridgeSnapshots.set(e, n);
+    }
+    static prepareDirectVideoPlaceholder(e, t) {
+      let n = t?.trim();
+      n
+        ? e.style.setProperty(
+            `--luminous-direct-video-placeholder-image`,
+            `url(${JSON.stringify(n)})`,
+          )
+        : e.style.removeProperty(`--luminous-direct-video-placeholder-image`);
+    }
+    static restoreDirectVideoPlaceholder(e) {
+      e.style.removeProperty(`--luminous-direct-video-placeholder-image`);
     }
     static restoreDirectVideoBridge(e) {
       let t = this.directVideoBridgeSnapshots.get(e);

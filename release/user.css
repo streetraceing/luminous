@@ -717,10 +717,13 @@ html:root {
 html.hideDynamicBackground #luminous-dynamic-background {
   display: none;
 }
-.luminous-direct-video-bridge {
-  clip: auto !important;
-  clip-path: none !important;
-  overflow: visible !important;
+.luminous-direct-video-host {
+  --luminous-direct-video-placeholder-image: none;
+  background:
+    linear-gradient(180deg, #080a0e29, #080a0e94),
+    var(--luminous-direct-video-placeholder-image) center / cover no-repeat,
+    color-mix(in srgb, var(--luminous-ui-base) 88%, black) !important;
+  box-shadow: inset 0 -80px 120px #0003;
 }
 video.luminous-direct-video-background {
   object-fit: cover !important;

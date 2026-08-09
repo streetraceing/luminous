@@ -448,7 +448,7 @@ export class Background {
       (sourceKey ?? sourceVideo.currentSrc) || sourceVideo.src || null;
 
     if (mode === 'npv-video') {
-      return this.renderDirectVideo(sourceVideo, canvasKey);
+      return this.renderDirectVideo(sourceVideo, canvasKey, fallbackImage);
     }
 
     if (
@@ -585,6 +585,7 @@ export class Background {
   private static renderDirectVideo(
     sourceVideo: HTMLVideoElement,
     sourceKey: string | null,
+    fallbackImage?: string | null,
   ): boolean {
     if (
       this.currentType === 'canvas' &&
@@ -598,6 +599,13 @@ export class Background {
       // of bouncing through the artwork fallback during those media events.
       this.directVideoKey = sourceKey;
       this.currentCanvasKey = sourceKey;
+      const host = this.directVideoHosts.get(sourceVideo);
+      if (host) {
+        this.prepareDirectVideoPlaceholder(
+          host,
+          fallbackImage ?? sourceVideo.poster,
+        );
+      }
       return true;
     }
 
@@ -641,6 +649,10 @@ export class Background {
     }
 
     this.prepareDirectVideoBridge(sourceVideo, host);
+    this.prepareDirectVideoPlaceholder(
+      host,
+      fallbackImage ?? sourceVideo.poster,
+    );
     sourceVideo.classList.add('luminous-direct-video-background');
     host.classList.add('luminous-direct-video-host');
     document.documentElement.classList.add('luminous-direct-video-active');
@@ -709,6 +721,7 @@ export class Background {
 
     if (host && !host.querySelector('video.luminous-direct-video-background')) {
       host.classList.remove('luminous-direct-video-host');
+      this.restoreDirectVideoPlaceholder(host);
     }
 
     this.restoreDirectVideoBridge(sourceVideo);
@@ -755,12 +768,10 @@ export class Background {
     while (element && element !== document.body) {
       const style = getComputedStyle(element);
 
-      if (style.overflowX !== 'visible' || style.overflowY !== 'visible') {
-        override(element, 'overflow', 'visible');
-      }
-
-      if (style.clip !== 'auto') override(element, 'clip', 'auto');
-      if (style.clipPath !== 'none') override(element, 'clip-path', 'none');
+      // A fixed descendant only needs the properties that establish a fixed
+      // containing block neutralised. Do not touch overflow/clip/position or
+      // z-index here: those belong to Spotify's sidebar layout and changing
+      // them breaks scrolling, sticky sections and panel clipping.
       if (style.transform !== 'none') override(element, 'transform', 'none');
       if (style.translate !== 'none') override(element, 'translate', 'none');
       if (style.rotate !== 'none') override(element, 'rotate', 'none');
@@ -779,17 +790,8 @@ export class Background {
       if (style.contentVisibility !== 'visible') {
         override(element, 'content-visibility', 'visible');
       }
-      if (style.isolation !== 'auto') {
-        override(element, 'isolation', 'auto');
-      }
-      if (style.mixBlendMode !== 'normal') {
-        override(element, 'mix-blend-mode', 'normal');
-      }
       if (style.willChange !== 'auto') {
         override(element, 'will-change', 'auto');
-      }
-      if (style.position !== 'static' && style.zIndex !== 'auto') {
-        override(element, 'z-index', 'auto');
       }
 
       element.classList.add('luminous-direct-video-bridge');
@@ -799,6 +801,25 @@ export class Background {
     }
 
     this.directVideoBridgeSnapshots.set(sourceVideo, snapshots);
+  }
+
+  private static prepareDirectVideoPlaceholder(
+    host: HTMLElement,
+    artwork?: string | null,
+  ) {
+    const image = artwork?.trim();
+    if (image) {
+      host.style.setProperty(
+        '--luminous-direct-video-placeholder-image',
+        `url(${JSON.stringify(image)})`,
+      );
+    } else {
+      host.style.removeProperty('--luminous-direct-video-placeholder-image');
+    }
+  }
+
+  private static restoreDirectVideoPlaceholder(host: HTMLElement) {
+    host.style.removeProperty('--luminous-direct-video-placeholder-image');
   }
 
   private static restoreDirectVideoBridge(sourceVideo: HTMLVideoElement) {

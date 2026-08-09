@@ -11,7 +11,8 @@
     "**/*"
   ],
   "ignore": [
-    "assets/**"
+    "assets/**",
+    "release/**"
   ],
   "dot": true,
   "followSymlinks": false,

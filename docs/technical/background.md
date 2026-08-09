@@ -26,7 +26,7 @@ Canvas discovery is disabled entirely when the dynamic background is off or the 
 
 ## Protected long-form NPV video
 
-`CanvasMode = npv-video` bypasses `captureStream()` because DRM/EME media is not reliably capturable. Spotify's original `<video>` remains React-owned and is not re-parented. Luminous temporarily opens the relevant ancestor clipping/containing/stacking chain and promotes that same element to a fixed, blurred, pointer-inert viewport background. All temporary inline overrides are snapshotted and restored during cleanup.
+`CanvasMode = npv-video` bypasses `captureStream()` because DRM/EME media is not reliably capturable. Spotify's original `<video>` remains React-owned and is not re-parented. Luminous promotes that same element to a fixed, blurred, pointer-inert viewport background, but only neutralises ancestor properties that establish a fixed containing block (`transform`, `filter`, containment and related compositor hints). Sidebar `overflow`, clipping, positioning and z-index are never changed, so the NPV panel keeps its normal scroll and layout behavior. While the original video is promoted, the NPV portal uses the current artwork as a lightweight visual placeholder instead of leaving a black/empty media area. All temporary inline overrides and placeholder state are restored during cleanup.
 
 ## Adaptive effect compositor
 
