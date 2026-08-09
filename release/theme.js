@@ -417,7 +417,10 @@ var e = class {
       ) {
         ((this.directVideoKey = t), (this.currentCanvasKey = t));
         let r = this.directVideoHosts.get(e);
-        return (r && this.prepareDirectVideoPlaceholder(r, n ?? e.poster), !0);
+        return (
+          r && this.prepareDirectVideoPlaceholder(r, e, n ?? e.poster),
+          !0
+        );
       }
       if (
         !e.isConnected ||
@@ -443,7 +446,7 @@ var e = class {
       let r = e.closest(`#VideoPlayerNpv_ReactPortal`);
       return r
         ? (this.prepareDirectVideoBridge(e, r),
-          this.prepareDirectVideoPlaceholder(r, n ?? e.poster),
+          this.prepareDirectVideoPlaceholder(r, e, n ?? e.poster),
           e.classList.add(`luminous-direct-video-background`),
           r.classList.add(`luminous-direct-video-host`),
           document.documentElement.classList.add(
@@ -548,17 +551,34 @@ var e = class {
       }
       this.directVideoBridgeSnapshots.set(e, n);
     }
-    static prepareDirectVideoPlaceholder(e, t) {
-      let n = t?.trim();
-      n
+    static prepareDirectVideoPlaceholder(e, t, n) {
+      let r = e.getBoundingClientRect(),
+        i = Number.parseFloat(
+          e.style.getPropertyValue(
+            `--luminous-direct-video-placeholder-height`,
+          ),
+        ),
+        a = t.classList.contains(`luminous-direct-video-background`)
+          ? 0
+          : t.getBoundingClientRect().height,
+        o = Math.max(Number.isFinite(i) ? i : 0, r.height, a);
+      o > 0
+        ? e.style.setProperty(
+            `--luminous-direct-video-placeholder-height`,
+            `${Math.round(o)}px`,
+          )
+        : e.style.removeProperty(`--luminous-direct-video-placeholder-height`);
+      let s = n?.trim();
+      s
         ? e.style.setProperty(
             `--luminous-direct-video-placeholder-image`,
-            `url(${JSON.stringify(n)})`,
+            `url(${JSON.stringify(s)})`,
           )
         : e.style.removeProperty(`--luminous-direct-video-placeholder-image`);
     }
     static restoreDirectVideoPlaceholder(e) {
-      e.style.removeProperty(`--luminous-direct-video-placeholder-image`);
+      (e.style.removeProperty(`--luminous-direct-video-placeholder-image`),
+        e.style.removeProperty(`--luminous-direct-video-placeholder-height`));
     }
     static restoreDirectVideoBridge(e) {
       let t = this.directVideoBridgeSnapshots.get(e);
@@ -1187,12 +1207,12 @@ var l = class {
     }
     static printBanner() {
       (console.log(
-        `%c Luminous v2.3.0 %c by streetraceing `,
+        `%c Luminous v2.3.1 %c by streetraceing `,
         `background:#1DB954;color:#000;padding:6px 12px;border-radius:8px 0 0 8px;font-weight:600;`,
         `background:#181818;color:#1DB954;padding:6px 12px;border-radius:0 8px 8px 0;font-weight:500;`,
       ),
         console.log(
-          `%c build: 09/08/2026 06:20:40 UTC+03:00 `,
+          `%c build: 09/08/2026 07:50:12 UTC+03:00 `,
           `color:#888;font-size:12px;`,
         ));
     }
@@ -1411,8 +1431,8 @@ var _ = 64,
         t = Luminous.Song.getSync();
       return {
         luminous: {
-          version: `2.3.0`,
-          buildTime: `09/08/2026 06:20:40 UTC+03:00`,
+          version: `2.3.1`,
+          buildTime: `09/08/2026 07:50:12 UTC+03:00`,
         },
         runtime: {
           background: Luminous.Background.getType(),
@@ -2494,7 +2514,7 @@ function ae(t) {
       Settings: te,
       Logger: u,
       destroy: t,
-      version: `2.3.0`,
+      version: `2.3.1`,
     },
     configurable: !0,
   });

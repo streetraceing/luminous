@@ -719,11 +719,22 @@ html.hideDynamicBackground #luminous-dynamic-background {
 }
 .luminous-direct-video-host {
   --luminous-direct-video-placeholder-image: none;
+  --luminous-direct-video-placeholder-height: 0px;
+  min-height: var(--luminous-direct-video-placeholder-height);
+  box-shadow: inset 0 -80px 120px #0003;
   background:
     linear-gradient(180deg, #080a0e29, #080a0e94),
     var(--luminous-direct-video-placeholder-image) center / cover no-repeat,
     color-mix(in srgb, var(--luminous-ui-base) 88%, black) !important;
-  box-shadow: inset 0 -80px 120px #0003;
+}
+html.luminous-direct-video-active
+  :is(
+    #main-view,
+    #Desktop_LeftSidebar_Id,
+    .Root__globalNav,
+    .Root__now-playing-bar
+  ) {
+  z-index: 20 !important;
 }
 video.luminous-direct-video-background {
   object-fit: cover !important;
