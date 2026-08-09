@@ -3545,11 +3545,17 @@
           const showImage = () => {
             if (renderId !== this.imageRenderId) return;
             next.src = src;
-            requestAnimationFrame(() => {
-              if (renderId !== this.imageRenderId) return;
-              this.activeImage = nextIndex;
-              this.transitionTo('image', next);
-              Luminous.Logger.info('Background', 'Rendering image layer', src);
+            void this.waitForImageReady(next).then((ready) => {
+              if (!ready || renderId !== this.imageRenderId) return;
+              requestAnimationFrame(() => {
+                if (renderId !== this.imageRenderId) return;
+                this.transitionTo('image', next);
+                Luminous.Logger.info(
+                  'Background',
+                  'Rendering image layer',
+                  src,
+                );
+              });
             });
           };
           if (preload.complete && preload.naturalWidth > 0) {
@@ -3574,6 +3580,33 @@
             },
             { once: true },
           );
+        }
+        static async waitForImageReady(image) {
+          if (!image.complete) {
+            const loaded = await new Promise((resolve) => {
+              const finish = (value) => {
+                image.removeEventListener('load', handleLoad);
+                image.removeEventListener('error', handleError);
+                resolve(value);
+              };
+              const handleLoad = () => finish(true);
+              const handleError = () => finish(false);
+              image.addEventListener('load', handleLoad, { once: true });
+              image.addEventListener('error', handleError, { once: true });
+              // Avoid the small cache race where the image becomes complete between
+              // the outer check and listener registration.
+              if (image.complete) finish(image.naturalWidth > 0);
+            });
+            if (!loaded) return false;
+          }
+          if (image.naturalWidth <= 0) return false;
+          try {
+            await image.decode();
+          } catch {
+            // A decoded frame can still be available when decode() is interrupted by
+            // browser scheduling. naturalWidth is the authoritative fallback here.
+          }
+          return image.complete && image.naturalWidth > 0;
         }
         static getPreloadedImage(src) {
           let image = this.preloadedImages.get(src);
@@ -3684,7 +3717,6 @@
               requestAnimationFrame(() => {
                 if (!this.isPendingCanvas(renderId, next)) return;
                 this.clearPendingCanvas();
-                this.activeVideo = nextIndex;
                 this.currentCanvasSource = sourceVideo;
                 this.currentCanvasKey = canvasKey;
                 this.transitionTo('canvas', next);
@@ -3732,6 +3764,9 @@
               'luminous-direct-video-background--active',
             )
           ) {
+            // Spotify can reuse the same protected <video> while currentSrc and
+            // readyState briefly change. Keep the original element promoted instead
+            // of bouncing through the artwork fallback during those media events.
             this.directVideoKey = sourceKey;
             this.currentCanvasKey = sourceKey;
             return true;
@@ -3780,6 +3815,9 @@
           this.directVideoHosts.set(sourceVideo, host);
           this.currentCanvasSource = sourceVideo;
           this.currentCanvasKey = sourceKey;
+          // Register the inactive direct-video style before starting its opacity
+          // transition. This layout read is intentionally limited to the rare
+          // long-form path and avoids a one-frame empty background.
           void sourceVideo.offsetWidth;
           sourceVideo.classList.add('luminous-direct-video-background--active');
           this.transitionTo('canvas', sourceVideo);
@@ -3971,6 +4009,21 @@
             (type !== 'canvas' || activeElement !== this.directVideoSource)
           ) {
             this.deactivateDirectVideo();
+          }
+          // Commit the buffer index only after comparing against the previously
+          // visible element. Updating activeImage/activeVideo before this point makes
+          // get() report the incoming buffer as already active and incorrectly turns
+          // same-type transitions (image -> image / canvas -> canvas) into no-ops.
+          if (type === 'image' && activeElement instanceof HTMLImageElement) {
+            const imageIndex = this.imageLayers.indexOf(activeElement);
+            if (imageIndex !== -1) this.activeImage = imageIndex;
+          } else if (
+            type === 'canvas' &&
+            activeElement instanceof HTMLVideoElement &&
+            activeElement !== this.directVideoSource
+          ) {
+            const videoIndex = this.videoLayers.indexOf(activeElement);
+            if (videoIndex !== -1) this.activeVideo = videoIndex;
           }
           this.currentType = type;
           if (this.base) {

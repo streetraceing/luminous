@@ -14,7 +14,9 @@ The root is fixed, clipped, pointer-inert, isolated, and style/paint contained.
 
 ## Image rendering
 
-Artwork uses two buffers. `preloadImage()` keeps a bounded 24-entry cache. `renderImage()` activates the inactive buffer and uses a monotonic `imageRenderId`, so a late image callback from an older request cannot overwrite a newer track.
+Artwork uses two buffers. `preloadImage()` keeps a bounded 24-entry cache. `renderImage()` always prepares the currently inactive buffer, waits for that actual `<img>` element to finish loading/decoding, and only then commits it as the active buffer. A monotonic `imageRenderId` prevents a late image callback from an older request from overwriting a newer track.
+
+The active buffer index is committed inside `transitionTo()` after the renderer has compared the incoming element with the previously visible element. This ordering is important: committing the index earlier makes `get()` report the incoming buffer as already active and incorrectly turns image-to-image (and captured Canvas-to-Canvas) transitions into no-ops. The previous buffer therefore remains visible until the incoming buffer is ready, after which the existing opacity transition performs the hand-off.
 
 ## Normal Canvas
 

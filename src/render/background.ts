@@ -326,12 +326,15 @@ export class Background {
 
       next.src = src;
 
-      requestAnimationFrame(() => {
-        if (renderId !== this.imageRenderId) return;
+      void this.waitForImageReady(next).then((ready) => {
+        if (!ready || renderId !== this.imageRenderId) return;
 
-        this.activeImage = nextIndex;
-        this.transitionTo('image', next);
-        Luminous.Logger.info('Background', 'Rendering image layer', src);
+        requestAnimationFrame(() => {
+          if (renderId !== this.imageRenderId) return;
+
+          this.transitionTo('image', next);
+          Luminous.Logger.info('Background', 'Rendering image layer', src);
+        });
       });
     };
 
@@ -361,6 +364,42 @@ export class Background {
       },
       { once: true },
     );
+  }
+
+  private static async waitForImageReady(
+    image: HTMLImageElement,
+  ): Promise<boolean> {
+    if (!image.complete) {
+      const loaded = await new Promise<boolean>((resolve) => {
+        const finish = (value: boolean) => {
+          image.removeEventListener('load', handleLoad);
+          image.removeEventListener('error', handleError);
+          resolve(value);
+        };
+        const handleLoad = () => finish(true);
+        const handleError = () => finish(false);
+
+        image.addEventListener('load', handleLoad, { once: true });
+        image.addEventListener('error', handleError, { once: true });
+
+        // Avoid the small cache race where the image becomes complete between
+        // the outer check and listener registration.
+        if (image.complete) finish(image.naturalWidth > 0);
+      });
+
+      if (!loaded) return false;
+    }
+
+    if (image.naturalWidth <= 0) return false;
+
+    try {
+      await image.decode();
+    } catch {
+      // A decoded frame can still be available when decode() is interrupted by
+      // browser scheduling. naturalWidth is the authoritative fallback here.
+    }
+
+    return image.complete && image.naturalWidth > 0;
   }
 
   private static getPreloadedImage(src: string): HTMLImageElement {
@@ -499,7 +538,6 @@ export class Background {
           if (!this.isPendingCanvas(renderId, next)) return;
 
           this.clearPendingCanvas();
-          this.activeVideo = nextIndex;
           this.currentCanvasSource = sourceVideo;
           this.currentCanvasKey = canvasKey;
           this.transitionTo('canvas', next);
@@ -846,6 +884,22 @@ export class Background {
       (type !== 'canvas' || activeElement !== this.directVideoSource)
     ) {
       this.deactivateDirectVideo();
+    }
+
+    // Commit the buffer index only after comparing against the previously
+    // visible element. Updating activeImage/activeVideo before this point makes
+    // get() report the incoming buffer as already active and incorrectly turns
+    // same-type transitions (image -> image / canvas -> canvas) into no-ops.
+    if (type === 'image' && activeElement instanceof HTMLImageElement) {
+      const imageIndex = this.imageLayers.indexOf(activeElement);
+      if (imageIndex !== -1) this.activeImage = imageIndex;
+    } else if (
+      type === 'canvas' &&
+      activeElement instanceof HTMLVideoElement &&
+      activeElement !== this.directVideoSource
+    ) {
+      const videoIndex = this.videoLayers.indexOf(activeElement);
+      if (videoIndex !== -1) this.activeVideo = videoIndex;
     }
 
     this.currentType = type;
