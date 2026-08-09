@@ -48,6 +48,10 @@ export class Background {
     HTMLVideoElement,
     HTMLElement | null
   >();
+  private static directVideoBridgeSnapshots = new Map<
+    HTMLVideoElement,
+    Map<HTMLElement, Map<string, { value: string; priority: string }>>
+  >();
   private static directVideoCleanupTimers = new Map<HTMLVideoElement, number>();
 
   private static currentType: BackgroundType = 'none';
@@ -570,8 +574,20 @@ export class Background {
     const host = sourceVideo.closest(
       '#VideoPlayerNpv_ReactPortal',
     ) as HTMLElement | null;
+
+    if (!host) {
+      Luminous.Logger.warn(
+        'Background',
+        'Protected video has no NPV portal host',
+        sourceVideo,
+      );
+      return false;
+    }
+
+    this.prepareDirectVideoBridge(sourceVideo, host);
     sourceVideo.classList.add('luminous-direct-video-background');
-    host?.classList.add('luminous-direct-video-host');
+    host.classList.add('luminous-direct-video-host');
+    document.documentElement.classList.add('luminous-direct-video-active');
 
     this.directVideoSource = sourceVideo;
     this.directVideoKey = sourceKey;
@@ -638,6 +654,114 @@ export class Background {
     if (host && !host.querySelector('video.luminous-direct-video-background')) {
       host.classList.remove('luminous-direct-video-host');
     }
+
+    this.restoreDirectVideoBridge(sourceVideo);
+
+    if (this.directVideoHosts.size === 0) {
+      document.documentElement.classList.remove('luminous-direct-video-active');
+    }
+  }
+
+  private static prepareDirectVideoBridge(
+    sourceVideo: HTMLVideoElement,
+    host: HTMLElement,
+  ) {
+    this.restoreDirectVideoBridge(sourceVideo);
+
+    const snapshots = new Map<
+      HTMLElement,
+      Map<string, { value: string; priority: string }>
+    >();
+
+    const override = (
+      element: HTMLElement,
+      property: string,
+      value: string,
+    ) => {
+      let elementSnapshot = snapshots.get(element);
+      if (!elementSnapshot) {
+        elementSnapshot = new Map();
+        snapshots.set(element, elementSnapshot);
+      }
+
+      if (!elementSnapshot.has(property)) {
+        elementSnapshot.set(property, {
+          value: element.style.getPropertyValue(property),
+          priority: element.style.getPropertyPriority(property),
+        });
+      }
+
+      element.style.setProperty(property, value, 'important');
+    };
+
+    let element: HTMLElement | null = host;
+
+    while (element && element !== document.body) {
+      const style = getComputedStyle(element);
+
+      if (style.overflowX !== 'visible' || style.overflowY !== 'visible') {
+        override(element, 'overflow', 'visible');
+      }
+
+      if (style.clip !== 'auto') override(element, 'clip', 'auto');
+      if (style.clipPath !== 'none') override(element, 'clip-path', 'none');
+      if (style.transform !== 'none') override(element, 'transform', 'none');
+      if (style.translate !== 'none') override(element, 'translate', 'none');
+      if (style.rotate !== 'none') override(element, 'rotate', 'none');
+      if (style.scale !== 'none') override(element, 'scale', 'none');
+      if (style.perspective !== 'none') {
+        override(element, 'perspective', 'none');
+      }
+      if (style.filter !== 'none') override(element, 'filter', 'none');
+      if (style.backdropFilter !== 'none') {
+        override(element, 'backdrop-filter', 'none');
+      }
+      if (style.contain !== 'none') override(element, 'contain', 'none');
+      if (style.containerType !== 'normal') {
+        override(element, 'container-type', 'normal');
+      }
+      if (style.contentVisibility !== 'visible') {
+        override(element, 'content-visibility', 'visible');
+      }
+      if (style.isolation !== 'auto') {
+        override(element, 'isolation', 'auto');
+      }
+      if (style.mixBlendMode !== 'normal') {
+        override(element, 'mix-blend-mode', 'normal');
+      }
+      if (style.willChange !== 'auto') {
+        override(element, 'will-change', 'auto');
+      }
+      if (style.position !== 'static' && style.zIndex !== 'auto') {
+        override(element, 'z-index', 'auto');
+      }
+
+      element.classList.add('luminous-direct-video-bridge');
+
+      if (element.classList.contains('Root__top-container')) break;
+      element = element.parentElement;
+    }
+
+    this.directVideoBridgeSnapshots.set(sourceVideo, snapshots);
+  }
+
+  private static restoreDirectVideoBridge(sourceVideo: HTMLVideoElement) {
+    const snapshots = this.directVideoBridgeSnapshots.get(sourceVideo);
+    if (!snapshots) return;
+
+    snapshots.forEach((properties, element) => {
+      properties.forEach(({ value, priority }, property) => {
+        if (value) {
+          element.style.setProperty(property, value, priority);
+        } else {
+          element.style.removeProperty(property);
+        }
+      });
+
+      element.classList.remove('luminous-direct-video-bridge');
+    });
+
+    this.directVideoBridgeSnapshots.delete(sourceVideo);
   }
 
   private static restoreAllDirectVideos() {
@@ -649,6 +773,11 @@ export class Background {
     Array.from(this.directVideoHosts.keys()).forEach((video) =>
       this.restoreDirectVideo(video),
     );
+
+    this.directVideoBridgeSnapshots.forEach((_snapshots, video) =>
+      this.restoreDirectVideoBridge(video),
+    );
+    document.documentElement.classList.remove('luminous-direct-video-active');
 
     this.directVideoSource = null;
     this.directVideoKey = null;

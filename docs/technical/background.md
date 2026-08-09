@@ -4,7 +4,7 @@
 
 ## Design goal
 
-The renderer follows one conservative rule: Spotify owns Spotify media nodes. Luminous never re-parents a Spotify media node. Normal Canvas is mirrored into Luminous-owned buffers; protected long-form NPV video is handled by temporarily styling the original `<video>` in place.
+The renderer follows one conservative rule: Spotify owns Spotify media nodes. Luminous never re-parents a Spotify media node. Normal Canvas is mirrored into Luminous-owned buffers; protected long-form NPV video is handled by temporarily promoting the original `<video>` to a viewport-level visual background without moving the React-owned node.
 
 ## DOM structure
 
@@ -27,7 +27,7 @@ A successfully cached image can be activated immediately. A not-yet-loaded image
 
 Normal Canvas is mirrored using `HTMLVideoElement.captureStream()` into one of two Luminous-owned `<video>` elements. The Spotify source is never paused, moved, or assigned a new source by that path.
 
-Long-form NPV video (`CanvasMode = npv-video`) uses a separate protected-media path. Luminous does **not** call `captureStream()` for that mode. Instead, the original Spotify `<video>` remains in its React-owned DOM location and receives temporary CSS classes that promote the same element to a fixed, blurred, pointer-inert fullscreen background. When the long-form source disappears or another background becomes active, the classes are removed after the normal media fade. No source URL, playback state, or inline Spotify style is rewritten.
+Long-form NPV video (`CanvasMode = npv-video`) uses a separate protected-media path. Luminous does **not** call `captureStream()` for that mode. Instead, the original Spotify `<video>` remains in its React-owned DOM location. Luminous temporarily neutralizes clipping/containing/stacking properties on the NPV ancestor chain up to the top container, then promotes that same element to a fixed, blurred, pointer-inert viewport background behind Spotify UI. This avoids the right-sidebar containing block while keeping React ownership intact. Every temporary inline override is snapshotted and restored when the long-form source disappears or another background becomes active. No source URL or playback state is rewritten.
 
 Before either video path is selected the source must be connected, not ended, and have current frame data. The direct long-form path also requires non-zero video dimensions. For normal capture, streams without a video track are discarded. The inactive clone receives `srcObject`, calls `play()`, and only then becomes the active Canvas buffer.
 

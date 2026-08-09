@@ -77,7 +77,7 @@ Artwork fallback is expected when:
 - the clone's `play()` fails;
 - a protected long-form NPV source has no current frame or usable dimensions.
 
-Protected long-form NPV video intentionally bypasses `captureStream()`. The original Spotify `<video>` is styled in place as the background, which avoids the EME/DRM capture restriction while keeping React ownership of the DOM node intact.
+Protected long-form NPV video intentionally bypasses `captureStream()`. The original Spotify `<video>` stays React-owned and is promoted to a viewport-level background by temporarily opening the NPV ancestor clipping/stacking chain. This avoids both the EME/DRM capture restriction and the right-sidebar containing block.
 
 Do not mark an entire Spotify `<video>` permanently unsupported. Spotify can reuse it with another source. Permanent capture failures are cached per element + source identity.
 

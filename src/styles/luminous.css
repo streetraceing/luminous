@@ -72,16 +72,16 @@ html.hideDynamicBackground #luminous-dynamic-background {
 
 /*
  * Protected long-form NPV videos cannot be mirrored reliably with
- * captureStream(). For those videos Luminous keeps Spotify's original
- * <video> in place in the DOM and temporarily promotes that same element
- * to a viewport-sized background layer.
+ * captureStream(). The original Spotify <video> stays in its React-owned
+ * DOM tree, while Background temporarily opens the NPV ancestor chain so
+ * position: fixed resolves against the viewport instead of the right panel.
+ * The negative stacking level puts that same video behind Spotify's UI,
+ * matching the global dynamic-background layer without duplicating frames.
  */
-#VideoPlayerNpv_ReactPortal.luminous-direct-video-host {
+.luminous-direct-video-bridge {
   overflow: visible !important;
   clip: auto !important;
   clip-path: none !important;
-  contain: none !important;
-  transform: none !important;
 }
 
 video.luminous-direct-video-background {
@@ -106,7 +106,7 @@ video.luminous-direct-video-background {
   user-select: none !important;
   visibility: visible !important;
   display: block !important;
-  z-index: -1 !important;
+  z-index: -2147483647 !important;
   opacity: 0 !important;
   transition: opacity 250ms linear !important;
   will-change: opacity, transform !important;
