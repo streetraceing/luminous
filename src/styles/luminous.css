@@ -74,11 +74,30 @@ html.hideDynamicBackground #luminous-dynamic-background {
 
 .luminous-direct-video-host {
   --luminous-direct-video-placeholder-image: none;
+  --luminous-direct-video-placeholder-height: 0px;
+  min-height: var(--luminous-direct-video-placeholder-height);
   background:
     linear-gradient(180deg, rgba(8, 10, 14, 0.16), rgba(8, 10, 14, 0.58)),
     var(--luminous-direct-video-placeholder-image) center / cover no-repeat,
     color-mix(in srgb, var(--luminous-ui-base) 88%, black) !important;
   box-shadow: inset 0 -80px 120px rgba(0, 0, 0, 0.2);
+}
+
+/*
+ * The protected video is still a descendant of Spotify's right-sidebar
+ * stacking context even after its fixed containing blocks are neutralised.
+ * Keep the normal Spotify shell above that context instead of mutating the
+ * sidebar's own z-index/overflow/position. This mirrors the already elevated
+ * bottom player bar and leaves the panel's scrolling/layout untouched.
+ */
+html.luminous-direct-video-active
+  :is(
+    #main-view,
+    #Desktop_LeftSidebar_Id,
+    .Root__globalNav,
+    .Root__now-playing-bar
+  ) {
+  z-index: 20 !important;
 }
 
 video.luminous-direct-video-background {

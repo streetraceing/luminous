@@ -26,7 +26,11 @@ Canvas discovery is disabled entirely when the dynamic background is off or the 
 
 ## Protected long-form NPV video
 
-`CanvasMode = npv-video` bypasses `captureStream()` because DRM/EME media is not reliably capturable. Spotify's original `<video>` remains React-owned and is not re-parented. Luminous promotes that same element to a fixed, blurred, pointer-inert viewport background, but only neutralises ancestor properties that establish a fixed containing block (`transform`, `filter`, containment and related compositor hints). Sidebar `overflow`, clipping, positioning and z-index are never changed, so the NPV panel keeps its normal scroll and layout behavior. While the original video is promoted, the NPV portal uses the current artwork as a lightweight visual placeholder instead of leaving a black/empty media area. All temporary inline overrides and placeholder state are restored during cleanup.
+`CanvasMode = npv-video` bypasses `captureStream()` because DRM/EME media is not reliably capturable. Spotify's original `<video>` remains React-owned and is not re-parented. Luminous promotes that same element to a fixed, blurred, pointer-inert viewport background, but only neutralises ancestor properties that establish a fixed containing block (`transform`, `filter`, containment and related compositor hints). Sidebar `overflow`, clipping, positioning and z-index are never changed, so the NPV panel keeps its normal scroll and layout behavior.
+
+The promoted video still belongs to the right-sidebar stacking context. During direct-video mode Luminous therefore elevates the normal Spotify shell regions (`#main-view`, the left sidebar, global navigation, and now-playing bar) above that context instead of trying to tear down the sidebar's own stacking/layout rules. The video remains visually behind the interface while the right sidebar keeps its native scroll/clipping behavior.
+
+Before promotion, Luminous records the rendered height of the NPV video slot. The portal keeps that minimum height while the video is fixed and paints the current artwork into the vacated area, so the panel does not collapse or show an empty black hole. The placeholder geometry, artwork variable, ancestor overrides, and direct-video classes are all removed during cleanup.
 
 ## Adaptive effect compositor
 

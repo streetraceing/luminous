@@ -603,6 +603,7 @@ export class Background {
       if (host) {
         this.prepareDirectVideoPlaceholder(
           host,
+          sourceVideo,
           fallbackImage ?? sourceVideo.poster,
         );
       }
@@ -651,6 +652,7 @@ export class Background {
     this.prepareDirectVideoBridge(sourceVideo, host);
     this.prepareDirectVideoPlaceholder(
       host,
+      sourceVideo,
       fallbackImage ?? sourceVideo.poster,
     );
     sourceVideo.classList.add('luminous-direct-video-background');
@@ -805,8 +807,32 @@ export class Background {
 
   private static prepareDirectVideoPlaceholder(
     host: HTMLElement,
+    sourceVideo: HTMLVideoElement,
     artwork?: string | null,
   ) {
+    const hostRect = host.getBoundingClientRect();
+    const storedHeight = Number.parseFloat(
+      host.style.getPropertyValue('--luminous-direct-video-placeholder-height'),
+    );
+    const videoHeight = sourceVideo.classList.contains(
+      'luminous-direct-video-background',
+    )
+      ? 0
+      : sourceVideo.getBoundingClientRect().height;
+    const placeholderHeight = Math.max(
+      Number.isFinite(storedHeight) ? storedHeight : 0,
+      hostRect.height,
+      videoHeight,
+    );
+
+    if (placeholderHeight > 0) {
+      host.style.setProperty(
+        '--luminous-direct-video-placeholder-height',
+        `${Math.round(placeholderHeight)}px`,
+      );
+    } else {
+      host.style.removeProperty('--luminous-direct-video-placeholder-height');
+    }
     const image = artwork?.trim();
     if (image) {
       host.style.setProperty(
@@ -820,6 +846,7 @@ export class Background {
 
   private static restoreDirectVideoPlaceholder(host: HTMLElement) {
     host.style.removeProperty('--luminous-direct-video-placeholder-image');
+    host.style.removeProperty('--luminous-direct-video-placeholder-height');
   }
 
   private static restoreDirectVideoBridge(sourceVideo: HTMLVideoElement) {
