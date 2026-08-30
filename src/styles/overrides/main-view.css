@@ -98,7 +98,7 @@ html.luminous-left-sidebar-expanded #main-view {
   display: none;
 }
 
-/* Diskography */
+/* Discography */
 
 #main-view.luminous-page-artist .luminous-artist-image-ancestor {
   background: transparent;
@@ -108,6 +108,10 @@ html.luminous-left-sidebar-expanded #main-view {
   box-shadow: none;
   background: transparent;
   position: relative;
+}
+
+.artist-artistDiscography-headerContainer {
+  background: transparent;
 }
 
 /* What's New */
