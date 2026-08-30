@@ -1493,6 +1493,9 @@ html.luminous-left-sidebar-expanded #main-view {
   background: 0 0;
   position: relative;
 }
+.artist-artistDiscography-headerContainer {
+  background: 0 0;
+}
 #main-view
   ul[role='treegrid']
   div[aria-labelledby^='listrow-title-spotify:album:'] {
