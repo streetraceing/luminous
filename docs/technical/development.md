@@ -26,7 +26,8 @@ The root `AGENTS.md` is authoritative for automated changes in this repository. 
 
 1. update relevant documentation when architecture, runtime behavior, settings, performance, workflow, or user-facing behavior changes materially;
 2. preserve the root `README.md` visual style/structure and change only facts when necessary;
-3. version/release automation is operator-owned. Never manually change the project version and never run, edit, create, or replace `vite/releaseScript.ts`, `npm run release`, npm version commands, or equivalent automation.
+3. version/release automation is operator-owned. Never manually change the project version and never run, edit, create, or replace `vite/releaseScript.ts`, `npm run release`, npm version commands, or equivalent automation;
+4. end the reply to every change request with a brief commit-style message on its own line (`<type>: <summary>` using types such as `feat`, `fix`, `chore`, `docs`, `refactor`, `perf`, `test`, or `build`) that the operator can reuse as a git commit subject; the message is report-only, and git commits are created only when the user explicitly asks for that.
 
 ## Linting ambient Spicetify declarations
 

@@ -308,16 +308,8 @@ export class Settings {
   private static persistNow(): void {
     const saved: Record<string, SettingValue> = {};
 
-    this.savedValues.forEach((value, key) => {
-      if (
-        typeof value === 'string' ||
-        typeof value === 'boolean' ||
-        (typeof value === 'number' && Number.isFinite(value))
-      ) {
-        saved[key] = value;
-      }
-    });
-
+    // Persist exactly the registered settings so values of removed keys are
+    // dropped from the stored snapshot instead of lingering forever.
     this.registry.forEach((definition, key) => {
       saved[key] = this.values.get(key) ?? definition.default;
     });

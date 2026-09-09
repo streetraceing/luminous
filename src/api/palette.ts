@@ -103,8 +103,10 @@ export class Palette {
   }
 
   static setMotionDuration(duration: number) {
+    // Matches the motionDuration setting range so the whole documented
+    // 8-60 s slider affects effect timing.
     const normalized = Number.isFinite(duration)
-      ? Math.min(48, Math.max(8, duration))
+      ? Math.min(60, Math.max(8, duration))
       : DEFAULT_MOTION_DURATION;
 
     this.motionScale = normalized / DEFAULT_MOTION_DURATION;

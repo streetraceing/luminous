@@ -11,5 +11,5 @@
     "types": ["node", "react", "react-dom"],
     "typeRoots": ["./node_modules/@types", "./src/types"]
   },
-  "include": ["src", "vite", "scripts", "vite.config.ts"]
+  "include": ["src", "vite", "vite.config.ts"]
 }
