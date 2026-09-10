@@ -1207,12 +1207,12 @@ var l = class {
     }
     static printBanner() {
       (console.log(
-        `%c Luminous v2.3.3 %c by streetraceing `,
+        `%c Luminous v2.4.0 %c by streetraceing `,
         `background:#1DB954;color:#000;padding:6px 12px;border-radius:8px 0 0 8px;font-weight:600;`,
         `background:#181818;color:#1DB954;padding:6px 12px;border-radius:0 8px 8px 0;font-weight:500;`,
       ),
         console.log(
-          `%c build: 10/09/2026 18:17:24 UTC+03:00 `,
+          `%c build: 10/09/2026 20:01:35 UTC+03:00 `,
           `color:#888;font-size:12px;`,
         ));
     }
@@ -1431,8 +1431,8 @@ var _ = 64,
         t = Luminous.Song.getSync();
       return {
         luminous: {
-          version: `2.3.3`,
-          buildTime: `10/09/2026 18:17:24 UTC+03:00`,
+          version: `2.4.0`,
+          buildTime: `10/09/2026 20:01:35 UTC+03:00`,
         },
         runtime: {
           background: Luminous.Background.getType(),
@@ -2508,7 +2508,7 @@ function ae(t) {
       Settings: te,
       Logger: u,
       destroy: t,
-      version: `2.3.3`,
+      version: `2.4.0`,
     },
     configurable: !0,
   });
@@ -2630,31 +2630,11 @@ function oe() {
     null
   );
 }
-var F = `luminous-document-hidden`;
-function se() {
-  return (
-    j()(() => {
-      let e = document.documentElement,
-        t = () => {
-          e.classList.toggle(F, document.visibilityState === `hidden`);
-        };
-      return (
-        document.addEventListener(`visibilitychange`, t, { passive: !0 }),
-        t(),
-        () => {
-          (document.removeEventListener(`visibilitychange`, t),
-            e.classList.remove(F));
-        }
-      );
-    }, []),
-    null
-  );
-}
-var ce = 600,
-  le = 2600,
-  ue = 1500,
-  de = Date.now();
-function fe() {
+var se = 600,
+  ce = 2600,
+  le = 1500,
+  ue = Date.now();
+function de() {
   let e = A(),
     t = j(),
     n = M(),
@@ -2675,9 +2655,9 @@ function fe() {
     }, [a]),
     t(() => {
       if (!m || f.current) return;
-      d.current === null && (d.current = de);
+      d.current === null && (d.current = ue);
       let e = Date.now() - d.current,
-        t = s.status === `ready` ? ce : le,
+        t = s.status === `ready` ? se : ce,
         n = Math.max(0, t - e),
         r = window.setTimeout(() => {
           ((f.current = !0), o(!1));
@@ -2694,7 +2674,7 @@ function fe() {
   let g = n(
       () =>
         s.status === `waiting` && s.brokenSince
-          ? `Waiting for Spotify UI... (${pe(l - s.brokenSince)})`
+          ? `Waiting for Spotify UI... (${fe(l - s.brokenSince)})`
           : s.status === `ready`
             ? `Welcome back. Lighting up Spotify...`
             : `Starting Luminous...`,
@@ -2703,7 +2683,7 @@ function fe() {
     _ =
       s.status === `waiting` &&
       s.brokenSince !== null &&
-      l - s.brokenSince >= ue;
+      l - s.brokenSince >= le;
   return m
     ? e.createElement(
         `div`,
@@ -2748,12 +2728,12 @@ function fe() {
       )
     : null;
 }
-function pe(e) {
+function fe(e) {
   return `${Math.max(0, Math.floor(e / 1e3))}s`;
 }
-var I = [`still`, `drift`, `float`],
-  L = [`auto`, `artwork`],
-  R = (e, t, n) => (r) => {
+var F = [`still`, `drift`, `float`],
+  I = [`auto`, `artwork`],
+  L = (e, t, n) => (r) => {
     if (
       (typeof r != `number` && typeof r != `string`) ||
       (typeof r == `string` && r.trim() === ``)
@@ -2762,28 +2742,28 @@ var I = [`still`, `drift`, `float`],
     let i = typeof r == `number` ? r : Number(r);
     return Number.isFinite(i) ? Math.min(n, Math.max(t, i)) : e;
   },
-  z = (e) => (t) => (typeof t == `boolean` ? t : e),
-  B = (e, t) => (n) => (typeof n == `string` && e.includes(n) ? n : t),
-  V = (e, t, n) => {
+  R = (e) => (t) => (typeof t == `boolean` ? t : e),
+  z = (e, t) => (n) => (typeof n == `string` && e.includes(n) ? n : t),
+  B = (e, t, n) => {
     t.forEach((t) => {
       Luminous.Settings.toggleClass(`${e}${t}`, t === n);
     });
   },
-  H = () => {
+  V = () => {
     let e = Luminous.Settings.get(`dynamicBackground`) !== !1,
       t = Luminous.Settings.get(`backgroundSource`);
     Luminous.Canvas.setEnabled(e && t === `auto`);
   },
-  me = {
+  pe = {
     backgroundBlur: {
       default: 24,
-      normalize: R(24, 0, 48),
+      normalize: L(24, 0, 48),
       apply: (e) =>
         Luminous.Settings.setVar(`--luminous-background-blur`, `${e}px`),
     },
     backgroundBrightness: {
       default: 75,
-      normalize: R(75, 30, 120),
+      normalize: L(75, 30, 120),
       apply: (e) =>
         Luminous.Settings.setVar(
           `--luminous-background-brightness`,
@@ -2792,12 +2772,12 @@ var I = [`still`, `drift`, `float`],
     },
     uiBlur: {
       default: 16,
-      normalize: R(16, 0, 32),
+      normalize: L(16, 0, 32),
       apply: (e) => Luminous.Settings.setVar(`--luminous-ui-blur`, `${e}px`),
     },
     paletteStrength: {
       default: 24,
-      normalize: R(24, 0, 50),
+      normalize: L(24, 0, 50),
       apply: (e) => {
         let t = Math.min(78, Math.round(e * 1.6));
         Luminous.Settings.setVar(`--luminous-palette-effect-opacity`, `${t}%`);
@@ -2806,7 +2786,7 @@ var I = [`still`, `drift`, `float`],
     backgroundEnergy: { default: `adaptive`, normalize: () => `adaptive` },
     uiOpacity: {
       default: 50,
-      normalize: R(50, 0, 100),
+      normalize: L(50, 0, 100),
       apply: (e) => {
         if (Luminous.Settings.get(`dynamicBackground`) === !1) {
           Luminous.Settings.removeVar(`--luminous-ui-opacity`);
@@ -2817,10 +2797,10 @@ var I = [`still`, `drift`, `float`],
     },
     dynamicBackground: {
       default: !0,
-      normalize: z(!0),
+      normalize: R(!0),
       apply: (e) => {
         if (
-          (Luminous.Settings.toggleClass(`hideDynamicBackground`, !e), H(), e)
+          (Luminous.Settings.toggleClass(`hideDynamicBackground`, !e), V(), e)
         ) {
           (Luminous.Settings.setVar(`--luminous-background`, `transparent`),
             Luminous.Settings.setVar(
@@ -2840,26 +2820,26 @@ var I = [`still`, `drift`, `float`],
     },
     backgroundSource: {
       default: `auto`,
-      normalize: B(L, `auto`),
+      normalize: z(I, `auto`),
       apply: (e) => {
-        (V(`luminous-source-`, L, e), H());
+        (B(`luminous-source-`, I, e), V());
       },
     },
     dynamicPalette: {
       default: !0,
-      normalize: z(!0),
+      normalize: R(!0),
       apply: (e) => {
         e || Luminous.Palette.clear();
       },
     },
     backgroundMotion: {
       default: `drift`,
-      normalize: B(I, `drift`),
-      apply: (e) => V(`luminous-motion-`, I, e),
+      normalize: z(F, `drift`),
+      apply: (e) => B(`luminous-motion-`, F, e),
     },
     motionDuration: {
       default: 20,
-      normalize: R(20, 8, 60),
+      normalize: L(20, 8, 60),
       apply: (e) => {
         (Luminous.Settings.setVar(`--luminous-motion-duration`, `${e}s`),
           Luminous.Palette.setMotionDuration(e));
@@ -2867,11 +2847,11 @@ var I = [`still`, `drift`, `float`],
     },
     reduceMotion: {
       default: !1,
-      normalize: z(!1),
+      normalize: R(!1),
       apply: (e) => Luminous.Settings.toggleClass(`luminous-reduce-motion`, e),
     },
   },
-  U = [
+  H = [
     {
       key: `dynamicBackground`,
       label: `Dynamic background`,
@@ -2983,7 +2963,7 @@ var I = [`still`, `drift`, `float`],
       control: `toggle`,
     },
   ],
-  he = [
+  me = [
     {
       id: `balanced`,
       label: `Balanced`,
@@ -3051,31 +3031,31 @@ var I = [`still`, `drift`, `float`],
       },
     },
   ];
-function ge() {
-  Object.entries(me).forEach(([e, t]) => {
+function he() {
+  Object.entries(pe).forEach(([e, t]) => {
     Luminous.Settings.register(e, t);
   });
 }
-var _e = `Luminous Settings`,
-  ve = `brightness`,
-  W = `luminous-theme-modal`,
-  G = `luminous-theme-modal-title`,
-  ye = `luminous-theme-modal-description`,
-  be = [
+var ge = `Luminous Settings`,
+  _e = `brightness`,
+  U = `luminous-theme-modal`,
+  W = `luminous-theme-modal-title`,
+  ve = `luminous-theme-modal-description`,
+  ye = [
     `button:not([disabled])`,
     `input:not([disabled])`,
     `[href]`,
     `[tabindex]:not([tabindex="-1"])`,
   ].join(`,`),
-  K = [
+  G = [
     { id: `presets`, label: `Presets` },
     { id: `appearance`, label: `Appearance` },
     { id: `motion`, label: `Motion` },
     { id: `advanced`, label: `Advanced` },
   ],
-  xe = 32,
-  Se = U.map((e) => e.key);
-function Ce() {
+  be = 32,
+  xe = H.map((e) => e.key);
+function Se() {
   let e = A(),
     t = j(),
     n = N(),
@@ -3092,7 +3072,7 @@ function Ce() {
             t = window.setTimeout(n, 250);
             return;
           }
-          let r = new Spicetify.Menu.Item(_e, !1, () => o(!0), ve);
+          let r = new Spicetify.Menu.Item(ge, !1, () => o(!0), _e);
           (r.register(), (i.current = r));
         };
       return (
@@ -3105,10 +3085,10 @@ function Ce() {
         }
       );
     }, []),
-    a ? e.createElement(we, { onClose: () => o(!1) }) : null
+    a ? e.createElement(Ce, { onClose: () => o(!1) }) : null
   );
 }
-function we({ onClose: e }) {
+function Ce({ onClose: e }) {
   let t = A(),
     n = j(),
     r = N(),
@@ -3144,7 +3124,7 @@ function we({ onClose: e }) {
           return;
         }
         if (t.key !== `Tab`) return;
-        let n = Array.from(a.current?.querySelectorAll(be) ?? []).filter(
+        let n = Array.from(a.current?.querySelectorAll(ye) ?? []).filter(
           (e) => e.offsetParent !== null,
         );
         if (!n.length) {
@@ -3165,13 +3145,13 @@ function we({ onClose: e }) {
       );
     }, [e]));
   let d = (e, t) => {
-    let n = K.findIndex((e) => e.id === t),
+    let n = G.findIndex((e) => e.id === t),
       r = null;
-    (e.key === `ArrowRight` && (r = (n + 1) % K.length),
-      e.key === `ArrowLeft` && (r = (n - 1 + K.length) % K.length),
+    (e.key === `ArrowRight` && (r = (n + 1) % G.length),
+      e.key === `ArrowLeft` && (r = (n - 1 + G.length) % G.length),
       e.key === `Home` && (r = 0),
-      e.key === `End` && (r = K.length - 1),
-      r !== null && (e.preventDefault(), u(K[r].id, !0)));
+      e.key === `End` && (r = G.length - 1),
+      r !== null && (e.preventDefault(), u(G[r].id, !0)));
   };
   return t.createElement(
     `div`,
@@ -3185,12 +3165,12 @@ function we({ onClose: e }) {
       `div`,
       {
         ref: a,
-        id: W,
+        id: U,
         className: `luminous-theme-menu`,
         role: `dialog`,
         'aria-modal': `true`,
-        'aria-labelledby': G,
-        'aria-describedby': ye,
+        'aria-labelledby': W,
+        'aria-describedby': ve,
       },
       t.createElement(
         `div`,
@@ -3211,10 +3191,10 @@ function we({ onClose: e }) {
         t.createElement(
           `div`,
           { className: `luminous-theme-menu__title` },
-          t.createElement(`span`, { id: G }, `Luminous`),
+          t.createElement(`span`, { id: W }, `Luminous`),
           t.createElement(
             `small`,
-            { id: ye },
+            { id: ve },
             `Theme preferences · v${Luminous.version}`,
           ),
         ),
@@ -3224,7 +3204,7 @@ function we({ onClose: e }) {
             className: `luminous-theme-menu__reset-button`,
             type: `button`,
             onClick: () => {
-              (Luminous.Settings.resetMany(Se),
+              (Luminous.Settings.resetMany(xe),
                 Spicetify.showNotification(`Luminous settings reset`));
             },
           },
@@ -3253,7 +3233,7 @@ function we({ onClose: e }) {
           role: `tablist`,
           'aria-label': `Luminous settings sections`,
         },
-        K.map((e) =>
+        G.map((e) =>
           t.createElement(
             `button`,
             {
@@ -3261,13 +3241,13 @@ function we({ onClose: e }) {
               ref: (t) => {
                 s.current[e.id] = t;
               },
-              id: `${W}-${e.id}-tab`,
+              id: `${U}-${e.id}-tab`,
               className: `luminous-theme-menu__tab${c === e.id ? ` luminous-theme-menu__tab--active` : ``}`,
               type: `button`,
               role: `tab`,
               tabIndex: c === e.id ? 0 : -1,
               'aria-selected': String(c === e.id),
-              'aria-controls': `${W}-${e.id}-panel`,
+              'aria-controls': `${U}-${e.id}-panel`,
               onClick: () => u(e.id),
               onKeyDown: (t) => d(t, e.id),
             },
@@ -3278,15 +3258,15 @@ function we({ onClose: e }) {
       t.createElement(
         `div`,
         {
-          id: `${W}-${c}-panel`,
+          id: `${U}-${c}-panel`,
           className: `luminous-theme-menu__panel`,
           role: `tabpanel`,
-          'aria-labelledby': `${W}-${c}-tab`,
+          'aria-labelledby': `${U}-${c}-tab`,
         },
         t.createElement(
           `div`,
           { key: c, className: `luminous-theme-menu__panel-content` },
-          t.createElement(Ee, { section: c }),
+          t.createElement(Te, { section: c }),
         ),
       ),
       t.createElement(
@@ -3297,7 +3277,7 @@ function we({ onClose: e }) {
     ),
   );
 }
-function Te() {
+function we() {
   let e = A();
   return e.createElement(
     e.Fragment,
@@ -3315,7 +3295,7 @@ function Te() {
     e.createElement(
       `div`,
       { className: `luminous-theme-menu__preset-grid` },
-      he.map((t) =>
+      me.map((t) =>
         e.createElement(
           `button`,
           {
@@ -3335,9 +3315,9 @@ function Te() {
     ),
   );
 }
-function Ee({ section: e }) {
+function Te({ section: e }) {
   let t = A();
-  if (e === `presets`) return t.createElement(Te);
+  if (e === `presets`) return t.createElement(we);
   let n = {
       appearance: {
         title: `Appearance`,
@@ -3352,7 +3332,7 @@ function Ee({ section: e }) {
         description: `Inspect the current runtime and copy diagnostics for troubleshooting.`,
       },
     }[e],
-    r = U.filter((t) => t.section === e);
+    r = H.filter((t) => t.section === e);
   return t.createElement(
     t.Fragment,
     null,
@@ -3362,18 +3342,18 @@ function Ee({ section: e }) {
       t.createElement(`h2`, null, n.title),
       t.createElement(`p`, null, n.description),
     ),
-    r.map((e) => t.createElement(De, { key: e.key, setting: e })),
-    e === `advanced` && t.createElement(je),
+    r.map((e) => t.createElement(Ee, { key: e.key, setting: e })),
+    e === `advanced` && t.createElement(Ae),
   );
 }
-function De({ setting: e }) {
+function Ee({ setting: e }) {
   return e.control === `toggle`
-    ? A().createElement(Oe, { setting: e })
+    ? A().createElement(De, { setting: e })
     : e.control === `range`
-      ? A().createElement(ke, { setting: e })
-      : A().createElement(Ae, { setting: e });
+      ? A().createElement(Oe, { setting: e })
+      : A().createElement(ke, { setting: e });
 }
-function Oe({ setting: e }) {
+function De({ setting: e }) {
   let t = A(),
     n = j(),
     [r, i] = P()(() => Luminous.Settings.get(e.key) === !0);
@@ -3388,7 +3368,7 @@ function Oe({ setting: e }) {
     t.createElement(
       `label`,
       { className: `luminous-theme-menu__row luminous-theme-menu__toggle` },
-      t.createElement(q, { setting: e }),
+      t.createElement(K, { setting: e }),
       t.createElement(
         `span`,
         { className: `luminous-theme-menu__switch` },
@@ -3403,7 +3383,7 @@ function Oe({ setting: e }) {
     )
   );
 }
-function ke({ setting: e }) {
+function Oe({ setting: e }) {
   let t = A(),
     n = j(),
     r = N(),
@@ -3421,7 +3401,7 @@ function ke({ setting: e }) {
         s.current === null &&
           (s.current = window.setTimeout(() => {
             ((s.current = null), Luminous.Settings.set(e.key, o.current));
-          }, xe)));
+          }, be)));
     };
   return (
     n(
@@ -3450,7 +3430,7 @@ function ke({ setting: e }) {
       t.createElement(
         `span`,
         { className: `luminous-theme-menu__range-header` },
-        t.createElement(q, { setting: e }),
+        t.createElement(K, { setting: e }),
         t.createElement(`strong`, null, `${i}${e.unit ?? ``}`),
       ),
       t.createElement(
@@ -3471,7 +3451,7 @@ function ke({ setting: e }) {
     )
   );
 }
-function Ae({ setting: e }) {
+function ke({ setting: e }) {
   let t = A(),
     n = j(),
     [r, i] = P()(() => String(Luminous.Settings.get(e.key)));
@@ -3486,7 +3466,7 @@ function Ae({ setting: e }) {
     t.createElement(
       `div`,
       { className: `luminous-theme-menu__row luminous-theme-menu__choice` },
-      t.createElement(q, { setting: e }),
+      t.createElement(K, { setting: e }),
       t.createElement(
         `div`,
         {
@@ -3511,7 +3491,7 @@ function Ae({ setting: e }) {
     )
   );
 }
-function q({ setting: e }) {
+function K({ setting: e }) {
   let t = A();
   return t.createElement(
     `span`,
@@ -3520,13 +3500,13 @@ function q({ setting: e }) {
     t.createElement(`small`, null, e.description),
   );
 }
-function je() {
+function Ae() {
   let e = A(),
     t = j(),
-    [n, r] = P()(() => Me());
+    [n, r] = P()(() => je());
   return (
     t(() => {
-      let e = () => r(Me());
+      let e = () => r(je());
       return (
         Luminous.Background.addEventListener(`change`, e),
         Luminous.Canvas.addEventListener(`mount`, e),
@@ -3569,30 +3549,30 @@ function je() {
     )
   );
 }
-function Me() {
+function je() {
   let e = Luminous.Diagnostics.get(),
     t = e.runtime.canvasMode ?? `none`;
   return `Background: ${e.runtime.background} · Canvas: ${t} · UI: ${e.runtime.uiHealth}`;
 }
-var Ne = `luminous-playlist-background`,
-  Pe = `--luminous-playlist-background-image`,
-  Fe = `luminous-home-header-height`,
-  Ie = `--luminous-home-header-height`,
-  Le = [
+var Me = `luminous-playlist-background`,
+  Ne = `--luminous-playlist-background-image`,
+  Pe = `luminous-home-header-height`,
+  Fe = `--luminous-home-header-height`,
+  Ie = [
     `.main-view-container`,
     `.before-scroll-node`,
     `.main-entityHeader-container`,
     `.playlist-playlist-page`,
     `.main-trackList-trackListContainer`,
   ].join(`,`),
-  Re = [
+  Le = [
     `.main-home-homeHeader`,
     `.main-home-filterChipsContainer`,
     `.view-homeShortcutsGrid-shortcuts`,
     `.main-home-content`,
     `section[data-testid="home-page"]`,
   ].join(`,`),
-  ze = [
+  Re = [
     `.playlist-playlist-page`,
     `.main-trackList-trackListContainer`,
     `.marketplace-content`,
@@ -3607,7 +3587,7 @@ var Ne = `luminous-playlist-background`,
     `.main-actionBarBackground-background`,
     `.playlist-playlist-actionBarBackground-background`,
   ].join(`,`),
-  J = class {
+  q = class {
     static playlistBackground(e) {
       let t = null,
         n = null,
@@ -3618,8 +3598,8 @@ var Ne = `luminous-playlist-background`,
         c = null;
       function l() {
         c &&
-          (c.classList.remove(Ne),
-          c.style.removeProperty(Pe),
+          (c.classList.remove(Me),
+          c.style.removeProperty(Ne),
           (c = null),
           (s = null));
       }
@@ -3668,11 +3648,11 @@ var Ne = `luminous-playlist-background`,
         (r !== c && (l(), (c = r)),
           i !== s &&
             ((s = i),
-            r.classList.add(Ne),
-            r.style.setProperty(Pe, i),
+            r.classList.add(Me),
+            r.style.setProperty(Ne, i),
             e?.onBackgroundChange?.(i, n, r)));
       }
-      let m = x.subscribe(f, { filter: (e) => o(e, Le) });
+      let m = x.subscribe(f, { filter: (e) => o(e, Ie) });
       return {
         disconnect() {
           ((a = !0),
@@ -3696,7 +3676,7 @@ var Ne = `luminous-playlist-background`,
         c = null,
         l = null;
       function u() {
-        (s && (s.classList.remove(Fe), s.style.removeProperty(Ie)),
+        (s && (s.classList.remove(Pe), s.style.removeProperty(Fe)),
           (s = null),
           (a = null));
       }
@@ -3746,11 +3726,11 @@ var Ne = `luminous-playlist-background`,
         (n !== s && (u(), (s = n)),
           !(Math.abs(c - (a ?? -1)) < 0.5) &&
             ((a = c),
-            n.classList.add(Fe),
-            n.style.setProperty(Ie, `${c}px`),
+            n.classList.add(Pe),
+            n.style.setProperty(Fe, `${c}px`),
             e?.onHeightChange?.(c, r, o, n)));
       }
-      let _ = x.subscribe(h, { filter: (e) => o(e, Re) });
+      let _ = x.subscribe(h, { filter: (e) => o(e, Le) });
       return (
         window.addEventListener(`resize`, h, { passive: !0 }),
         {
@@ -3888,7 +3868,7 @@ var Ne = `luminous-playlist-background`,
           }),
           (a = c));
       }
-      let f = x.subscribe(d, { filter: (e) => o(e, ze) });
+      let f = x.subscribe(d, { filter: (e) => o(e, Re) });
       return {
         disconnect() {
           ((n = !0), f(), c(), (t = null));
@@ -4074,20 +4054,57 @@ var Ne = `luminous-playlist-background`,
       };
     }
   };
-function Be() {
+function ze() {
   return (
     j()(() => {
       let e = [
-        J.uiMountWatcher(),
-        J.observeCinema(),
-        J.mainViewState(),
-        J.leftSidebarState(),
-        J.playlistBackground(),
-        J.homeHeaderHeight(),
+        q.uiMountWatcher(),
+        q.observeCinema(),
+        q.mainViewState(),
+        q.leftSidebarState(),
+        q.playlistBackground(),
+        q.homeHeaderHeight(),
       ];
       return () => {
         e.forEach((e) => e.disconnect());
       };
+    }, []),
+    null
+  );
+}
+var J = `luminous-visibility-hold`;
+function Be() {
+  return (
+    j()(() => {
+      let e = document.documentElement,
+        t = null,
+        n = () => {
+          t !== null && (cancelAnimationFrame(t), (t = null));
+        },
+        r = () => {
+          (n(),
+            (t = requestAnimationFrame(() => {
+              t = requestAnimationFrame(() => {
+                ((t = null), e.classList.remove(J));
+              });
+            })));
+        },
+        i = () => {
+          if (document.visibilityState === `hidden`) {
+            (n(), e.classList.add(J));
+            return;
+          }
+          r();
+        };
+      return (
+        document.addEventListener(`visibilitychange`, i, { passive: !0 }),
+        i(),
+        () => {
+          (document.removeEventListener(`visibilitychange`, i),
+            n(),
+            e.classList.remove(J));
+        }
+      );
     }, []),
     null
   );
@@ -4097,11 +4114,11 @@ function Ve() {
   return e.createElement(
     e.Fragment,
     null,
-    e.createElement(fe),
+    e.createElement(de),
+    e.createElement(ze),
     e.createElement(Be),
-    e.createElement(se),
     e.createElement(oe),
-    e.createElement(Ce),
+    e.createElement(Se),
   );
 }
 var Y = `luminous-react-root`,
@@ -4184,7 +4201,7 @@ function Je() {
   );
 }
 var Ye =
-    `luminous-runtime-active.luminous-bootstrap-pending.hideDynamicBackground.luminous-dynamic-palette.luminous-palette-transitioning.luminous-track-changing.luminous-glass-highlights.luminous-reduce-motion.luminous-runtime-suspended.luminous-settings-open.luminous-document-hidden.luminous-parallax-enabled.luminous-source-auto.luminous-source-artwork.luminous-motion-still.luminous-motion-drift.luminous-motion-float.luminous-motion-orbit.luminous-quality-full.luminous-quality-balanced.luminous-quality-lite.luminous-effect-aurora.luminous-effect-ember.luminous-effect-bloom.luminous-effect-prism.luminous-effect-halo.luminous-effect-nebula.luminous-effect-energy-soft.luminous-effect-energy-flow.luminous-effect-energy-vivid.luminous-effect-tone-dark.luminous-effect-tone-balanced.luminous-effect-tone-light`.split(
+    `luminous-runtime-active.luminous-bootstrap-pending.hideDynamicBackground.luminous-dynamic-palette.luminous-palette-transitioning.luminous-track-changing.luminous-glass-highlights.luminous-reduce-motion.luminous-runtime-suspended.luminous-settings-open.luminous-document-hidden.luminous-visibility-hold.luminous-parallax-enabled.luminous-source-auto.luminous-source-artwork.luminous-motion-still.luminous-motion-drift.luminous-motion-float.luminous-motion-orbit.luminous-quality-full.luminous-quality-balanced.luminous-quality-lite.luminous-effect-aurora.luminous-effect-ember.luminous-effect-bloom.luminous-effect-prism.luminous-effect-halo.luminous-effect-nebula.luminous-effect-energy-soft.luminous-effect-energy-flow.luminous-effect-energy-vivid.luminous-effect-tone-dark.luminous-effect-tone-balanced.luminous-effect-tone-light`.split(
       `.`,
     ),
   Xe = [
@@ -4231,7 +4248,7 @@ function Qe() {
   ae(Ze),
   Qe(),
   Luminous.Logger.printBanner(),
-  ge(),
+  he(),
   Luminous.Settings.init(),
   Luminous.Song.init().catch((e) => {
     Luminous.Logger.error(`Song`, `Initialization failed`, e);
