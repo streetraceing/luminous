@@ -42,13 +42,15 @@ For performance, each effect is now represented as an animated outer node with a
 
 Artwork and captured-video motion is also separated from filtered paint. Blur/brightness remains on the media buffers, while Drift/Float moves the shared `.luminous-background-media-stage`. A track switch can therefore swap opacity between buffers without coupling the expensive media filter to the continuously animated transform.
 
+Drift retraces open swing paths with `alternate` and adds slow rotation to blobs and ribbons; Float plays dedicated closed-loop paths forward, so neither mode produces a visible loop seam. Negative animation delays keep nodes sharing a duration from moving in lockstep.
+
 ## Palette scope
 
 Adaptive colours, angle/filter controls, scene/energy/tone classes, and animation durations live on `.luminous-background-effects`. They are no longer written to `<html>`. Track-to-track colour transitions therefore invalidate and repaint the background scene only, not Spotify's full UI tree.
 
 ## Hidden/settings states
 
-When the document is hidden or the settings modal is open, only decorative CSS animation is paused. Background media streams are left to Chromium's own media scheduling to avoid resume artifacts.
+Opening the settings modal pauses decorative CSS animation through `luminous-settings-open` so the scene stays stable while editing. A hidden or minimized window is left entirely to Chromium, which suspends drawing on its own; pausing animation there caused a one-time twitch when the window was restored. Background media streams are left to Chromium's own media scheduling to avoid resume artifacts.
 
 ## Cleanup
 

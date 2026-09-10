@@ -1,5 +1,4 @@
 import { DynamicBackgroundFeature } from './features/DynamicBackgroundFeature';
-import { PerformanceFeature } from './features/PerformanceFeature';
 import { SplashFeature } from './features/SplashFeature';
 import { ThemeMenuFeature } from './features/ThemeMenuFeature';
 import { SynchronizeFeature } from './features/SynchronizeFeature';
@@ -13,7 +12,6 @@ export function App() {
     null,
     React.createElement(SplashFeature),
     React.createElement(SynchronizeFeature),
-    React.createElement(PerformanceFeature),
     React.createElement(DynamicBackgroundFeature),
     React.createElement(ThemeMenuFeature),
   );

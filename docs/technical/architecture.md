@@ -19,7 +19,6 @@ Boot order:
 
 - `SplashFeature` - startup status only; it does not keep a document-wide DOM observer alive after boot;
 - `SynchronizeFeature` - Spotify DOM compatibility and page-state synchronization;
-- `PerformanceFeature` - pauses only Luminous decorative CSS animation when Chromium marks the document hidden;
 - `DynamicBackgroundFeature` - joins Song, Canvas, Palette, Background, settings, and UI health;
 - `ThemeMenuFeature` - settings modal and diagnostics.
 

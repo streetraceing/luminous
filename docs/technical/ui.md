@@ -35,7 +35,7 @@ The right-sidebar Canvas class is tracked directly instead of scanning every rig
 
 ## Visibility performance
 
-`PerformanceFeature` toggles `luminous-document-hidden` from `visibilitychange`. CSS pauses Luminous-owned media transforms and adaptive-effect animations while the document is hidden. Video playback itself is intentionally untouched; force-pausing captured media can produce a black first frame after Alt+Tab in Chromium/Electron.
+Luminous does not pause its CSS animation when the document is hidden. Chromium already suspends compositing for minimized and occluded windows, so decorative animation produces no frames there, and toggling `animation-play-state` around that boundary made the ambient scene twitch once when the window was restored. Video playback is likewise untouched; force-pausing captured media can produce a black first frame after Alt+Tab in Chromium/Electron.
 
 ## Splash
 

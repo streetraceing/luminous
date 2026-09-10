@@ -23,5 +23,5 @@ In descending order:
 4. Reject stale asynchronous work after track/source changes.
 5. Keep visual settings declarative and centralized rather than duplicating defaults in UI and runtime code.
 6. Bound DOM synchronization work so Spotify/ad-block mutation churn cannot fan out across features.
-7. Keep expensive paint scoped/cached and pause avoidable decorative work while Spotify is hidden.
+7. Keep expensive paint scoped/cached and leave decorative motion to the compositor while Spotify is hidden; do not pause or resume animations around visibility changes.
 8. Treat Spotify DOM selectors as compatibility boundaries rather than stable application APIs.
