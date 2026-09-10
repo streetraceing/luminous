@@ -1207,12 +1207,12 @@ var l = class {
     }
     static printBanner() {
       (console.log(
-        `%c Luminous v2.3.2 %c by streetraceing `,
+        `%c Luminous v2.3.3 %c by streetraceing `,
         `background:#1DB954;color:#000;padding:6px 12px;border-radius:8px 0 0 8px;font-weight:600;`,
         `background:#181818;color:#1DB954;padding:6px 12px;border-radius:0 8px 8px 0;font-weight:500;`,
       ),
         console.log(
-          `%c build: 30/08/2026 18:22:47 UTC+03:00 `,
+          `%c build: 10/09/2026 18:17:24 UTC+03:00 `,
           `color:#888;font-size:12px;`,
         ));
     }
@@ -1431,8 +1431,8 @@ var _ = 64,
         t = Luminous.Song.getSync();
       return {
         luminous: {
-          version: `2.3.2`,
-          buildTime: `30/08/2026 18:22:47 UTC+03:00`,
+          version: `2.3.3`,
+          buildTime: `10/09/2026 18:17:24 UTC+03:00`,
         },
         runtime: {
           background: Luminous.Background.getType(),
@@ -1635,7 +1635,7 @@ var _ = 64,
         this.clearAppliedPalette());
     }
     static setMotionDuration(e) {
-      let t = Number.isFinite(e) ? Math.min(48, Math.max(8, e)) : k;
+      let t = Number.isFinite(e) ? Math.min(60, Math.max(8, e)) : k;
       ((this.motionScale = t / k),
         this.currentProfile &&
           this.applyDurations(this.currentProfile.baseDurations));
@@ -2240,15 +2240,9 @@ var _ = 64,
     }
     static persistNow() {
       let e = {};
-      (this.savedValues.forEach((t, n) => {
-        (typeof t == `string` ||
-          typeof t == `boolean` ||
-          (typeof t == `number` && Number.isFinite(t))) &&
-          (e[n] = t);
-      }),
-        this.registry.forEach((t, n) => {
-          e[n] = this.values.get(n) ?? t.default;
-        }));
+      this.registry.forEach((t, n) => {
+        e[n] = this.values.get(n) ?? t.default;
+      });
       try {
         Spicetify.LocalStorage.set(this.STORAGE_KEY, JSON.stringify(e));
       } catch (e) {
@@ -2514,7 +2508,7 @@ function ae(t) {
       Settings: te,
       Logger: u,
       destroy: t,
-      version: `2.3.2`,
+      version: `2.3.3`,
     },
     configurable: !0,
   });
