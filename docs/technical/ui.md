@@ -35,7 +35,7 @@ The right-sidebar Canvas class is tracked directly instead of scanning every rig
 
 ## Visibility performance
 
-Luminous does not pause its CSS animation when the document is hidden. Chromium already suspends compositing for minimized and occluded windows, so decorative animation produces no frames there, and toggling `animation-play-state` around that boundary made the ambient scene twitch once when the window was restored. Video playback is likewise untouched; force-pausing captured media can produce a black first frame after Alt+Tab in Chromium/Electron.
+`VisibilityHoldFeature` toggles `luminous-visibility-hold` from `visibilitychange`. While Spotify is hidden or fully occluded, ambient CSS animation is frozen; the hold is released two rendered frames after the document becomes visible again. Revealing a window first re-presents its last committed frame, and resampling the animations at wall-clock time inside that moment made the ambient scene visibly jump once by the whole hidden duration. Resuming from the frozen pose keeps the reveal seamless. Video playback is likewise untouched; force-pausing captured media can produce a black first frame after Alt+Tab in Chromium/Electron.
 
 ## Splash
 

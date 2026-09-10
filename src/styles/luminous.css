@@ -672,6 +672,22 @@ html:not(.luminous-reduce-motion).luminous-motion-float
     ease-in-out infinite;
 }
 
+/*
+ * VisibilityHoldFeature freezes the ambient scene while Spotify is hidden and
+ * keeps it frozen for two rendered frames after the window returns. A revealed
+ * window first re-presents its last committed frame; releasing the animation
+ * inside that moment would resample it at wall-clock time and make the scene
+ * visibly jump once by the whole hidden duration.
+ */
+html.luminous-visibility-hold
+  :is(
+    #luminous-dynamic-background .luminous-background-media-stage,
+    .luminous-background-effects,
+    .luminous-background-effects > span
+  ) {
+  animation-play-state: paused !important;
+}
+
 html.luminous-reduce-motion,
 html.luminous-reduce-motion
   #luminous-dynamic-background

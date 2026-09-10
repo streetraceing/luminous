@@ -14,6 +14,7 @@ const ROOT_CLASSES = [
   'luminous-runtime-suspended',
   'luminous-settings-open',
   'luminous-document-hidden',
+  'luminous-visibility-hold',
   'luminous-parallax-enabled',
   'luminous-source-auto',
   'luminous-source-artwork',

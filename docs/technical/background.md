@@ -50,7 +50,7 @@ Adaptive colours, angle/filter controls, scene/energy/tone classes, and animatio
 
 ## Hidden/settings states
 
-Opening the settings modal pauses decorative CSS animation through `luminous-settings-open` so the scene stays stable while editing. A hidden or minimized window is left entirely to Chromium, which suspends drawing on its own; pausing animation there caused a one-time twitch when the window was restored. Background media streams are left to Chromium's own media scheduling to avoid resume artifacts.
+Opening the settings modal pauses decorative CSS animation through `luminous-settings-open` so the scene stays stable while editing. A hidden or minimized window freezes decorative CSS animation through `luminous-visibility-hold`, and the freeze is released two rendered frames after the window returns so the reveal matches the last presented frame instead of jumping to the wall-clock animation phase. Background media streams are left to Chromium's own media scheduling to avoid resume artifacts.
 
 ## Cleanup
 

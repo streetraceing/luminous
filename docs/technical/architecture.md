@@ -19,6 +19,7 @@ Boot order:
 
 - `SplashFeature` - startup status only; it does not keep a document-wide DOM observer alive after boot;
 - `SynchronizeFeature` - Spotify DOM compatibility and page-state synchronization;
+- `VisibilityHoldFeature` - freezes ambient CSS animation while Spotify is hidden and releases the hold two rendered frames after the window returns;
 - `DynamicBackgroundFeature` - joins Song, Canvas, Palette, Background, settings, and UI health;
 - `ThemeMenuFeature` - settings modal and diagnostics.
 
