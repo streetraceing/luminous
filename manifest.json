@@ -3,10 +3,10 @@
   "description": "Adaptive glass Spicetify theme with Canvas, presets, and performance controls",
   "readme": "README.md",
   "preview": "assets/luminous.png",
-  "usercss": "https://streetraceing.github.io/luminous/release/user.css?version=2.4.0",
+  "usercss": "https://streetraceing.github.io/luminous/release/user.css?version=2.4.1",
   "schemes": "release/color.ini",
   "include": [
-    "https://streetraceing.github.io/luminous/release/theme.js?version=2.4.0"
+    "https://streetraceing.github.io/luminous/release/theme.js?version=2.4.1"
   ],
   "tags": [
     "dynamic",

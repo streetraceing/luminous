@@ -1717,6 +1717,47 @@ html.luminous-left-sidebar-expanded #main-view {
 #main-view .main-home-homeHeader.luminous-home-header-height {
   height: var(--luminous-home-header-height);
 }
+#main-view:not(:has(.marketplace-content))
+  .main-view-container__scroll-node-child
+  > main
+  > section
+  > div
+  > div:last-child {
+  background: 0 0 !important;
+}
+#main-view:not(:has(.marketplace-content))
+  .main-view-container__scroll-node-child
+  > main
+  > section
+  > div
+  > div:last-child
+  > div:first-child {
+  background: 0 0 !important;
+}
+#main-view:not(:has(.marketplace-content))
+  .main-view-container__scroll-node-child
+  > main
+  > section
+  > div:empty {
+  background: 0 0 !important;
+}
+#main-view:not(:has(.marketplace-content))
+  > .main-view-container__scroll-node-child
+  > main
+  > section
+  > div
+  > div
+  > div:last-child
+  > div:first-child {
+  background: 0 0 !important;
+}
+#main-view:not(:has(.marketplace-content))
+  .main-view-container__scroll-node-child
+  > main
+  > section[data-test-uri^='spotify:artist:']
+  div:has(.main-entityHeader-image) {
+  background: 0 0;
+}
 .Root__right-sidebar > div:first-child {
   background: var(--luminous-ui-background);
 }
@@ -1817,7 +1858,6 @@ html.luminous-left-sidebar-expanded #main-view {
     button[data-testid='top-bar-forward-button'],
     .main-actionButtons-spacer.main-actionButtons button,
     .main-globalNav-historyButtons button,
-    .main-globalNav-navLink,
     .main-globalNav-iconButton,
     .main-globalNav-activityFeedButton,
     .main-globalNav-friendsActivityButton
@@ -1847,7 +1887,6 @@ html.luminous-left-sidebar-expanded #main-view {
     button[data-testid='top-bar-forward-button'],
     .main-actionButtons-spacer.main-actionButtons button,
     .main-globalNav-historyButtons button,
-    .main-globalNav-navLink,
     .main-globalNav-iconButton,
     .main-globalNav-activityFeedButton,
     .main-globalNav-friendsActivityButton
@@ -1875,5 +1914,8 @@ html.luminous-left-sidebar-expanded #main-view {
 }
 .Root__globalNav .custom-navlinks-scrollable_container button {
   transform: none;
+}
+.main-actionButtons-spacer {
+  background: 0 0;
 }
 /*$vite$:1*/
