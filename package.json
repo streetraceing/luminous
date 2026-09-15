@@ -21,6 +21,7 @@
     "lint:fix": "eslint . --fix",
     "check": "npm run typecheck && npm run lint:check && npm run build",
     "build": "vite build",
+    "build:sync": "npm run build -- --mode sync",
     "release": "npm run build && tsx vite/releaseScript.ts",
     "watch": "spicetify watch -s",
     "apply": "npm run build -- --mode sync && spicetify config current_theme Luminous && spicetify apply",

@@ -173,3 +173,51 @@ html.luminous-left-sidebar-expanded #main-view {
 #main-view .main-home-homeHeader.luminous-home-header-height {
   height: var(--luminous-home-header-height);
 }
+
+/* Unspecified */
+
+#main-view:not(:has(.marketplace-content))
+  .main-view-container__scroll-node-child
+  > main
+  > section
+  > div
+  > div:last-child {
+  background: transparent !important;
+}
+
+#main-view:not(:has(.marketplace-content))
+  .main-view-container__scroll-node-child
+  > main
+  > section
+  > div
+  > div:last-child
+  > div:first-child {
+  background: transparent !important;
+}
+
+#main-view:not(:has(.marketplace-content))
+  .main-view-container__scroll-node-child
+  > main
+  > section
+  > div:empty {
+  background: transparent !important;
+}
+
+#main-view:not(:has(.marketplace-content))
+  > .main-view-container__scroll-node-child
+  > main
+  > section
+  > div
+  > div
+  > div:last-child
+  > div:first-child {
+  background: transparent !important;
+}
+
+#main-view:not(:has(.marketplace-content))
+  .main-view-container__scroll-node-child
+  > main
+  > section[data-test-uri^='spotify:artist:']
+  div:has(.main-entityHeader-image) {
+  background: transparent;
+}

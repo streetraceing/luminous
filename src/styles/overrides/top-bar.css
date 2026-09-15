@@ -31,7 +31,6 @@
     button[data-testid='top-bar-forward-button'],
     .main-actionButtons-spacer.main-actionButtons button,
     .main-globalNav-historyButtons button,
-    .main-globalNav-navLink,
     .main-globalNav-iconButton,
     .main-globalNav-activityFeedButton,
     .main-globalNav-friendsActivityButton
@@ -62,7 +61,6 @@
     button[data-testid='top-bar-forward-button'],
     .main-actionButtons-spacer.main-actionButtons button,
     .main-globalNav-historyButtons button,
-    .main-globalNav-navLink,
     .main-globalNav-iconButton,
     .main-globalNav-activityFeedButton,
     .main-globalNav-friendsActivityButton
@@ -96,4 +94,8 @@
 
 .Root__globalNav .custom-navlinks-scrollable_container button {
   transform: none;
+}
+
+.main-actionButtons-spacer {
+  background: transparent;
 }
