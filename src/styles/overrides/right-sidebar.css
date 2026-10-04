@@ -87,3 +87,15 @@
 .Root__right-sidebar .main-nowPlayingView-section {
   --section-background-base: var(--luminous-ui-background);
 }
+
+.NowPlayingView {
+  background: transparent;
+}
+
+.Root__top-container > div > div:has(.NowPlayingView) {
+  background: var(--luminous-ui-background);
+}
+
+div[data-testid='NPV_Panel_OpenDiv'] > div > div > div::before {
+  background: transparent;
+}

@@ -23,11 +23,27 @@
   background: transparent !important;
 }
 
+/* Temporarily commented 
+
 #main-view .main-view-container .before-scroll-node {
   display: none;
 }
 
-/* Hide when left-sidebar expanded */
+*/
+
+.before-scroll-node div[data-testid='overscroll-background'] {
+  background: transparent !important;
+}
+
+.before-scroll-node :not(div[data-testid='overscroll-background']) {
+  --scroll: 0;
+}
+
+.main-topBar-container > div:empty {
+  display: none;
+}
+
+/* Hide when left-sidebar expanded 
 
 html.luminous-left-sidebar-expanded #main-view {
   visibility: hidden;
@@ -35,6 +51,8 @@ html.luminous-left-sidebar-expanded #main-view {
   transition: none;
   pointer-events: none;
 }
+  
+*/
 
 /* Playlist page */
 
@@ -219,5 +237,21 @@ html.luminous-left-sidebar-expanded #main-view {
   > main
   > section[data-test-uri^='spotify:artist:']
   div:has(.main-entityHeader-image) {
+  background: transparent;
+}
+
+.YourLibraryX,
+div:has(.YourLibraryX) {
+  background: transparent;
+}
+
+.main-view-container__scroll-node-child
+  > main
+  > section
+  > div:has(.contentSpacing) {
+  background: transparent;
+}
+
+section[data-testid='artist-page'] div:has(div > img) {
   background: transparent;
 }

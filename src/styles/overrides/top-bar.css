@@ -76,11 +76,13 @@
   background-color: var(--luminous-ui-background);
 }
 
+/*
 .Root__globalNav .main-globalNav-contentRight {
   margin-inline-end: calc(
     var(--panel-gap) / (var(--zoom-level, 100) / 100) * -4.5
   ) !important;
 }
+*/
 
 .Root__globalNav
   :is(.main-topBar-topbarContentRight, .main-globalNav-topbarContentRight) {
@@ -98,4 +100,17 @@
 
 .main-actionButtons-spacer {
   background: transparent;
+}
+
+.main-globalNav-historyButtons {
+  align-items: center;
+}
+
+.main-globalNav-historyButtons button {
+  width: 40px;
+  height: 40px;
+}
+
+.spicetify-sc-scroller button {
+  background: var(--luminous-ui-background) !important;
 }

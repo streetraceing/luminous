@@ -1,11 +1,13 @@
 /* .Root__now-playing-bar */
 
-.Root__now-playing-bar {
+.Root__now-playing-bar,
+div:has(.main-nowPlayingBar-container) {
   background: var(--luminous-background);
   z-index: 11 !important;
 }
 
-.Root__now-playing-bar > aside {
+.Root__now-playing-bar > aside,
+.main-nowPlayingBar-nowPlayingBar {
   background: var(--luminous-ui-background);
   border-radius: 8px;
 }
