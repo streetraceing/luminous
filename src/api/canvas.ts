@@ -9,13 +9,12 @@ import { DomPulse, mutationTouchesSelector } from '../ui/domPulse';
 export class Canvas {
   private static readonly NPV_VIDEO_SELECTOR = '.canvasVideoContainerNPV video';
   private static readonly NPV_LONGFORM_VIDEO_SELECTOR =
-    '#VideoPlayerNpv_ReactPortal video';
-  private static readonly CINEMA_PORTAL_SELECTOR =
-    '#VideoPlayerCinema_ReactPortal';
+    '#Desktop_PanelContainer_Id video';
   private static readonly STRUCTURAL_SELECTOR = [
     '.canvasVideoContainerNPV',
-    '#VideoPlayerNpv_ReactPortal',
-    '#VideoPlayerCinema_ReactPortal',
+    '#Desktop_PanelContainer_Id',
+    '#lyrics-cinema',
+    'video',
   ].join(',');
 
   private static listeners = new Map<CanvasEvent, Set<CanvasListener>>();
@@ -30,7 +29,6 @@ export class Canvas {
   private static observedSourceVideo: HTMLVideoElement | null = null;
   private static uiSidebar: HTMLElement | null = null;
   private static uiCanvasFrameParent: HTMLElement | null = null;
-  private static uiCanvasGridItem: HTMLElement | null = null;
   private static initialized = false;
   private static enabled = true;
 
@@ -150,15 +148,42 @@ export class Canvas {
     const npvLongform = this.findVisibleVideo(this.NPV_LONGFORM_VIDEO_SELECTOR);
     if (npvLongform) return this.createPayload(npvLongform, 'npv-video');
 
-    const cinemaPortal = document.querySelector(this.CINEMA_PORTAL_SELECTOR);
-    const cinemaRoot = cinemaPortal?.closest('.Root__top-container');
-    const cinema = cinemaRoot?.querySelector(
-      'video',
-    ) as HTMLVideoElement | null;
-
+    const cinema = this.findCinemaVideo();
     if (cinema) return this.createPayload(cinema, 'cinema');
 
     return this.createPayload(null, null);
+  }
+
+  private static findCinemaVideo(): HTMLVideoElement | null {
+    // Spotify 1.3.x renders the cinema-mode video in a hashed overlay that is
+    // a direct child of the top container, outside the main view, the right
+    // panel, and the bottom bar.
+    for (const video of document.querySelectorAll('video')) {
+      if (
+        !video.closest('.Root__top-container') ||
+        video.closest('#main-view') ||
+        video.closest('#Desktop_PanelContainer_Id') ||
+        video.closest('.canvasVideoContainerNPV') ||
+        video.closest('.main-nowPlayingBar-container')
+      ) {
+        continue;
+      }
+
+      if (
+        !video.isConnected ||
+        video.ended ||
+        video.getClientRects().length === 0
+      ) {
+        continue;
+      }
+
+      const style = getComputedStyle(video);
+      if (style.display !== 'none' && style.visibility !== 'hidden') {
+        return video;
+      }
+    }
+
+    return null;
   }
 
   private static findVisibleVideo(selector: string): HTMLVideoElement | null {
@@ -277,12 +302,9 @@ export class Canvas {
         ? (video.closest('.canvasVideoContainerNPV') as HTMLElement | null)
         : null;
     const nextSidebar = container?.closest(
-      '.Root__right-sidebar',
+      '#Desktop_PanelContainer_Id',
     ) as HTMLElement | null;
     const nextFrameParent = container?.parentElement?.parentElement ?? null;
-    const nextGridItem = container?.closest(
-      '.main-nowPlayingView-nowPlayingGrid > div',
-    ) as HTMLElement | null;
 
     if (nextSidebar !== this.uiSidebar) {
       this.uiSidebar?.classList.remove('luminous-has-canvas');
@@ -296,12 +318,6 @@ export class Canvas {
       );
       this.uiCanvasFrameParent = nextFrameParent;
       this.uiCanvasFrameParent?.classList.add('luminous-canvas-frame-parent');
-    }
-
-    if (nextGridItem !== this.uiCanvasGridItem) {
-      this.uiCanvasGridItem?.classList.remove('luminous-canvas-grid-item');
-      this.uiCanvasGridItem = nextGridItem;
-      this.uiCanvasGridItem?.classList.add('luminous-canvas-grid-item');
     }
   }
 

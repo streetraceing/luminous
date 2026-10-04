@@ -41,7 +41,6 @@ The most important CPU rule is to avoid multiplying Spotify/ad-block DOM churn.
 - `DomPulse`: one global child-list observer, no global attribute observation, and no duplicate processing of records already inside `#main-view`. Retained records are bounded; saturated streams slow to roughly 4-5 dispatches per second and force a complete catch-up only about every 750 ms.
 - `MainViewPulse`: one `#main-view` child-list observer shared by all page synchronizers with the same bounded/filterable saturation policy.
 - local attributes: only the one playlist source, left-sidebar class, and `<html>` Cinema transition attributes are observed directly.
-- Home sizing uses `ResizeObserver` on measured elements.
 - Canvas uses structural pulses plus events from only the currently selected video.
 - palette variables/classes live on `.luminous-background-effects`, not `<html>`.
 - gradient blur is painted on static inner surfaces while transforms animate outer wrappers; artwork/captured-video blur is similarly separated from Drift/Float motion through a shared media-stage wrapper.

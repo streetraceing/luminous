@@ -95,7 +95,7 @@ html.luminous-direct-video-active
     #main-view,
     #Desktop_LeftSidebar_Id,
     .Root__globalNav,
-    .Root__now-playing-bar
+    aside[data-testid='now-playing-bar']
   ) {
   z-index: 20 !important;
 }

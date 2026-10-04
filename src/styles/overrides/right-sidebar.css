@@ -1,61 +1,28 @@
-/* .Root__right-sidebar */
+/* Right sidebar panel. Spotify 1.3.x hashed the Root__right-sidebar wrapper;
+   the aside#Desktop_PanelContainer_Id inside it is still stable. */
 
-.Root__right-sidebar > div:first-child {
+.Root__top-container > div:has(#Desktop_PanelContainer_Id) {
   background: var(--luminous-ui-background);
 }
 
-.Root__right-sidebar #Desktop_PanelContainer_Id,
+.Root__top-container > div:has(#Desktop_PanelContainer_Id)::before,
+#Desktop_PanelContainer_Id,
 #Desktop_PanelContainer_Id::before {
   background: transparent !important;
 }
 
-.Root__right-sidebar.luminous-has-canvas .main-nowPlayingView-headerWrapper {
+#Desktop_PanelContainer_Id.luminous-has-canvas
+  .main-nowPlayingView-headerWrapper {
   --background-base: var(--luminous-ui-base);
   box-shadow: none;
   border-radius: 8px;
 }
 
-.Root__right-sidebar
-  .main-nowPlayingView-aboutArtist
-  :is(button, button > div > div:last-child) {
-  background: transparent;
-}
-
-.Root__right-sidebar
-  .main-nowPlayingView-coverArtContainer
-  > div:not(
-    .main-nowPlayingView-coverArtVisualEnhancement,
-    #VideoPlayerNpv_ReactPortal
-  )::before {
-  border-radius: 8px;
-  background-image: linear-gradient(
-    to bottom,
-    transparent 0%,
-    var(--luminous-ui-base) 100%
-  );
-}
-
-.Root__right-sidebar.luminous-has-canvas .main-nowPlayingView-nowPlayingGrid {
-  gap: 0;
-}
-
-.Root__right-sidebar .luminous-canvas-frame-parent::after {
+#Desktop_PanelContainer_Id .luminous-canvas-frame-parent::after {
   display: none;
 }
 
-.Root__right-sidebar .main-nowPlayingView-contextItemInfo::before {
-  display: none;
-}
-
-.Root__right-sidebar
-  .main-nowPlayingView-nowPlayingGrid
-  > .luminous-canvas-grid-item {
-  aspect-ratio: 9 / 14.5 !important;
-}
-
-.Root__right-sidebar::before {
-  background: transparent !important;
-}
+/* Cinema transition state */
 
 :is(
     html[data-cinema-npv-postenter],
@@ -69,30 +36,22 @@
       html[data-right-sidebar-open-duringenter]
     )
   )
-  :is(.Root__right-sidebar, .main-nowPlayingView-mainWrapper) {
+  :is(
+    #Desktop_PanelContainer_Id,
+    .Root__top-container > div:has(#Desktop_PanelContainer_Id)
+  ) {
   visibility: hidden !important;
   opacity: 0 !important;
   pointer-events: none !important;
 }
 
-:is(
-  .main-nowPlayingView-aboutArtist > div,
-  .main-nowPlayingView-aboutArtist > div > div > div:last-child
-) {
-  background: transparent;
-}
-
 /* Colors */
-
-.Root__right-sidebar .main-nowPlayingView-section {
-  --section-background-base: var(--luminous-ui-background);
-}
 
 .NowPlayingView {
   background: transparent;
 }
 
-.Root__top-container > div > div:has(.NowPlayingView) {
+.Root__top-container > div:has(.NowPlayingView) {
   background: var(--luminous-ui-background);
 }
 

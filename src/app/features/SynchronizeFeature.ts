@@ -12,7 +12,6 @@ export function SynchronizeFeature() {
       Synchronize.mainViewState(),
       Synchronize.leftSidebarState(),
       Synchronize.playlistBackground(),
-      Synchronize.homeHeaderHeight(),
     ];
 
     return () => {

@@ -1,19 +1,20 @@
-/* .Root__now-playing-bar */
+/* Now playing bar. Spotify 1.3.x removed the Root__now-playing-bar wrapper;
+   the aside.main-nowPlayingBar-container[data-testid='now-playing-bar'] is
+   the new stable hook. */
 
-.Root__now-playing-bar,
+aside[data-testid='now-playing-bar'],
 div:has(.main-nowPlayingBar-container) {
   background: var(--luminous-background);
   z-index: 11 !important;
 }
 
-.Root__now-playing-bar > aside,
+aside[data-testid='now-playing-bar'],
 .main-nowPlayingBar-nowPlayingBar {
   background: var(--luminous-ui-background);
   border-radius: 8px;
 }
 
-html.hideDynamicBackground
-  :is(.Root__now-playing-bar, .Root__now-playing-bar > aside) {
+html.hideDynamicBackground aside[data-testid='now-playing-bar'] {
   background: transparent;
 }
 
@@ -25,7 +26,7 @@ html.hideDynamicBackground
     html[data-cinema-npv-preexit],
     html[data-cinema-npv-duringexit]
   )
-  .Root__now-playing-bar
+  aside[data-testid='now-playing-bar']
   :is(button[data-testid='pip-toggle-button']) {
   opacity: var(--encore-opacity-disabled);
   color: var(--text-subdued);

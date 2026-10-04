@@ -16,22 +16,22 @@ Range controls keep their displayed value responsive while expensive setting app
 
 `Synchronize` uses those pulses to maintain cheap state classes for CSS:
 
-- playlist/search/episode/artist/home/shelf page state;
-- Home shortcut state;
+- playlist/search/episode/artist/home page state;
 - left sidebar expansion;
-- the direct parent used by Spotify action-bar backgrounds;
 - ad/test-ref containers that need to be hidden;
 - artist image ancestors that need transparent backgrounds.
 
-This replaces the active broad `:has()` selectors used by Luminous with simple class matching while keeping the same visual rules, including right-sidebar Canvas and Cinema branch markers.
+Page detection anchors on stable Spotify hooks: `data-testid="playlist-page"`, `data-testid="playlist-tracklist"`, `data-testid="home-page"`, `data-testid="entity-header"`, `#searchPage`, `section[data-testid="episode"]`, and `section[data-test-uri^="spotify:artist:"]`. Spotify 1.3.x replaced the previous semantic page classes (`playlist-playlist-*`, `main-home-*`, `main-entityHeader-*`, `main-shelf-*`) with per-build hashed CSS-module names, so hashed classes are never used as anchors. Home shortcut and shelf state no longer exist in the new Home/genre UI, and the home header height bridge was removed with it.
 
-Playlist artwork synchronization keeps a single attribute observer only on the current source element. Home header sizing uses `ResizeObserver` only on the filter chips and first Home section instead of observing class/style changes over the entire main view.
+This replaces the active broad `:has()` selectors used by Luminous with simple class matching while keeping the same visual rules, including the right-sidebar Canvas marker. The Cinema bridge now tracks `#lyrics-cinema` and its `luminous-cinema-has-video` state; the old cinema branch markers were tied to the removed `.main-actionBar-ActionBarContainer` structure.
+
+Playlist artwork synchronization keeps a single attribute observer only on the current source element (`.before-scroll-node > div > :first-child`, the playlist background-image element) and mirrors its background onto the current `[data-testid="entity-header"]`. The left sidebar expansion state is width-based because the sidebar's collapsed/expanded classes are hashed.
 
 ## Canvas UI state
 
 Canvas discovery is structural-event driven and media-event driven. The global observer no longer watches `class`, `style`, `hidden`, or `src` attributes across Spotify. Revisions change only when selected video, mode, source identity, or playable state actually changes.
 
-The right-sidebar Canvas class is tracked directly instead of scanning every right sidebar on each update. Long-form protected video remains handled by the direct-video background path documented in `background.md`.
+The right-sidebar Canvas class is tracked directly on `aside#Desktop_PanelContainer_Id` instead of scanning every right sidebar on each update. Long-form protected video remains handled by the direct-video background path documented in `background.md`, hosted by the same panel container because the old `#VideoPlayerNpv_ReactPortal` host no longer exists in Spotify 1.3.x.
 
 ## Visibility performance
 

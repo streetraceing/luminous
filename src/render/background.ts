@@ -637,13 +637,13 @@ export class Background {
     this.cancelDirectVideoCleanup(sourceVideo);
 
     const host = sourceVideo.closest(
-      '#VideoPlayerNpv_ReactPortal',
+      '#Desktop_PanelContainer_Id',
     ) as HTMLElement | null;
 
     if (!host) {
       Luminous.Logger.warn(
         'Background',
-        'Protected video has no NPV portal host',
+        'Protected video has no NPV panel host',
         sourceVideo,
       );
       return false;

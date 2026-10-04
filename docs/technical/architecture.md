@@ -37,7 +37,6 @@ Narrow state still uses narrow observers where they are cheaper and more precise
 
 - the current playlist background source: `style`/`class` only on that one element;
 - the left sidebar: `class` only on `#Desktop_LeftSidebar_Id`;
-- Home measurements: `ResizeObserver` on the two measured elements;
 - Cinema transition cleanup: a small attribute observer on `<html>` only;
 - the currently selected Canvas video: media events only.
 

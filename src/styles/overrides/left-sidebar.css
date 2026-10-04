@@ -4,15 +4,13 @@
   background: var(--luminous-ui-background);
 }
 
-#Desktop_LeftSidebar_Id .search-searchCategory-carouselButton {
-  display: none;
-}
-
 #Desktop_LeftSidebar_Id
-  :is(.main-yourLibraryX-library, .main-yourLibraryX-libraryContainer) {
+  :is(.main-yourLibraryX-library, .main-yourLibraryX-libraryRootlist) {
   background: transparent;
 }
 
-#Desktop_LeftSidebar_Id .main-yourLibraryX-listItem:hover > div > div::after {
+/* Spotify 1.3.x hashes the library row classes; encore still stamps its
+   list rows with a stable data-encore-id. */
+#Desktop_LeftSidebar_Id [data-encore-id='listRow']:hover > div > div::after {
   background: var(--luminous-ui-background);
 }

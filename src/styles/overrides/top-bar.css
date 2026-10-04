@@ -16,12 +16,15 @@
   visibility: hidden;
 }
 
+/* The search field is reachable through its data-top-bar-search hook;
+   main-globalNav-searchContainer became a hashed class in Spotify 1.3.x. */
+.Root__globalNav [data-top-bar-search] {
+  --background-elevated-base: var(--luminous-ui-background);
+}
+
 .Root__globalNav
-  :is(
-    .main-globalNav-searchContainer,
-    .main-globalNav-historyButtonsContainer
-      .custom-navlinks-scrollable_container
-  ) {
+  .main-globalNav-historyButtonsWrapper
+  .custom-navlinks-scrollable_container {
   --background-elevated-base: var(--luminous-ui-background);
 }
 
@@ -29,11 +32,8 @@
   :is(
     button[data-testid='top-bar-back-button'],
     button[data-testid='top-bar-forward-button'],
-    .main-actionButtons-spacer.main-actionButtons button,
-    .main-globalNav-historyButtons button,
-    .main-globalNav-iconButton,
-    .main-globalNav-activityFeedButton,
-    .main-globalNav-friendsActivityButton
+    .main-actionButtons button,
+    .main-globalNav-historyButtons button
   ) {
   background: var(--luminous-ui-background);
   backdrop-filter: blur(var(--luminous-ui-blur));
@@ -43,11 +43,8 @@
   :is(
     button[data-testid='top-bar-back-button'],
     button[data-testid='top-bar-forward-button'],
-    .main-actionButtons-spacer.main-actionButtons button,
-    .main-globalNav-historyButtonsContainer button,
-    .main-globalNav-iconButton,
-    .main-globalNav-activityFeedButton,
-    .main-globalNav-friendsActivityButton
+    .main-actionButtons button,
+    .main-globalNav-historyButtons button
   ) {
   width: 36px;
   min-width: 36px;
@@ -59,11 +56,8 @@
   :is(
     button[data-testid='top-bar-back-button'],
     button[data-testid='top-bar-forward-button'],
-    .main-actionButtons-spacer.main-actionButtons button,
-    .main-globalNav-historyButtons button,
-    .main-globalNav-iconButton,
-    .main-globalNav-activityFeedButton,
-    .main-globalNav-friendsActivityButton
+    .main-actionButtons button,
+    .main-globalNav-historyButtons button
   ):hover {
   background: var(--luminous-ui-background);
 }
@@ -84,8 +78,7 @@
 }
 */
 
-.Root__globalNav
-  :is(.main-topBar-topbarContentRight, .main-globalNav-topbarContentRight) {
+.Root__globalNav .main-globalNav-contentRight {
   width: calc((135px + 32px) / (var(--zoom-level, 100) / 100));
 }
 
@@ -96,10 +89,6 @@
 
 .Root__globalNav .custom-navlinks-scrollable_container button {
   transform: none;
-}
-
-.main-actionButtons-spacer {
-  background: transparent;
 }
 
 .main-globalNav-historyButtons {

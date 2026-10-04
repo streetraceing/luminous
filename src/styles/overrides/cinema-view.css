@@ -1,69 +1,11 @@
 /* Cinema state is bridged by Synchronize.observeCinema() runtime classes. */
-/* .Root__cinema-view */
+/* #lyrics-cinema (.Root__lyrics-cinema) */
 
-.Root__cinema-view {
+#lyrics-cinema {
   z-index: 10 !important;
   outline: 0;
 }
 
-.Root__cinema-view .main-actionBar-ActionBarContainer {
-  background: 0;
-  outline: 0;
-}
-
-.Root__cinema-view
-  > div:not(.main-actionBar-ActionBarContainer, .over-cinema-scroll)::before {
-  background: transparent !important;
-}
-
-.Root__cinema-view
-  .main-actionBar-ActionBarContainer
-  > div:not(.os-scrollbar)
-  > .luminous-cinema-video-branch
-  > div
-  > div
-  > div
-  > div:empty {
-  display: none;
-}
-
-.Root__cinema-view
-  .main-actionBar-ActionBarContainer
-  > .os-scrollbar
-  .os-scrollbar-track {
-  visibility: hidden;
-}
-
-.Root__cinema-view
-  .main-actionBar-ActionBarContainer
-  > div:not(.os-scrollbar)
-  > .luminous-cinema-content-branch
-  > div
-  > div
-  > div
-  > div
-  > div:empty {
-  background: transparent;
-}
-
-.Root__cinema-view
-  .main-actionBar-ActionBarContainer
-  > div:not(.os-scrollbar)
-  > .luminous-cinema-content-branch
-  > div {
-  margin-top: 128px;
-}
-
-.Root__cinema-view
-  .main-nowPlayingView-queue
-  .main-nowPlayingView-sectionHeader
-  .main-nowPlayingView-openQueue {
-  opacity: var(--encore-opacity-disabled);
-  color: var(--text-subdued);
-  pointer-events: none;
-  cursor: not-allowed;
-}
-
-.Root__cinema-view.luminous-cinema-has-video {
+#lyrics-cinema.luminous-cinema-has-video {
   --cinema-canvas-height: 70vh;
 }

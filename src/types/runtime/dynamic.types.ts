@@ -9,12 +9,3 @@ export type PlaylistBackgroundSyncOptions = {
 export type SyncController = {
   disconnect(): void;
 };
-
-export type HomeHeaderHeightSyncOptions = {
-  onHeightChange?: (
-    height: number,
-    chips: HTMLElement,
-    firstSection: HTMLElement,
-    header: HTMLElement,
-  ) => void;
-};

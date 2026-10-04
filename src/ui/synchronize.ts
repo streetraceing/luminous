@@ -1,5 +1,4 @@
 import {
-  HomeHeaderHeightSyncOptions,
   PlaylistBackgroundSyncOptions,
   SyncController,
 } from '../types/runtime/dynamic.types';
@@ -14,39 +13,25 @@ import { MainViewPulse } from './mainViewPulse';
 
 const PLAYLIST_BACKGROUND_CLASS = 'luminous-playlist-background';
 const PLAYLIST_BACKGROUND_VAR = '--luminous-playlist-background-image';
-const HOME_HEADER_HEIGHT_CLASS = 'luminous-home-header-height';
-const HOME_HEADER_HEIGHT_VAR = '--luminous-home-header-height';
 
 const PLAYLIST_STRUCTURE_SELECTOR = [
   '.main-view-container',
   '.before-scroll-node',
-  '.main-entityHeader-container',
-  '.playlist-playlist-page',
-  '.main-trackList-trackListContainer',
-].join(',');
-
-const HOME_STRUCTURE_SELECTOR = [
-  '.main-home-homeHeader',
-  '.main-home-filterChipsContainer',
-  '.view-homeShortcutsGrid-shortcuts',
-  '.main-home-content',
-  'section[data-testid="home-page"]',
+  '[data-testid="playlist-page"]',
+  '[data-testid="playlist-tracklist"]',
+  '[data-testid="entity-header"]',
 ].join(',');
 
 const MAIN_VIEW_STATE_SELECTOR = [
-  '.playlist-playlist-page',
-  '.main-trackList-trackListContainer',
+  '[data-testid="playlist-page"]',
+  '[data-testid="playlist-tracklist"]',
   '.marketplace-content',
   '#searchPage',
   'section[data-testid="episode"]',
   'section[data-test-uri^="spotify:artist:"]',
-  '.main-home-filterChipsContainer',
-  '.view-homeShortcutsGrid-shortcuts',
-  '.main-shelf-shelf',
+  'section[data-testid="home-page"]',
   'div[data-testid="test-ref-div"]',
-  '.main-entityHeader-image',
-  '.main-actionBarBackground-background',
-  '.playlist-playlist-actionBarBackground-background',
+  '[data-testid="entity-header"]',
 ].join(',');
 
 export class Synchronize {
@@ -117,13 +102,9 @@ export class Synchronize {
         '.before-scroll-node > div > :first-child',
       ) as HTMLElement | null;
 
-      const target =
-        (root.querySelector(
-          'section > .main-entityHeader-container, section > div > .main-entityHeader-container',
-        ) as HTMLElement | null) ||
-        (root.querySelector(
-          'main > div > .main-entityHeader-container',
-        ) as HTMLElement | null);
+      const target = root.querySelector(
+        '[data-testid="entity-header"]',
+      ) as HTMLElement | null;
 
       observeSource(source);
 
@@ -175,147 +156,6 @@ export class Synchronize {
     };
   }
 
-  static homeHeaderHeight(
-    options?: HomeHeaderHeightSyncOptions,
-  ): SyncController {
-    let root: HTMLElement | null = null;
-    let resizeObserver: ResizeObserver | null = null;
-    let rafId: number | null = null;
-    let disposed = false;
-    let lastHeight: number | null = null;
-    let lastHeader: HTMLElement | null = null;
-    let lastChips: HTMLElement | null = null;
-    let lastSection: HTMLElement | null = null;
-
-    function cleanupHeader() {
-      if (lastHeader) {
-        lastHeader.classList.remove(HOME_HEADER_HEIGHT_CLASS);
-        lastHeader.style.removeProperty(HOME_HEADER_HEIGHT_VAR);
-      }
-
-      lastHeader = null;
-      lastHeight = null;
-    }
-
-    function clearMeasuredElements() {
-      resizeObserver?.disconnect();
-      resizeObserver = null;
-      lastChips = null;
-      lastSection = null;
-    }
-
-    function outerHeight(element: HTMLElement): number {
-      const style = getComputedStyle(element);
-      const marginTop = Number.parseFloat(style.marginTop) || 0;
-      const marginBottom = Number.parseFloat(style.marginBottom) || 0;
-
-      return element.getBoundingClientRect().height + marginTop + marginBottom;
-    }
-
-    function observeMeasuredElements(chips: HTMLElement, section: HTMLElement) {
-      if (chips === lastChips && section === lastSection) return;
-
-      clearMeasuredElements();
-      lastChips = chips;
-      lastSection = section;
-
-      if (typeof ResizeObserver !== 'undefined') {
-        resizeObserver = new ResizeObserver(scheduleSync);
-        resizeObserver.observe(chips);
-        resizeObserver.observe(section);
-      }
-    }
-
-    function attachRoot() {
-      if (disposed) return;
-
-      const nextRoot = MainViewPulse.getRoot();
-      if (nextRoot === root && root?.isConnected) return;
-
-      clearMeasuredElements();
-      cleanupHeader();
-      root = nextRoot;
-    }
-
-    function scheduleSync() {
-      if (disposed || rafId !== null) return;
-
-      rafId = requestAnimationFrame(() => {
-        rafId = null;
-        attachRoot();
-        sync();
-      });
-    }
-
-    function sync() {
-      if (!root) return;
-
-      const header = root.querySelector(
-        '.main-home-homeHeader',
-      ) as HTMLElement | null;
-      const chips = root.querySelector(
-        '.main-home-filterChipsContainer',
-      ) as HTMLElement | null;
-      const homePage = root.querySelector(
-        'section[data-testid="home-page"]',
-      ) as HTMLElement | null;
-      const hasShortcuts = !!homePage?.querySelector(
-        '.view-homeShortcutsGrid-shortcuts',
-      );
-      const firstSection = hasShortcuts
-        ? (homePage?.querySelector(
-            '.main-home-content section:first-child',
-          ) as HTMLElement | null)
-        : null;
-
-      if (!header || !chips || !firstSection) {
-        clearMeasuredElements();
-        cleanupHeader();
-        return;
-      }
-
-      observeMeasuredElements(chips, firstSection);
-      const height = outerHeight(chips) + outerHeight(firstSection);
-
-      if (header !== lastHeader) {
-        cleanupHeader();
-        lastHeader = header;
-      }
-
-      if (Math.abs(height - (lastHeight ?? -1)) < 0.5) return;
-
-      lastHeight = height;
-      header.classList.add(HOME_HEADER_HEIGHT_CLASS);
-      header.style.setProperty(HOME_HEADER_HEIGHT_VAR, `${height}px`);
-      options?.onHeightChange?.(height, chips, firstSection, header);
-    }
-
-    const unsubscribeMainViewPulse = MainViewPulse.subscribe(scheduleSync, {
-      filter: (records) =>
-        mutationTouchesSelector(records, HOME_STRUCTURE_SELECTOR),
-    });
-    window.addEventListener('resize', scheduleSync, { passive: true });
-
-    return {
-      disconnect() {
-        disposed = true;
-        unsubscribeMainViewPulse();
-        resizeObserver?.disconnect();
-        window.removeEventListener('resize', scheduleSync);
-        resizeObserver = null;
-
-        if (rafId !== null) {
-          cancelAnimationFrame(rafId);
-          rafId = null;
-        }
-
-        clearMeasuredElements();
-        cleanupHeader();
-        root = null;
-      },
-    };
-  }
-
   static mainViewState(): SyncController {
     const stateClasses = [
       'luminous-page-playlist',
@@ -324,15 +164,12 @@ export class Synchronize {
       'luminous-page-episode',
       'luminous-page-artist',
       'luminous-page-home',
-      'luminous-page-home-shortcuts',
-      'luminous-page-shelf',
     ] as const;
 
     let root: HTMLElement | null = null;
     let disposed = false;
     let hiddenTestRefContainers = new Set<HTMLElement>();
     let artistImageAncestors = new Set<HTMLElement>();
-    let actionBarBackgroundParents = new Set<HTMLElement>();
 
     function clearMarkedElements(
       elements: Set<HTMLElement>,
@@ -351,10 +188,6 @@ export class Synchronize {
       artistImageAncestors = clearMarkedElements(
         artistImageAncestors,
         'luminous-artist-image-ancestor',
-      );
-      actionBarBackgroundParents = clearMarkedElements(
-        actionBarBackgroundParents,
-        'luminous-actionbar-background-parent',
       );
     }
 
@@ -378,7 +211,7 @@ export class Synchronize {
       toggle(
         'luminous-page-playlist',
         !!root.querySelector(
-          '.playlist-playlist-page, .main-trackList-trackListContainer',
+          '[data-testid="playlist-page"], [data-testid="playlist-tracklist"]',
         ),
       );
       toggle(
@@ -396,15 +229,8 @@ export class Synchronize {
       );
       toggle(
         'luminous-page-home',
-        !!root.querySelector('.main-home-filterChipsContainer'),
+        !!root.querySelector('section[data-testid="home-page"]'),
       );
-      toggle(
-        'luminous-page-home-shortcuts',
-        !!root.querySelector(
-          'section[data-testid="home-page"] .view-homeShortcutsGrid-shortcuts',
-        ),
-      );
-      toggle('luminous-page-shelf', !!root.querySelector('.main-shelf-shelf'));
 
       const nextHiddenTestRefs = new Set<HTMLElement>();
       root
@@ -429,7 +255,9 @@ export class Synchronize {
       hiddenTestRefContainers = nextHiddenTestRefs;
 
       const nextArtistImageAncestors = new Set<HTMLElement>();
-      const artistImage = root.querySelector('.main-entityHeader-image');
+      const artistImage = root.querySelector(
+        'section[data-test-uri^="spotify:artist:"] [data-testid="entity-header"] img, section[data-test-uri^="spotify:artist:"] img',
+      );
       let artistAncestor = artistImage?.parentElement ?? null;
       while (artistAncestor && artistAncestor !== root) {
         if (artistAncestor.tagName === 'DIV') {
@@ -444,43 +272,6 @@ export class Synchronize {
         }
       });
       artistImageAncestors = nextArtistImageAncestors;
-
-      const nextActionBarParents = new Set<HTMLElement>();
-      root
-        .querySelectorAll<HTMLElement>(
-          '.main-actionBarBackground-background, .playlist-playlist-actionBarBackground-background',
-        )
-        .forEach((background) => {
-          let candidate = background.parentElement;
-          while (candidate && candidate !== root) {
-            const wrapper = candidate.parentElement;
-            const section = wrapper?.parentElement;
-            const main = section?.parentElement;
-            const scrollChild = main?.parentElement;
-
-            if (
-              candidate.tagName === 'DIV' &&
-              wrapper?.tagName === 'DIV' &&
-              section?.tagName === 'SECTION' &&
-              main?.tagName === 'MAIN' &&
-              scrollChild?.classList.contains(
-                'main-view-container__scroll-node-child',
-              )
-            ) {
-              candidate.classList.add('luminous-actionbar-background-parent');
-              nextActionBarParents.add(candidate);
-              break;
-            }
-
-            candidate = candidate.parentElement;
-          }
-        });
-      actionBarBackgroundParents.forEach((element) => {
-        if (!nextActionBarParents.has(element)) {
-          element.classList.remove('luminous-actionbar-background-parent');
-        }
-      });
-      actionBarBackgroundParents = nextActionBarParents;
     }
 
     const unsubscribeMainViewPulse = MainViewPulse.subscribe(sync, {
@@ -532,8 +323,10 @@ export class Synchronize {
         }
       }
 
-      const expanded =
-        !!sidebar && sidebar.getAttribute('class') !== 'Root__nav-bar';
+      // Spotify 1.3.x no longer exposes Root__nav-bar; the collapsed/expanded
+      // states are hashed CSS-module classes. Width is the only stable signal:
+      // the collapsed sidebar is an icon rail around 72-80px wide.
+      const expanded = !!sidebar && sidebar.getBoundingClientRect().width > 120;
       document.documentElement.classList.toggle(
         'luminous-left-sidebar-expanded',
         expanded,
@@ -565,7 +358,6 @@ export class Synchronize {
 
     function hasSpotifyUi(): boolean {
       return !!(
-        document.querySelector('.Root__main-view') ||
         document.querySelector('.main-view-container') ||
         document.querySelector('[data-testid="main-view"]')
       );
@@ -606,7 +398,7 @@ export class Synchronize {
       filter: (records) =>
         mutationAddsOrRemovesSelector(
           records,
-          '.Root__main-view,.main-view-container,[data-testid="main-view"]',
+          '.main-view-container,[data-testid="main-view"]',
         ),
     });
 
@@ -625,23 +417,38 @@ export class Synchronize {
     let observer: MutationObserver | null = null;
     let scheduled = false;
     let cinemaRoot: HTMLElement | null = null;
-    let markedBranches = new Set<HTMLElement>();
 
     function clearCinemaMarkers() {
       cinemaRoot?.classList.remove('luminous-cinema-has-video');
-      markedBranches.forEach((branch) =>
-        branch.classList.remove(
-          'luminous-cinema-video-branch',
-          'luminous-cinema-content-branch',
-        ),
-      );
-      markedBranches = new Set();
       cinemaRoot = null;
+    }
+
+    function hasCinemaVideo(): boolean {
+      if (cinemaRoot?.querySelector('video')) return true;
+
+      // Spotify 1.3.x renders the cinema-mode video in a hashed overlay that
+      // is a direct child of the top container, outside the main view and the
+      // right panel. Any other video there is the cinema video.
+      for (const video of document.querySelectorAll('video')) {
+        if (
+          !video.closest('.Root__top-container') ||
+          video.closest('#main-view') ||
+          video.closest('#Desktop_PanelContainer_Id') ||
+          video.closest('.canvasVideoContainerNPV') ||
+          video.closest('.main-nowPlayingBar-container')
+        ) {
+          continue;
+        }
+
+        if (video.getClientRects().length > 0) return true;
+      }
+
+      return false;
     }
 
     function syncCinemaMarkers() {
       const nextRoot = document.querySelector(
-        '.Root__cinema-view',
+        '#lyrics-cinema',
       ) as HTMLElement | null;
 
       if (nextRoot !== cinemaRoot) clearCinemaMarkers();
@@ -650,40 +457,8 @@ export class Synchronize {
 
       cinemaRoot.classList.toggle(
         'luminous-cinema-has-video',
-        cinemaRoot.querySelector('video') !== null,
+        hasCinemaVideo(),
       );
-
-      const nextMarkedBranches = new Set<HTMLElement>();
-      const contentRoots = cinemaRoot.querySelectorAll<HTMLElement>(
-        '.main-actionBar-ActionBarContainer > div:not(.os-scrollbar)',
-      );
-
-      contentRoots.forEach((contentRoot) => {
-        for (const child of contentRoot.children) {
-          if (!(child instanceof HTMLElement)) continue;
-
-          const hasVideoPortal =
-            child.querySelector('#VideoPlayerCinema_ReactPortal') !== null;
-          child.classList.toggle(
-            'luminous-cinema-video-branch',
-            hasVideoPortal,
-          );
-          child.classList.toggle(
-            'luminous-cinema-content-branch',
-            !hasVideoPortal,
-          );
-          nextMarkedBranches.add(child);
-        }
-      });
-
-      markedBranches.forEach((branch) => {
-        if (nextMarkedBranches.has(branch)) return;
-        branch.classList.remove(
-          'luminous-cinema-video-branch',
-          'luminous-cinema-content-branch',
-        );
-      });
-      markedBranches = nextMarkedBranches;
     }
 
     function cleanupAttributes() {
@@ -729,10 +504,7 @@ export class Synchronize {
     const unsubscribeDomPulse = DomPulse.subscribe(syncCinemaMarkers, {
       immediate: false,
       filter: (records) =>
-        mutationTouchesSelector(
-          records,
-          '.Root__cinema-view,#VideoPlayerCinema_ReactPortal',
-        ),
+        mutationTouchesSelector(records, '#lyrics-cinema,video'),
     });
 
     return {
