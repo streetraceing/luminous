@@ -1502,7 +1502,12 @@ html.luminous-reduce-motion .luminous-background-effects > span {
   background: var(--luminous-background);
   z-index: 11 !important;
 }
-.Root__now-playing-bar > aside {
+div:has(.main-nowPlayingBar-container) {
+  background: var(--luminous-background);
+  z-index: 11 !important;
+}
+.Root__now-playing-bar > aside,
+.main-nowPlayingBar-nowPlayingBar {
   background: var(--luminous-ui-background);
   border-radius: 8px;
 }
@@ -1612,18 +1617,14 @@ html.hideDynamicBackground
     .main-actionBarBackground-background,
     .playlist-playlist-actionBarBackground-background,
     .luminous-actionbar-background-parent
-  ) {
+  ),
+.before-scroll-node div[data-testid='overscroll-background'] {
   background: 0 0 !important;
 }
-#main-view .main-view-container .before-scroll-node {
-  display: none;
+.before-scroll-node :not(div[data-testid='overscroll-background']) {
+  --scroll: 0;
 }
-html.luminous-left-sidebar-expanded #main-view {
-  visibility: hidden;
-  opacity: 0;
-  pointer-events: none;
-  transition: none;
-}
+.main-topBar-container > div:empty,
 #main-view.luminous-page-playlist .main-topBar-container {
   display: none;
 }
@@ -1758,6 +1759,21 @@ html.luminous-left-sidebar-expanded #main-view {
   div:has(.main-entityHeader-image) {
   background: 0 0;
 }
+.YourLibraryX {
+  background: 0 0;
+}
+div:has(.YourLibraryX) {
+  background: 0 0;
+}
+.main-view-container__scroll-node-child
+  > main
+  > section
+  > div:has(.contentSpacing) {
+  background: 0 0;
+}
+section[data-testid='artist-page'] div:has(div > img) {
+  background: 0 0;
+}
 .Root__right-sidebar > div:first-child {
   background: var(--luminous-ui-background);
 }
@@ -1829,6 +1845,15 @@ html.luminous-left-sidebar-expanded #main-view {
 .Root__right-sidebar .main-nowPlayingView-section {
   --section-background-base: var(--luminous-ui-background);
 }
+.NowPlayingView {
+  background: 0 0;
+}
+.Root__top-container > div > div:has(.NowPlayingView) {
+  background: var(--luminous-ui-background);
+}
+div[data-testid='NPV_Panel_OpenDiv'] > div > div > div:before {
+  background: 0 0;
+}
 .Root__top-container,
 .Root__globalNav {
   background: var(--luminous-background);
@@ -1899,11 +1924,6 @@ html.luminous-left-sidebar-expanded #main-view {
 .Root__globalNav .main-userWidget-box {
   background-color: var(--luminous-ui-background);
 }
-.Root__globalNav .main-globalNav-contentRight {
-  margin-inline-end: calc(
-    var(--panel-gap) / (var(--zoom-level, 100) / 100) * -4.5
-  ) !important;
-}
 .Root__globalNav
   :is(.main-topBar-topbarContentRight, .main-globalNav-topbarContentRight) {
   width: calc((135px + 32px) / (var(--zoom-level, 100) / 100));
@@ -1917,5 +1937,15 @@ html.luminous-left-sidebar-expanded #main-view {
 }
 .main-actionButtons-spacer {
   background: 0 0;
+}
+.main-globalNav-historyButtons {
+  align-items: center;
+}
+.main-globalNav-historyButtons button {
+  width: 40px;
+  height: 40px;
+}
+.spicetify-sc-scroller button {
+  background: var(--luminous-ui-background) !important;
 }
 /*$vite$:1*/
