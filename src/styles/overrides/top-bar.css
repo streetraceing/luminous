@@ -16,16 +16,8 @@
   visibility: hidden;
 }
 
-/* The search field is reachable through its data-top-bar-search hook;
-   main-globalNav-searchContainer became a hashed class in Spotify 1.3.x. */
 .Root__globalNav [data-top-bar-search] {
-  --background-elevated-base: var(--luminous-ui-background);
-}
-
-.Root__globalNav
-  .main-globalNav-historyButtonsWrapper
-  .custom-navlinks-scrollable_container {
-  --background-elevated-base: var(--luminous-ui-background);
+  background: var(--luminous-ui-background) !important;
 }
 
 .Root__globalNav
@@ -33,7 +25,8 @@
     button[data-testid='top-bar-back-button'],
     button[data-testid='top-bar-forward-button'],
     .main-actionButtons button,
-    .main-globalNav-historyButtons button
+    .main-globalNav-historyButtons button,
+    .main-globalNav-navLink
   ) {
   background: var(--luminous-ui-background);
   backdrop-filter: blur(var(--luminous-ui-blur));
@@ -76,11 +69,11 @@
     var(--panel-gap) / (var(--zoom-level, 100) / 100) * -4.5
   ) !important;
 }
-*/
 
 .Root__globalNav .main-globalNav-contentRight {
   width: calc((135px + 32px) / (var(--zoom-level, 100) / 100));
 }
+*/
 
 .Root__globalNav .spicetify-sc-contentArea button {
   width: 48px !important;

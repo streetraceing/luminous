@@ -14,3 +14,7 @@
 #Desktop_LeftSidebar_Id [data-encore-id='listRow']:hover > div > div::after {
   background: var(--luminous-ui-background);
 }
+
+.main-yourLibraryX-header > div > div:last-child button[type='button'] {
+  background: var(--luminous-ui-background);
+}
