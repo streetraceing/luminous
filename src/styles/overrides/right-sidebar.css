@@ -11,6 +11,20 @@
   background: transparent !important;
 }
 
+/* The NPV root (stable data-npv-root attribute) paints Spotify's opaque
+   --background-base and re-defines --section-background-base for every hashed
+   section inside. Re-point both variables and clear the root itself to keep
+   the panel on Luminous glass. Sticky headers inside the panel consume
+   --background-base through inheritance. */
+#Desktop_PanelContainer_Id {
+  --background-base: var(--luminous-ui-background);
+}
+
+[data-npv-root] {
+  --section-background-base: var(--luminous-ui-background);
+  background-color: transparent !important;
+}
+
 #Desktop_PanelContainer_Id.luminous-has-canvas
   .main-nowPlayingView-headerWrapper {
   --background-base: var(--luminous-ui-base);
