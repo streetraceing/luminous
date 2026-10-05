@@ -45,7 +45,7 @@ html.luminous-left-sidebar-expanded #main-view {
 
 /* Playlist page */
 
-#main-view.luminous-page-playlist .main-topBar-container {
+.main-topBar-container {
   display: none;
 }
 
@@ -56,7 +56,7 @@ html.luminous-left-sidebar-expanded #main-view {
   background: transparent;
 }
 
-#main-view.luminous-page-marketplace .main-topBar-container {
+html:has(#main-view.luminous-page-marketplace) .main-topBar-container {
   background: var(--luminous-ui-background);
   backdrop-filter: blur(var(--luminous-ui-blur));
 }
@@ -87,7 +87,7 @@ html.luminous-left-sidebar-expanded #main-view {
   position: static;
 }
 
-#main-view.luminous-page-episode .main-topBar-container {
+html:has(#main-view.luminous-page-episode) .main-topBar-container {
   display: none;
 }
 
@@ -116,9 +116,6 @@ html.luminous-left-sidebar-expanded #main-view {
 #main-view div[data-testid='home-ads-container'] {
   display: none;
 }
-
-/* Playlist / album entity header background, bridged by
-   Synchronize.playlistBackground() */
 
 #main-view [data-testid='entity-header'].luminous-playlist-background {
   background-color: transparent;

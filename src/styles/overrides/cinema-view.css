@@ -1,8 +1,9 @@
 /* Cinema state is bridged by Synchronize.observeCinema() runtime classes. */
 /* #lyrics-cinema (.Root__lyrics-cinema) */
 
+/* Spotify layers the cinema video overlay above this element (z-index 4 vs 5);
+   do not force a higher z-index here or the cinema video is hidden. */
 #lyrics-cinema {
-  z-index: 10 !important;
   outline: 0;
 }
 
