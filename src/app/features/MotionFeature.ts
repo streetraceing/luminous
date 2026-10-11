@@ -2,14 +2,8 @@ import { useEffect } from '../react';
 
 const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)';
 
-/**
- * Accessibility-only motion coordinator.
- *
- * The pointer parallax / visibility compositor loop introduced in 2.2.0 was
- * intentionally removed. This feature now only mirrors the explicit setting
- * and the OS reduced-motion preference into the stable CSS class that existed
- * before the visual refactor.
- */
+// Mirrors the explicit `reduceMotion` setting and the OS reduced-motion
+// preference into the stable CSS class consumed by luminous.css.
 export function MotionFeature() {
   const effect = useEffect();
 

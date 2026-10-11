@@ -21,15 +21,10 @@ const MIN_DISPATCH_INTERVAL_MS = 120;
 const SATURATED_DISPATCH_INTERVAL_MS = 220;
 const SATURATED_FULL_SYNC_INTERVAL_MS = 750;
 
-/**
- * One structural observer shared by features that only need to know that the
- * Spotify tree changed. Attribute churn is intentionally excluded: ad blockers
- * and Spotify update class/style attributes very frequently, and listening to
- * those changes globally makes every consumer wake up unnecessarily.
- *
- * #main-view mutations are handled by MainViewPulse and are filtered here so
- * one ad-block mutation does not travel through both synchronization paths.
- */
+// One structural observer shared by features that only need to know the
+// Spotify tree changed. Attribute churn is excluded (ad blockers and Spotify
+// update class/style attributes very frequently). #main-view mutations are
+// owned by MainViewPulse, so they are filtered out here.
 export class DomPulse {
   private static subscriptions = new Set<DomPulseSubscription>();
   private static observer: MutationObserver | null = null;
@@ -40,6 +35,7 @@ export class DomPulse {
   private static pendingRecords: MutationRecord[] = [];
   private static saturated = false;
   private static forceDispatch = false;
+  private static cachedMainView: HTMLElement | null = null;
   private static stats: DomPulseStats = {
     mutationBatches: 0,
     observedRecords: 0,
@@ -172,7 +168,17 @@ export class DomPulse {
         return;
       }
 
-      const mainView = document.getElementById('main-view');
+      // `main-view` is a stable ID, but getElementById still costs a hash
+      // lookup per mutation batch. Cache the resolved element and refresh on
+      // disconnect so we don't repeat it for every ad-block burst.
+      let mainView = this.cachedMainView?.isConnected
+        ? this.cachedMainView
+        : null;
+      if (!mainView) {
+        mainView = document.getElementById('main-view');
+        this.cachedMainView = mainView;
+      }
+
       let relevantCount = 0;
 
       for (const record of records) {
@@ -215,6 +221,7 @@ export class DomPulse {
     this.pendingRecords = [];
     this.saturated = false;
     this.forceDispatch = false;
+    this.cachedMainView = null;
     this.cancelScheduledDispatch();
     this.lastDispatchAt = 0;
     this.lastFullSyncAt = 0;

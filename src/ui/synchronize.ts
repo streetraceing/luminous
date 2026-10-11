@@ -34,15 +34,18 @@ const MAIN_VIEW_STATE_SELECTOR = [
   '[data-testid="entity-header"]',
 ].join(',');
 
-// Spotify 1.3.3 (Oct 2026) rotated the hashed CSS-module class that
-// Spicetify aliases to `Root__top-container`. Spicetify shipped the new
-// css-map entry only in v2.45.2 (PR #3996), so on older Spicetify the
-// canonical `.Root__top-container #main-view` selector stops matching
-// even though the React tree is intact. The `#main-view` ID and the
-// `data-testid="main-view"` hook are written directly in Spotify's JSX
-// and are not subject to hash rotation, so they are the reliable
-// fallbacks. `main-view-container` is a Spicetify-aliased stable class
-// that survives the same way.
+// Cinema videos live in a hashed overlay that is a direct child of the top
+// container, outside the main view, NPV panel, and bottom bar.
+const CINEMA_VIDEO_SKIP_SELECTOR =
+  '#main-view, #Desktop_PanelContainer_Id, .canvasVideoContainerNPV, .main-nowPlayingBar-container';
+
+// `Root__top-container` is a Spicetify-aliased class; Spotify rotates the
+// underlying hash per build (1.3.3 in Oct 2026) and Spicetify ships the
+// matching alias only in v2.45.2+. The `#main-view` ID and the
+// `data-testid="main-view"` hook are written directly in Spotify JSX and
+// survive hash rotation. `main-view-container` is a Spicetify-aliased
+// stable class. Probe in priority order so the canonical selector wins
+// when available, but a hash-rotated build still renders.
 const SHELL_SELECTORS = [
   '.Root__top-container #main-view',
   '.Root__top-container [data-testid="main-view"]',
@@ -357,9 +360,8 @@ export class Synchronize {
         }
       }
 
-      // Spotify 1.3.x no longer exposes Root__nav-bar; the collapsed/expanded
-      // states are hashed CSS-module classes. Width is the only stable signal:
-      // the collapsed sidebar is an icon rail around 72-80px wide.
+      // Collapsed/expanded are hashed CSS-module classes; width is the only
+      // stable signal. The collapsed rail is ~72-80px, so 120px is the threshold.
       const expanded = !!sidebar && sidebar.getBoundingClientRect().width > 120;
       document.documentElement.classList.toggle(
         'luminous-left-sidebar-expanded',
@@ -386,7 +388,6 @@ export class Synchronize {
     let disposed = false;
     let waitingSince: number | null = null;
     let bootDeadline: number | null = null;
-
     const BOOT_FALLBACK_MS = 4000;
 
     function hasSpotifyShell(): boolean {
@@ -413,11 +414,10 @@ export class Synchronize {
       if (disposed) return;
 
       if (!hasSpotifyShell()) {
-        // The React shell selector is missing. If the Spicetify Player has
-        // still managed to load a track (so we know Spotify is alive), do
-        // not strand the user on a black screen forever: arm a one-shot
-        // deadline that promotes UI health to "ready" so the dynamic
-        // background can render even if the shell selector never recovers.
+        // If Player has a track but no shell selector matched (outdated
+        // Spicetify css-map), arm a one-shot deadline so the user is not
+        // stranded on a black screen. The dynamic background will render
+        // even though the canonical selector is unavailable.
         if (hasPlayerTrack()) {
           if (bootDeadline === null) {
             bootDeadline = window.setTimeout(() => {
@@ -506,16 +506,10 @@ export class Synchronize {
     function hasCinemaVideo(): boolean {
       if (cinemaRoot?.querySelector('video')) return true;
 
-      // Spotify 1.3.x renders the cinema-mode video in a hashed overlay that
-      // is a direct child of the top container, outside the main view and the
-      // right panel. Any other video there is the cinema video.
       for (const video of document.querySelectorAll('video')) {
         if (
           !video.closest('.Root__top-container') ||
-          video.closest('#main-view') ||
-          video.closest('#Desktop_PanelContainer_Id') ||
-          video.closest('.canvasVideoContainerNPV') ||
-          video.closest('.main-nowPlayingBar-container')
+          video.closest(CINEMA_VIDEO_SKIP_SELECTOR)
         ) {
           continue;
         }

@@ -22,13 +22,10 @@ const MIN_DISPATCH_INTERVAL_MS = 120;
 const SATURATED_DISPATCH_INTERVAL_MS = 220;
 const SATURATED_FULL_SYNC_INTERVAL_MS = 750;
 
-/**
- * Shared structural pulse for Spotify's #main-view subtree. Several Luminous
- * features need to react to page mounts, but separate subtree observers make
- * ad-blocker and Spotify DOM churn fan out into duplicate work. This keeps one
- * child-list observer, bounds retained mutation records, and performs a full
- * catch-up only occasionally while the tree is under sustained heavy churn.
- */
+// Shared structural pulse for the #main-view subtree. One child-list
+// observer shared by all page synchronizers; bounded/filterable saturation
+// policy mirrors DomPulse. Ad-block insertions inside #main-view do not
+// fan out into every consumer.
 export class MainViewPulse {
   private static subscriptions = new Set<MainViewSubscription>();
   private static root: HTMLElement | null = null;

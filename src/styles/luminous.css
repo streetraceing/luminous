@@ -63,14 +63,11 @@ html.hideDynamicBackground #luminous-dynamic-background {
   display: none;
 }
 
-/*
- * Protected long-form NPV videos cannot be mirrored reliably with
- * captureStream(). The original Spotify <video> stays React-owned and is
- * promoted with position: fixed. Background only neutralises ancestor
- * properties that create a fixed containing block; sidebar overflow, clipping,
- * positioning and z-index are deliberately left intact so scrolling/layout do
- * not change while the direct-video background is active.
- */
+/* Protected long-form NPV videos cannot be mirrored via captureStream().
+   The original Spotify <video> stays React-owned and is promoted with
+   position: fixed; only ancestor properties that establish a fixed
+   containing block are neutralised. Sidebar overflow/clipping/position and
+   z-index are deliberately left intact. */
 
 .luminous-direct-video-host {
   --luminous-direct-video-placeholder-image: none;
@@ -83,13 +80,10 @@ html.hideDynamicBackground #luminous-dynamic-background {
   box-shadow: inset 0 -80px 120px rgba(0, 0, 0, 0.2);
 }
 
-/*
- * The protected video is still a descendant of Spotify's right-sidebar
- * stacking context even after its fixed containing blocks are neutralised.
- * Keep the normal Spotify shell above that context instead of mutating the
- * sidebar's own z-index/overflow/position. This mirrors the already elevated
- * bottom player bar and leaves the panel's scrolling/layout untouched.
- */
+/* The protected video remains a descendant of Spotify's right-sidebar
+   stacking context even after its fixed containing blocks are neutralised.
+   Keep the normal Spotify shell above that context instead of mutating the
+   sidebar's own z-index/overflow/position. */
 html.luminous-direct-video-active
   :is(
     #main-view,
@@ -169,12 +163,9 @@ video.luminous-direct-video-background--active {
   pointer-events: none;
 }
 
-/*
- * Geometry/motion lives on the outer node while the expensive blurred paint
- * lives on a static inner surface. Chromium can cache the blur result and move
- * only the outer compositor layer instead of re-rasterizing a filtered element
- * on every animation frame.
- */
+/* Geometry/motion lives on the outer node; the expensive blurred paint
+   lives on a static inner surface so Chromium can cache the blur result
+   and move only the outer compositor layer. */
 .luminous-background-surface {
   position: absolute;
   inset: 0;
@@ -604,10 +595,8 @@ html:not(.luminous-reduce-motion).luminous-motion-float
   animation-direction: normal;
 }
 
-/*
- * Float plays dedicated closed-loop paths forward, so every node circulates
- * without a loop seam. Drift retraces the open swing paths declared above.
- */
+/* Float plays dedicated closed-loop paths forward; Drift retraces the open
+   swing paths declared above. */
 html:not(.luminous-reduce-motion).luminous-motion-float
   .luminous-background-effects.luminous-dynamic-palette
   .luminous-background-mesh {
@@ -672,13 +661,9 @@ html:not(.luminous-reduce-motion).luminous-motion-float
     ease-in-out infinite;
 }
 
-/*
- * VisibilityHoldFeature freezes the ambient scene while Spotify is hidden and
- * keeps it frozen for two rendered frames after the window returns. A revealed
- * window first re-presents its last committed frame; releasing the animation
- * inside that moment would resample it at wall-clock time and make the scene
- * visibly jump once by the whole hidden duration.
- */
+/* VisibilityHoldFeature pauses ambient animation while Spotify is hidden
+   and keeps it paused for two rendered frames after the window returns
+   (see VisibilityHoldFeature.ts for the rationale). */
 html.luminous-visibility-hold
   :is(
     #luminous-dynamic-background .luminous-background-media-stage,

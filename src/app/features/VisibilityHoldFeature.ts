@@ -2,15 +2,11 @@ import { useEffect } from '../react';
 
 const HOLD_CLASS = 'luminous-visibility-hold';
 
-/**
- * Freezes the ambient scene across window hide/show boundaries. When an
- * occluded or minimized window is revealed, Chromium first re-presents the
- * last committed frame; if the fresh frames resample the CSS animations at
- * wall-clock time inside that same moment, the scene visibly jumps once by
- * the whole hidden duration. Pausing on hide and releasing the hold two
- * rendered frames after the return lets the restored surface match the last
- * presented pose, then animation continues from where it stopped.
- */
+// When an occluded/minimized window is revealed, Chromium first re-presents
+// the last committed frame. If fresh frames resample CSS animations at
+// wall-clock time inside that moment, the scene visibly jumps once by the
+// whole hidden duration. Pausing on hide and releasing the hold two frames
+// after the return lets the restored surface match the last presented pose.
 export function VisibilityHoldFeature() {
   const effect = useEffect();
 

@@ -382,8 +382,8 @@ export class Background {
         image.addEventListener('load', handleLoad, { once: true });
         image.addEventListener('error', handleError, { once: true });
 
-        // Avoid the small cache race where the image becomes complete between
-        // the outer check and listener registration.
+        // Cover the cache race where the image becomes complete between the
+        // outer check and listener registration.
         if (image.complete) finish(image.naturalWidth > 0);
       });
 
@@ -395,8 +395,8 @@ export class Background {
     try {
       await image.decode();
     } catch {
-      // A decoded frame can still be available when decode() is interrupted by
-      // browser scheduling. naturalWidth is the authoritative fallback here.
+      // decode() can be interrupted by browser scheduling; naturalWidth is
+      // the authoritative fallback.
     }
 
     return image.complete && image.naturalWidth > 0;
@@ -594,9 +594,9 @@ export class Background {
       !sourceVideo.ended &&
       sourceVideo.classList.contains('luminous-direct-video-background--active')
     ) {
-      // Spotify can reuse the same protected <video> while currentSrc and
-      // readyState briefly change. Keep the original element promoted instead
-      // of bouncing through the artwork fallback during those media events.
+      // Spotify can reuse the same protected <video> across brief
+      // currentSrc/readyState changes; keep it promoted instead of bouncing
+      // through the artwork fallback.
       this.directVideoKey = sourceKey;
       this.currentCanvasKey = sourceKey;
       const host = this.directVideoHosts.get(sourceVideo);
@@ -665,9 +665,8 @@ export class Background {
     this.currentCanvasSource = sourceVideo;
     this.currentCanvasKey = sourceKey;
 
-    // Register the inactive direct-video style before starting its opacity
-    // transition. This layout read is intentionally limited to the rare
-    // long-form path and avoids a one-frame empty background.
+    // Force a layout reflow before the opacity transition starts so the
+    // initial opacity:0 state commits and the transition actually runs.
     void sourceVideo.offsetWidth;
     sourceVideo.classList.add('luminous-direct-video-background--active');
 
@@ -770,10 +769,10 @@ export class Background {
     while (element && element !== document.body) {
       const style = getComputedStyle(element);
 
-      // A fixed descendant only needs the properties that establish a fixed
-      // containing block neutralised. Do not touch overflow/clip/position or
-      // z-index here: those belong to Spotify's sidebar layout and changing
-      // them breaks scrolling, sticky sections and panel clipping.
+      // A fixed descendant needs only the properties that establish a fixed
+      // containing block neutralised. Spotify's sidebar layout (overflow,
+      // clip, position, z-index) is left intact so scrolling/sticky/clipping
+      // behavior is preserved.
       if (style.transform !== 'none') override(element, 'transform', 'none');
       if (style.translate !== 'none') override(element, 'translate', 'none');
       if (style.rotate !== 'none') override(element, 'rotate', 'none');
@@ -934,10 +933,9 @@ export class Background {
       this.deactivateDirectVideo();
     }
 
-    // Commit the buffer index only after comparing against the previously
-    // visible element. Updating activeImage/activeVideo before this point makes
-    // get() report the incoming buffer as already active and incorrectly turns
-    // same-type transitions (image -> image / canvas -> canvas) into no-ops.
+    // Commit the buffer index only after comparing the incoming element with
+    // the previously visible one. Committing earlier makes `get()` report the
+    // incoming buffer as active and turns same-type transitions into no-ops.
     if (type === 'image' && activeElement instanceof HTMLImageElement) {
       const imageIndex = this.imageLayers.indexOf(activeElement);
       if (imageIndex !== -1) this.activeImage = imageIndex;

@@ -16,6 +16,11 @@ export class Canvas {
     '#lyrics-cinema',
     'video',
   ].join(',');
+  // Cinema videos live in a hashed overlay that is a direct child of the top
+  // container, outside the main view, NPV panel, and bottom bar. A single
+  // multi-selector `closest()` is one tree walk instead of five.
+  private static readonly CINEMA_VIDEO_SKIP_SELECTOR =
+    '#main-view, #Desktop_PanelContainer_Id, .canvasVideoContainerNPV, .main-nowPlayingBar-container';
 
   private static listeners = new Map<CanvasEvent, Set<CanvasListener>>();
   private static unsubscribeDomPulse: (() => void) | null = null;
@@ -155,16 +160,10 @@ export class Canvas {
   }
 
   private static findCinemaVideo(): HTMLVideoElement | null {
-    // Spotify 1.3.x renders the cinema-mode video in a hashed overlay that is
-    // a direct child of the top container, outside the main view, the right
-    // panel, and the bottom bar.
     for (const video of document.querySelectorAll('video')) {
       if (
         !video.closest('.Root__top-container') ||
-        video.closest('#main-view') ||
-        video.closest('#Desktop_PanelContainer_Id') ||
-        video.closest('.canvasVideoContainerNPV') ||
-        video.closest('.main-nowPlayingBar-container')
+        video.closest(this.CINEMA_VIDEO_SKIP_SELECTOR)
       ) {
         continue;
       }

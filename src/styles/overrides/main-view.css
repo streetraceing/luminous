@@ -207,3 +207,15 @@ header[data-testid='topbar'] {
   background: var(--luminous-ui-background);
   backdrop-filter: blur(var(--luminous-ui-blur));
 }
+
+.main-view-container__scroll-node-child > main > div > div:empty {
+  background: transparent !important;
+}
+
+.main-view-container__scroll-node-child
+  > main
+  > section[data-testid='your-episodes-page']
+  > div:last-child
+  > div:empty {
+  background: transparent !important;
+}

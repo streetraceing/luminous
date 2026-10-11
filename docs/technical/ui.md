@@ -62,7 +62,7 @@ Spotify DOM is not a stable API. Prefer IDs/portal anchors, narrow observers, an
 
 `Synchronize.uiMountWatcher()` gates the dynamic background, splash, and palette on the availability of the Spotify shell. The canonical selector is `.Root__top-container #main-view`, but `Root__top-container` is a Spicetify-aliased class: Spotify rotates the underlying hashed CSS-module name per build, and Spicetify ships the matching alias entry only in a later css-map update (Spotify 1.3.3 + Spicetify 2.45.2 is the most recent example, PR #3996). When the user is on an outdated Spicetify, the canonical selector stops matching even though the React tree is intact.
 
-To survive that window, the watcher now probes a list of stable selectors in priority order, exported as `detectSpotifyShell()`:
+To survive that window, the watcher probes a list of stable selectors in priority order, exported as `detectSpotifyShell()`:
 
 1. `.Root__top-container #main-view` — canonical, requires Spicetify css-map alias for the current Spotify build.
 2. `.Root__top-container [data-testid="main-view"]` — same parent requirement, alternative stable child hook.
