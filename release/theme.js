@@ -443,7 +443,7 @@ var e = class {
         this.directVideoSource !== e &&
         this.deactivateDirectVideo(),
         this.cancelDirectVideoCleanup(e));
-      let r = e.closest(`#VideoPlayerNpv_ReactPortal`);
+      let r = e.closest(`#Desktop_PanelContainer_Id`);
       return r
         ? (this.prepareDirectVideoBridge(e, r),
           this.prepareDirectVideoPlaceholder(r, e, n ?? e.poster),
@@ -468,7 +468,7 @@ var e = class {
           !0)
         : (Luminous.Logger.warn(
             `Background`,
-            `Protected video has no NPV portal host`,
+            `Protected video has no NPV panel host`,
             e,
           ),
           !1);
@@ -744,6 +744,7 @@ var e = class {
     static pendingRecords = [];
     static saturated = !1;
     static forceDispatch = !1;
+    static cachedMainView = null;
     static stats = {
       mutationBatches: 0,
       observedRecords: 0,
@@ -843,8 +844,11 @@ var e = class {
             ((this.pendingRecords = []), (this.saturated = !0));
             return;
           }
-          let n = document.getElementById(`main-view`),
-            r = 0;
+          let n = this.cachedMainView?.isConnected ? this.cachedMainView : null;
+          n ||
+            ((n = document.getElementById(`main-view`)),
+            (this.cachedMainView = n));
+          let r = 0;
           for (let i of e) {
             if (n?.contains(i.target)) {
               this.stats.ignoredMainViewRecords++;
@@ -880,6 +884,7 @@ var e = class {
         (this.pendingRecords = []),
         (this.saturated = !1),
         (this.forceDispatch = !1),
+        (this.cachedMainView = null),
         this.cancelScheduledDispatch(),
         (this.lastDispatchAt = 0),
         (this.lastFullSyncAt = 0));
@@ -921,13 +926,14 @@ function c(e, t) {
 }
 var l = class {
     static NPV_VIDEO_SELECTOR = `.canvasVideoContainerNPV video`;
-    static NPV_LONGFORM_VIDEO_SELECTOR = `#VideoPlayerNpv_ReactPortal video`;
-    static CINEMA_PORTAL_SELECTOR = `#VideoPlayerCinema_ReactPortal`;
+    static NPV_LONGFORM_VIDEO_SELECTOR = `#Desktop_PanelContainer_Id video`;
     static STRUCTURAL_SELECTOR = [
       `.canvasVideoContainerNPV`,
-      `#VideoPlayerNpv_ReactPortal`,
-      `#VideoPlayerCinema_ReactPortal`,
+      `#Desktop_PanelContainer_Id`,
+      `#lyrics-cinema`,
+      `video`,
     ].join(`,`);
+    static CINEMA_VIDEO_SKIP_SELECTOR = `#main-view, #Desktop_PanelContainer_Id, .canvasVideoContainerNPV, .main-nowPlayingBar-container`;
     static listeners = new Map();
     static unsubscribeDomPulse = null;
     static checkFrame = null;
@@ -939,7 +945,6 @@ var l = class {
     static observedSourceVideo = null;
     static uiSidebar = null;
     static uiCanvasFrameParent = null;
-    static uiCanvasGridItem = null;
     static initialized = !1;
     static enabled = !0;
     static handleVideoSourceChange = () => {
@@ -1022,13 +1027,25 @@ var l = class {
       if (e) return this.createPayload(e, `npv`);
       let t = this.findVisibleVideo(this.NPV_LONGFORM_VIDEO_SELECTOR);
       if (t) return this.createPayload(t, `npv-video`);
-      let n = document
-        .querySelector(this.CINEMA_PORTAL_SELECTOR)
-        ?.closest(`.Root__top-container`)
-        ?.querySelector(`video`);
+      let n = this.findCinemaVideo();
       return n
         ? this.createPayload(n, `cinema`)
         : this.createPayload(null, null);
+    }
+    static findCinemaVideo() {
+      for (let e of document.querySelectorAll(`video`)) {
+        if (
+          !e.closest(`.Root__top-container`) ||
+          e.closest(this.CINEMA_VIDEO_SKIP_SELECTOR) ||
+          !e.isConnected ||
+          e.ended ||
+          e.getClientRects().length === 0
+        )
+          continue;
+        let t = getComputedStyle(e);
+        if (t.display !== `none` && t.visibility !== `hidden`) return e;
+      }
+      return null;
     }
     static findVisibleVideo(e) {
       let t = document.querySelectorAll(e);
@@ -1113,9 +1130,8 @@ var l = class {
     }
     static syncUiState(e, t) {
       let n = e && t === `npv` ? e.closest(`.canvasVideoContainerNPV`) : null,
-        r = n?.closest(`.Root__right-sidebar`),
-        i = n?.parentElement?.parentElement ?? null,
-        a = n?.closest(`.main-nowPlayingView-nowPlayingGrid > div`);
+        r = n?.closest(`#Desktop_PanelContainer_Id`),
+        i = n?.parentElement?.parentElement ?? null;
       (r !== this.uiSidebar &&
         (this.uiSidebar?.classList.remove(`luminous-has-canvas`),
         (this.uiSidebar = r),
@@ -1127,11 +1143,7 @@ var l = class {
           (this.uiCanvasFrameParent = i),
           this.uiCanvasFrameParent?.classList.add(
             `luminous-canvas-frame-parent`,
-          )),
-        a !== this.uiCanvasGridItem &&
-          (this.uiCanvasGridItem?.classList.remove(`luminous-canvas-grid-item`),
-          (this.uiCanvasGridItem = a),
-          this.uiCanvasGridItem?.classList.add(`luminous-canvas-grid-item`)));
+          )));
     }
     static callListener(e, t) {
       try {
@@ -1207,12 +1219,12 @@ var l = class {
     }
     static printBanner() {
       (console.log(
-        `%c Luminous v2.4.2 %c by streetraceing `,
+        `%c Luminous v2.4.3 %c by streetraceing `,
         `background:#1DB954;color:#000;padding:6px 12px;border-radius:8px 0 0 8px;font-weight:600;`,
         `background:#181818;color:#1DB954;padding:6px 12px;border-radius:0 8px 8px 0;font-weight:500;`,
       ),
         console.log(
-          `%c build: 04/10/2026 18:31:15 UTC+03:00 `,
+          `%c build: 11/10/2026 03:46:55 UTC+03:00 `,
           `color:#888;font-size:12px;`,
         ));
     }
@@ -1425,14 +1437,391 @@ var _ = 64,
       }
     }
   },
-  S = class {
+  S = `luminous-playlist-background`,
+  C = `--luminous-playlist-background-image`,
+  w = [
+    `.main-view-container`,
+    `.before-scroll-node`,
+    `[data-testid="playlist-page"]`,
+    `[data-testid="playlist-tracklist"]`,
+    `[data-testid="entity-header"]`,
+  ].join(`,`),
+  T = [
+    `[data-testid="playlist-page"]`,
+    `[data-testid="playlist-tracklist"]`,
+    `.marketplace-content`,
+    `#searchPage`,
+    `section[data-testid="episode"]`,
+    `section[data-test-uri^="spotify:artist:"]`,
+    `section[data-testid="home-page"]`,
+    `div[data-testid="test-ref-div"]`,
+    `[data-testid="entity-header"]`,
+  ].join(`,`),
+  E = `#main-view, #Desktop_PanelContainer_Id, .canvasVideoContainerNPV, .main-nowPlayingBar-container`,
+  D = [
+    `.Root__top-container #main-view`,
+    `.Root__top-container [data-testid="main-view"]`,
+    `#main-view`,
+    `[data-testid="main-view"]`,
+    `.Root__top-container .main-view-container`,
+    `.main-view-container`,
+  ],
+  O = null;
+function ee() {
+  for (let e of D) if (document.querySelector(e)) return ((O = e), e);
+  return null;
+}
+function te() {
+  return O;
+}
+var k = class {
+    static playlistBackground(e) {
+      let t = null,
+        n = null,
+        r = null,
+        i = null,
+        a = !1,
+        s = null,
+        c = null;
+      function l() {
+        c &&
+          (c.classList.remove(S),
+          c.style.removeProperty(C),
+          (c = null),
+          (s = null));
+      }
+      function u(e) {
+        e !== r &&
+          (n?.disconnect(),
+          (n = null),
+          (r = e),
+          e &&
+            ((n = new MutationObserver(f)),
+            n.observe(e, {
+              attributes: !0,
+              attributeFilter: [`style`, `class`],
+            })));
+      }
+      function d() {
+        if (a) return;
+        let e =
+          x.getRoot()?.querySelector(`.main-view-container`) ??
+          document.querySelector(`.main-view-container`);
+        (e === t && t?.isConnected) || (u(null), l(), (t = e));
+      }
+      function f() {
+        a ||
+          i !== null ||
+          (i = requestAnimationFrame(() => {
+            ((i = null), d(), p());
+          }));
+      }
+      function p() {
+        if (!t) return;
+        let n = t.querySelector(`.before-scroll-node > div > :first-child`),
+          r = t.querySelector(`[data-testid="entity-header"]`);
+        if ((u(n), !n || !r)) {
+          l();
+          return;
+        }
+        let i = getComputedStyle(n).backgroundImage;
+        if (!i || i === `none`) {
+          l();
+          return;
+        }
+        (r !== c && (l(), (c = r)),
+          i !== s &&
+            ((s = i),
+            r.classList.add(S),
+            r.style.setProperty(C, i),
+            e?.onBackgroundChange?.(i, n, r)));
+      }
+      let m = x.subscribe(f, { filter: (e) => o(e, w) });
+      return {
+        disconnect() {
+          ((a = !0),
+            m(),
+            n?.disconnect(),
+            (n = null),
+            (r = null),
+            i !== null && (cancelAnimationFrame(i), (i = null)),
+            l(),
+            (t = null));
+        },
+      };
+    }
+    static mainViewState() {
+      let e = [
+          `luminous-page-playlist`,
+          `luminous-page-marketplace`,
+          `luminous-page-search`,
+          `luminous-page-episode`,
+          `luminous-page-artist`,
+          `luminous-page-home`,
+        ],
+        t = null,
+        n = !1,
+        r = new Set(),
+        i = new Set();
+      function a(e, t) {
+        return (e.forEach((e) => e.classList.remove(t)), new Set());
+      }
+      function s() {
+        (t?.classList.remove(...e),
+          (r = a(r, `luminous-hidden-test-ref-container`)),
+          (i = a(i, `luminous-artist-image-ancestor`)));
+      }
+      function c() {
+        let e = x.getRoot();
+        (e === t && t?.isConnected) || (s(), (t = e));
+      }
+      function l(e, n) {
+        t?.classList.toggle(e, n);
+      }
+      function u() {
+        if (n || (c(), !t)) return;
+        (l(
+          `luminous-page-playlist`,
+          !!t.querySelector(
+            `[data-testid="playlist-page"], [data-testid="playlist-tracklist"]`,
+          ),
+        ),
+          l(
+            `luminous-page-marketplace`,
+            !!t.querySelector(`.marketplace-content`),
+          ),
+          l(`luminous-page-search`, !!t.querySelector(`#searchPage`)),
+          l(
+            `luminous-page-episode`,
+            !!t.querySelector(`section[data-testid="episode"]`),
+          ),
+          l(
+            `luminous-page-artist`,
+            !!t.querySelector(`section[data-test-uri^="spotify:artist:"]`),
+          ),
+          l(
+            `luminous-page-home`,
+            !!t.querySelector(`section[data-testid="home-page"]`),
+          ));
+        let e = new Set();
+        (t.querySelectorAll(`div[data-testid="test-ref-div"]`).forEach((n) => {
+          let r = n.parentElement;
+          for (; r?.parentElement && r.parentElement !== t;)
+            r = r.parentElement;
+          r?.parentElement === t &&
+            (r.classList.add(`luminous-hidden-test-ref-container`), e.add(r));
+        }),
+          r.forEach((t) => {
+            e.has(t) ||
+              t.classList.remove(`luminous-hidden-test-ref-container`);
+          }),
+          (r = e));
+        let a = new Set(),
+          o =
+            t.querySelector(
+              `section[data-test-uri^="spotify:artist:"] [data-testid="entity-header"] img, section[data-test-uri^="spotify:artist:"] img`,
+            )?.parentElement ?? null;
+        for (; o && o !== t;)
+          (o.tagName === `DIV` &&
+            (o.classList.add(`luminous-artist-image-ancestor`), a.add(o)),
+            (o = o.parentElement));
+        (i.forEach((e) => {
+          a.has(e) || e.classList.remove(`luminous-artist-image-ancestor`);
+        }),
+          (i = a));
+      }
+      let d = x.subscribe(u, { filter: (e) => o(e, T) });
+      return {
+        disconnect() {
+          ((n = !0), d(), s(), (t = null));
+        },
+      };
+    }
+    static leftSidebarState() {
+      let e = null,
+        t = null,
+        n = !1;
+      function r() {
+        (t?.disconnect(),
+          (t = null),
+          document.documentElement.classList.remove(
+            `luminous-left-sidebar-expanded`,
+          ));
+      }
+      function i() {
+        if (n) return;
+        let r = document.querySelector(`#Desktop_LeftSidebar_Id`);
+        r !== e &&
+          (t?.disconnect(),
+          (t = null),
+          (e = r),
+          e &&
+            ((t = new MutationObserver(i)),
+            t.observe(e, { attributes: !0, attributeFilter: [`class`] })));
+        let a = !!e && e.getBoundingClientRect().width > 120;
+        document.documentElement.classList.toggle(
+          `luminous-left-sidebar-expanded`,
+          a,
+        );
+      }
+      let o = a.subscribe(i, {
+        filter: (e) => s(e, `#Desktop_LeftSidebar_Id`),
+      });
+      return {
+        disconnect() {
+          ((n = !0), o(), r(), (e = null));
+        },
+      };
+    }
+    static uiMountWatcher() {
+      let e = !1,
+        t = null,
+        n = null;
+      function r() {
+        return ee() !== null;
+      }
+      function i() {
+        return !!(
+          document.querySelector(`.main-view-container`) ||
+          document.querySelector(`[data-testid="main-view"]`) ||
+          document.querySelector(`#main-view`)
+        );
+      }
+      function o() {
+        try {
+          return !!Spicetify?.Player?.data?.item;
+        } catch {
+          return !1;
+        }
+      }
+      function c() {
+        if (!e) {
+          if (!r()) {
+            (o()
+              ? n === null &&
+                (n = window.setTimeout(() => {
+                  ((n = null),
+                    !e &&
+                      p().status === `booting` &&
+                      (u.warn(
+                        `Main`,
+                        `Spotify shell selector not found; promoting to ready because Player has a track. Spicetify ≥ 2.45.2 is required for Spotify 1.3.3+.`,
+                      ),
+                      (t = null),
+                      m({ status: `ready`, brokenSince: null })));
+                }, 4e3))
+              : n !== null && (window.clearTimeout(n), (n = null)),
+              (t = null),
+              m({ status: `booting`, brokenSince: null }));
+            return;
+          }
+          if ((n !== null && (window.clearTimeout(n), (n = null)), i())) {
+            ((t = null), m({ status: `ready`, brokenSince: null }));
+            return;
+          }
+          (t === null &&
+            ((t = Date.now()),
+            u.info(`Main`, `Waiting for Spotify UI mount...`)),
+            m({ status: `waiting`, brokenSince: t }));
+        }
+      }
+      let l = a.subscribe(c, {
+          filter: (e) =>
+            s(
+              e,
+              `.Root__top-container,#main-view,[data-testid="main-view"],.main-view-container`,
+            ),
+        }),
+        d = x.subscribe(c, {
+          immediate: !1,
+          filter: (e) =>
+            s(e, `.main-view-container,[data-testid="main-view"],#main-view`),
+        });
+      return {
+        disconnect() {
+          ((e = !0),
+            n !== null && (window.clearTimeout(n), (n = null)),
+            l(),
+            d(),
+            (t = null),
+            m({ status: `booting`, brokenSince: null }));
+        },
+      };
+    }
+    static observeCinema() {
+      let e = null,
+        t = !1,
+        n = null;
+      function r() {
+        (n?.classList.remove(`luminous-cinema-has-video`), (n = null));
+      }
+      function i() {
+        if (n?.querySelector(`video`)) return !0;
+        for (let e of document.querySelectorAll(`video`))
+          if (
+            !(!e.closest(`.Root__top-container`) || e.closest(E)) &&
+            e.getClientRects().length > 0
+          )
+            return !0;
+        return !1;
+      }
+      function s() {
+        let e = document.querySelector(`#lyrics-cinema`);
+        (e !== n && r(),
+          (n = e),
+          n && n.classList.toggle(`luminous-cinema-has-video`, i()));
+      }
+      function c() {
+        t = !1;
+        let e = document.documentElement;
+        (e.hasAttribute(`data-transition`) &&
+          e.removeAttribute(`data-transition`),
+          [
+            `data-right-sidebar-open-preenter`,
+            `data-right-sidebar-open-preexit`,
+            `data-right-sidebar-open-duringexit`,
+            `data-right-sidebar-open-postexit`,
+          ].forEach((t) => {
+            e.hasAttribute(t) && e.removeAttribute(t);
+          }));
+      }
+      function l() {
+        t || ((t = !0), queueMicrotask(c));
+      }
+      ((e = new MutationObserver(l)),
+        e.observe(document.documentElement, {
+          attributes: !0,
+          attributeFilter: [
+            `data-transition`,
+            `data-right-sidebar-open-preenter`,
+            `data-right-sidebar-open-duringenter`,
+            `data-right-sidebar-open-postenter`,
+            `data-right-sidebar-open-preexit`,
+            `data-right-sidebar-open-duringexit`,
+            `data-right-sidebar-open-postexit`,
+          ],
+        }),
+        c(),
+        s());
+      let u = a.subscribe(s, {
+        immediate: !1,
+        filter: (e) => o(e, `#lyrics-cinema,video`),
+      });
+      return {
+        disconnect() {
+          (e?.disconnect(), (e = null), u(), r(), (t = !1));
+        },
+      };
+    }
+  },
+  ne = class {
     static get() {
       let e = Luminous.Canvas.get(),
         t = Luminous.Song.getSync();
       return {
         luminous: {
-          version: `2.4.2`,
-          buildTime: `04/10/2026 18:31:15 UTC+03:00`,
+          version: `2.4.3`,
+          buildTime: `11/10/2026 03:46:55 UTC+03:00`,
         },
         runtime: {
           background: Luminous.Background.getType(),
@@ -1441,6 +1830,7 @@ var _ = 64,
           track: t?.title ?? null,
           uiHealth: p().status,
           documentHidden: document.hidden,
+          shellSelector: te(),
         },
         performance: { domPulse: a.getStats(), mainViewPulse: x.getStats() },
         settings: Luminous.Settings.snapshot(),
@@ -1464,7 +1854,7 @@ var _ = 64,
       }
     }
   },
-  C = class {
+  re = class {
     static isDesktop() {
       return !!Spicetify.Platform?.NativeAPI;
     }
@@ -1587,8 +1977,8 @@ var _ = 64,
       }
     }
   },
-  w = `luminous-dynamic-palette`,
-  T = [
+  A = `luminous-dynamic-palette`,
+  ie = [
     `--luminous-palette-primary`,
     `--luminous-palette-secondary`,
     `--luminous-palette-accent`,
@@ -1603,7 +1993,7 @@ var _ = 64,
     `--luminous-blob-3-duration`,
     `--luminous-blob-4-duration`,
   ],
-  E = [
+  ae = [
     `luminous-effect-aurora`,
     `luminous-effect-ember`,
     `luminous-effect-bloom`,
@@ -1616,10 +2006,10 @@ var _ = 64,
     `luminous-effect-tone-balanced`,
     `luminous-effect-tone-light`,
   ],
-  D = 48,
-  O = 24,
-  k = 20,
-  ee = class {
+  j = 48,
+  oe = 24,
+  M = 20,
+  se = class {
     static requestId = 0;
     static source = null;
     static cache = new Map();
@@ -1635,8 +2025,8 @@ var _ = 64,
         this.clearAppliedPalette());
     }
     static setMotionDuration(e) {
-      let t = Number.isFinite(e) ? Math.min(60, Math.max(8, e)) : k;
-      ((this.motionScale = t / k),
+      let t = Number.isFinite(e) ? Math.min(60, Math.max(8, e)) : M;
+      ((this.motionScale = t / M),
         this.currentProfile &&
           this.applyDurations(this.currentProfile.baseDurations));
     }
@@ -1670,13 +2060,13 @@ var _ = 64,
     static async extractProfile(e) {
       let t = await this.loadImage(e),
         n = document.createElement(`canvas`);
-      ((n.width = D), (n.height = D));
+      ((n.width = j), (n.height = j));
       let r = n.getContext(`2d`, { willReadFrequently: !0 });
       if (!r) throw Error(`Canvas context unavailable`);
       ((r.imageSmoothingEnabled = !0),
         (r.imageSmoothingQuality = `high`),
-        r.drawImage(t, 0, 0, D, D));
-      let i = r.getImageData(0, 0, D, D).data;
+        r.drawImage(t, 0, 0, j, j));
+      let i = r.getImageData(0, 0, j, j).data;
       return this.analyzePixels(i);
     }
     static loadImage(e) {
@@ -1781,7 +2171,7 @@ var _ = 64,
         O = [T, E, D].reduce((e, t) =>
           this.relativeLuminance(t) > this.relativeLuminance(e) ? t : e,
         ),
-        k = [T, E, D].reduce((e, t) =>
+        ee = [T, E, D].reduce((e, t) =>
           this.relativeLuminance(t) < this.relativeLuminance(e) ? t : e,
         );
       return {
@@ -1791,7 +2181,7 @@ var _ = 64,
         light: this.toHex(
           this.mix(O, { red: 255, green: 255, blue: 255 }, 0.34),
         ),
-        dark: this.toHex(this.mix(k, { red: 0, green: 0, blue: 0 }, 0.62)),
+        dark: this.toHex(this.mix(ee, { red: 0, green: 0, blue: 0 }, 0.62)),
         scene: S,
         energy: C,
         tone: w,
@@ -1972,7 +2362,7 @@ var _ = 64,
       return t ? (this.cache.delete(e), this.cache.set(e, t), t) : null;
     }
     static cachePalette(e, t) {
-      for (this.cache.set(e, t); this.cache.size > O;) {
+      for (this.cache.set(e, t); this.cache.size > oe;) {
         let e = this.cache.keys().next().value;
         if (!e) return;
         this.cache.delete(e);
@@ -1997,12 +2387,12 @@ var _ = 64,
           String(e.brightness),
         ),
         t.style.setProperty(`--luminous-effect-contrast`, String(e.contrast)),
-        t.classList.remove(...E),
+        t.classList.remove(...ae),
         t.classList.add(
           `luminous-effect-${e.scene}`,
           `luminous-effect-energy-${e.energy}`,
           `luminous-effect-tone-${e.tone}`,
-          w,
+          A,
         ),
         this.applyDurations(e.baseDurations));
     }
@@ -2020,19 +2410,19 @@ var _ = 64,
     static clearAppliedPalette() {
       let e = this.getTarget();
       e &&
-        (T.forEach((t) => {
+        (ie.forEach((t) => {
           e.style.removeProperty(t);
         }),
-        e.classList.remove(...E, w));
+        e.classList.remove(...ae, A));
     }
     static getTarget() {
       return document.querySelector(`.luminous-background-effects`);
     }
     static hasAppliedPalette() {
-      return this.getTarget()?.classList.contains(w) === !0;
+      return this.getTarget()?.classList.contains(A) === !0;
     }
   },
-  te = class {
+  ce = class {
     static STORAGE_KEY = `luminous-settings`;
     static PERSIST_DELAY_MS = 180;
     static registry = new Map();
@@ -2266,7 +2656,7 @@ var _ = 64,
       return (t || ((t = new Set()), this.listeners.set(e, t)), t);
     }
   },
-  ne = class {
+  le = class {
     static PLAYER_TIMEOUT_MESSAGE = `Spicetify Player not available`;
     static INITIAL_TRACK_SYNC_INTERVAL = 100;
     static current = null;
@@ -2430,7 +2820,7 @@ var _ = 64,
     }
     static createTrackSignature(e) {
       let t = e.artists?.map((e) => e.name).join(`|`) ?? ``,
-        n = re(
+        n = N(
           e.images?.[0]?.url ??
             e.album?.images?.[0]?.url ??
             e.metadata?.image_url ??
@@ -2440,7 +2830,7 @@ var _ = 64,
     }
     static createPayload(e) {
       let t = e.artists?.map((e) => e.name) ?? [],
-        n = re(
+        n = N(
           e.images?.[0]?.url ??
             e.album?.images?.[0]?.url ??
             e.metadata?.image_url ??
@@ -2479,7 +2869,7 @@ var _ = 64,
       });
     }
   };
-function re(e) {
+function N(e) {
   if (!e) return null;
   if (e.startsWith(`spotify:image:`)) {
     let t = e.slice(14);
@@ -2487,7 +2877,7 @@ function re(e) {
   }
   return e;
 }
-function ie() {
+function ue() {
   let e = window.Luminous;
   if (typeof e?.destroy == `function`)
     try {
@@ -2496,42 +2886,42 @@ function ie() {
       console.warn(`[Luminous] Failed to clean previous runtime`, e);
     }
 }
-function ae(t) {
+function de(t) {
   Object.defineProperty(window, 'Luminous', {
     value: {
       Background: e,
       Canvas: l,
-      Diagnostics: S,
-      Song: ne,
-      Native: C,
-      Palette: ee,
-      Settings: te,
+      Diagnostics: ne,
+      Song: le,
+      Native: re,
+      Palette: se,
+      Settings: ce,
       Logger: u,
       destroy: t,
-      version: `2.4.2`,
+      version: `2.4.3`,
     },
     configurable: !0,
   });
 }
-function A() {
+function P() {
   return Spicetify.React;
 }
-function j() {
-  return A().useEffect;
+function F() {
+  return P().useEffect;
 }
-function M() {
-  return A().useMemo;
+function I() {
+  return P().useMemo;
 }
-function N() {
-  return A().useRef;
+function L() {
+  return P().useRef;
 }
-function P() {
-  return A().useState;
+function R() {
+  return P().useState;
 }
-function oe() {
-  let e = j(),
-    t = M(),
-    n = P(),
+function fe() {
+  let e = F(),
+    t = I(),
+    n = R(),
     [r, i] = n(() => Luminous.Song.getSync()),
     [a, o] = n(() => Luminous.Canvas.get()),
     [s, c] = n(() => Luminous.Settings.get(`dynamicBackground`) !== !1),
@@ -2630,16 +3020,16 @@ function oe() {
     null
   );
 }
-var se = 600,
-  ce = 2600,
-  le = 1500,
-  ue = Date.now();
-function de() {
-  let e = A(),
-    t = j(),
-    n = M(),
-    r = N(),
-    i = P(),
+var pe = 600,
+  me = 2600,
+  he = 1500,
+  ge = Date.now();
+function _e() {
+  let e = P(),
+    t = F(),
+    n = I(),
+    r = L(),
+    i = R(),
     [a, o] = i(!0),
     [s, c] = i(() => p()),
     [l, u] = i(() => Date.now()),
@@ -2655,9 +3045,9 @@ function de() {
     }, [a]),
     t(() => {
       if (!m || f.current) return;
-      d.current === null && (d.current = ue);
+      d.current === null && (d.current = ge);
       let e = Date.now() - d.current,
-        t = s.status === `ready` ? se : ce,
+        t = s.status === `ready` ? pe : me,
         n = Math.max(0, t - e),
         r = window.setTimeout(() => {
           ((f.current = !0), o(!1));
@@ -2674,7 +3064,7 @@ function de() {
   let g = n(
       () =>
         s.status === `waiting` && s.brokenSince
-          ? `Waiting for Spotify UI... (${fe(l - s.brokenSince)})`
+          ? `Waiting for Spotify UI... (${ve(l - s.brokenSince)})`
           : s.status === `ready`
             ? `Welcome back. Lighting up Spotify...`
             : `Starting Luminous...`,
@@ -2683,7 +3073,7 @@ function de() {
     _ =
       s.status === `waiting` &&
       s.brokenSince !== null &&
-      l - s.brokenSince >= le;
+      l - s.brokenSince >= he;
   return m
     ? e.createElement(
         `div`,
@@ -2728,12 +3118,12 @@ function de() {
       )
     : null;
 }
-function fe(e) {
+function ve(e) {
   return `${Math.max(0, Math.floor(e / 1e3))}s`;
 }
-var F = [`still`, `drift`, `float`],
-  I = [`auto`, `artwork`],
-  L = (e, t, n) => (r) => {
+var z = [`still`, `drift`, `float`],
+  ye = [`auto`, `artwork`],
+  B = (e, t, n) => (r) => {
     if (
       (typeof r != `number` && typeof r != `string`) ||
       (typeof r == `string` && r.trim() === ``)
@@ -2742,28 +3132,28 @@ var F = [`still`, `drift`, `float`],
     let i = typeof r == `number` ? r : Number(r);
     return Number.isFinite(i) ? Math.min(n, Math.max(t, i)) : e;
   },
-  R = (e) => (t) => (typeof t == `boolean` ? t : e),
-  z = (e, t) => (n) => (typeof n == `string` && e.includes(n) ? n : t),
-  B = (e, t, n) => {
+  V = (e) => (t) => (typeof t == `boolean` ? t : e),
+  be = (e, t) => (n) => (typeof n == `string` && e.includes(n) ? n : t),
+  xe = (e, t, n) => {
     t.forEach((t) => {
       Luminous.Settings.toggleClass(`${e}${t}`, t === n);
     });
   },
-  V = () => {
+  Se = () => {
     let e = Luminous.Settings.get(`dynamicBackground`) !== !1,
       t = Luminous.Settings.get(`backgroundSource`);
     Luminous.Canvas.setEnabled(e && t === `auto`);
   },
-  pe = {
+  Ce = {
     backgroundBlur: {
       default: 24,
-      normalize: L(24, 0, 48),
+      normalize: B(24, 0, 48),
       apply: (e) =>
         Luminous.Settings.setVar(`--luminous-background-blur`, `${e}px`),
     },
     backgroundBrightness: {
       default: 75,
-      normalize: L(75, 30, 120),
+      normalize: B(75, 30, 120),
       apply: (e) =>
         Luminous.Settings.setVar(
           `--luminous-background-brightness`,
@@ -2772,12 +3162,12 @@ var F = [`still`, `drift`, `float`],
     },
     uiBlur: {
       default: 16,
-      normalize: L(16, 0, 32),
+      normalize: B(16, 0, 32),
       apply: (e) => Luminous.Settings.setVar(`--luminous-ui-blur`, `${e}px`),
     },
     paletteStrength: {
       default: 24,
-      normalize: L(24, 0, 50),
+      normalize: B(24, 0, 50),
       apply: (e) => {
         let t = Math.min(78, Math.round(e * 1.6));
         Luminous.Settings.setVar(`--luminous-palette-effect-opacity`, `${t}%`);
@@ -2786,7 +3176,7 @@ var F = [`still`, `drift`, `float`],
     backgroundEnergy: { default: `adaptive`, normalize: () => `adaptive` },
     uiOpacity: {
       default: 50,
-      normalize: L(50, 0, 100),
+      normalize: B(50, 0, 100),
       apply: (e) => {
         if (Luminous.Settings.get(`dynamicBackground`) === !1) {
           Luminous.Settings.removeVar(`--luminous-ui-opacity`);
@@ -2797,10 +3187,10 @@ var F = [`still`, `drift`, `float`],
     },
     dynamicBackground: {
       default: !0,
-      normalize: R(!0),
+      normalize: V(!0),
       apply: (e) => {
         if (
-          (Luminous.Settings.toggleClass(`hideDynamicBackground`, !e), V(), e)
+          (Luminous.Settings.toggleClass(`hideDynamicBackground`, !e), Se(), e)
         ) {
           (Luminous.Settings.setVar(`--luminous-background`, `transparent`),
             Luminous.Settings.setVar(
@@ -2820,26 +3210,26 @@ var F = [`still`, `drift`, `float`],
     },
     backgroundSource: {
       default: `auto`,
-      normalize: z(I, `auto`),
+      normalize: be(ye, `auto`),
       apply: (e) => {
-        (B(`luminous-source-`, I, e), V());
+        (xe(`luminous-source-`, ye, e), Se());
       },
     },
     dynamicPalette: {
       default: !0,
-      normalize: R(!0),
+      normalize: V(!0),
       apply: (e) => {
         e || Luminous.Palette.clear();
       },
     },
     backgroundMotion: {
       default: `drift`,
-      normalize: z(F, `drift`),
-      apply: (e) => B(`luminous-motion-`, F, e),
+      normalize: be(z, `drift`),
+      apply: (e) => xe(`luminous-motion-`, z, e),
     },
     motionDuration: {
       default: 20,
-      normalize: L(20, 8, 60),
+      normalize: B(20, 8, 60),
       apply: (e) => {
         (Luminous.Settings.setVar(`--luminous-motion-duration`, `${e}s`),
           Luminous.Palette.setMotionDuration(e));
@@ -2847,11 +3237,11 @@ var F = [`still`, `drift`, `float`],
     },
     reduceMotion: {
       default: !1,
-      normalize: R(!1),
+      normalize: V(!1),
       apply: (e) => Luminous.Settings.toggleClass(`luminous-reduce-motion`, e),
     },
   },
-  H = [
+  we = [
     {
       key: `dynamicBackground`,
       label: `Dynamic background`,
@@ -2963,7 +3353,7 @@ var F = [`still`, `drift`, `float`],
       control: `toggle`,
     },
   ],
-  me = [
+  Te = [
     {
       id: `balanced`,
       label: `Balanced`,
@@ -3031,17 +3421,17 @@ var F = [`still`, `drift`, `float`],
       },
     },
   ];
-function he() {
-  Object.entries(pe).forEach(([e, t]) => {
+function Ee() {
+  Object.entries(Ce).forEach(([e, t]) => {
     Luminous.Settings.register(e, t);
   });
 }
-var ge = `Luminous Settings`,
-  _e = `brightness`,
-  U = `luminous-theme-modal`,
-  W = `luminous-theme-modal-title`,
-  ve = `luminous-theme-modal-description`,
-  ye = [
+var De = `Luminous Settings`,
+  Oe = `brightness`,
+  H = `luminous-theme-modal`,
+  U = `luminous-theme-modal-title`,
+  W = `luminous-theme-modal-description`,
+  ke = [
     `button:not([disabled])`,
     `input:not([disabled])`,
     `[href]`,
@@ -3053,13 +3443,13 @@ var ge = `Luminous Settings`,
     { id: `motion`, label: `Motion` },
     { id: `advanced`, label: `Advanced` },
   ],
-  be = 32,
-  xe = H.map((e) => e.key);
-function Se() {
-  let e = A(),
-    t = j(),
-    n = N(),
-    r = P(),
+  Ae = 32,
+  je = we.map((e) => e.key);
+function Me() {
+  let e = P(),
+    t = F(),
+    n = L(),
+    r = R(),
     i = n(null),
     [a, o] = r(!1);
   return (
@@ -3072,7 +3462,7 @@ function Se() {
             t = window.setTimeout(n, 250);
             return;
           }
-          let r = new Spicetify.Menu.Item(ge, !1, () => o(!0), _e);
+          let r = new Spicetify.Menu.Item(De, !1, () => o(!0), Oe);
           (r.register(), (i.current = r));
         };
       return (
@@ -3085,14 +3475,14 @@ function Se() {
         }
       );
     }, []),
-    a ? e.createElement(Ce, { onClose: () => o(!1) }) : null
+    a ? e.createElement(Ne, { onClose: () => o(!1) }) : null
   );
 }
-function Ce({ onClose: e }) {
-  let t = A(),
-    n = j(),
-    r = N(),
-    i = P(),
+function Ne({ onClose: e }) {
+  let t = P(),
+    n = F(),
+    r = L(),
+    i = R(),
     a = r(null),
     o = r(null),
     s = r({ presets: null, appearance: null, motion: null, advanced: null }),
@@ -3124,7 +3514,7 @@ function Ce({ onClose: e }) {
           return;
         }
         if (t.key !== `Tab`) return;
-        let n = Array.from(a.current?.querySelectorAll(ye) ?? []).filter(
+        let n = Array.from(a.current?.querySelectorAll(ke) ?? []).filter(
           (e) => e.offsetParent !== null,
         );
         if (!n.length) {
@@ -3165,12 +3555,12 @@ function Ce({ onClose: e }) {
       `div`,
       {
         ref: a,
-        id: U,
+        id: H,
         className: `luminous-theme-menu`,
         role: `dialog`,
         'aria-modal': `true`,
-        'aria-labelledby': W,
-        'aria-describedby': ve,
+        'aria-labelledby': U,
+        'aria-describedby': W,
       },
       t.createElement(
         `div`,
@@ -3191,10 +3581,10 @@ function Ce({ onClose: e }) {
         t.createElement(
           `div`,
           { className: `luminous-theme-menu__title` },
-          t.createElement(`span`, { id: W }, `Luminous`),
+          t.createElement(`span`, { id: U }, `Luminous`),
           t.createElement(
             `small`,
-            { id: ve },
+            { id: W },
             `Theme preferences · v${Luminous.version}`,
           ),
         ),
@@ -3204,7 +3594,7 @@ function Ce({ onClose: e }) {
             className: `luminous-theme-menu__reset-button`,
             type: `button`,
             onClick: () => {
-              (Luminous.Settings.resetMany(xe),
+              (Luminous.Settings.resetMany(je),
                 Spicetify.showNotification(`Luminous settings reset`));
             },
           },
@@ -3241,13 +3631,13 @@ function Ce({ onClose: e }) {
               ref: (t) => {
                 s.current[e.id] = t;
               },
-              id: `${U}-${e.id}-tab`,
+              id: `${H}-${e.id}-tab`,
               className: `luminous-theme-menu__tab${c === e.id ? ` luminous-theme-menu__tab--active` : ``}`,
               type: `button`,
               role: `tab`,
               tabIndex: c === e.id ? 0 : -1,
               'aria-selected': String(c === e.id),
-              'aria-controls': `${U}-${e.id}-panel`,
+              'aria-controls': `${H}-${e.id}-panel`,
               onClick: () => u(e.id),
               onKeyDown: (t) => d(t, e.id),
             },
@@ -3258,15 +3648,15 @@ function Ce({ onClose: e }) {
       t.createElement(
         `div`,
         {
-          id: `${U}-${c}-panel`,
+          id: `${H}-${c}-panel`,
           className: `luminous-theme-menu__panel`,
           role: `tabpanel`,
-          'aria-labelledby': `${U}-${c}-tab`,
+          'aria-labelledby': `${H}-${c}-tab`,
         },
         t.createElement(
           `div`,
           { key: c, className: `luminous-theme-menu__panel-content` },
-          t.createElement(Te, { section: c }),
+          t.createElement(Fe, { section: c }),
         ),
       ),
       t.createElement(
@@ -3277,8 +3667,8 @@ function Ce({ onClose: e }) {
     ),
   );
 }
-function we() {
-  let e = A();
+function Pe() {
+  let e = P();
   return e.createElement(
     e.Fragment,
     null,
@@ -3295,7 +3685,7 @@ function we() {
     e.createElement(
       `div`,
       { className: `luminous-theme-menu__preset-grid` },
-      me.map((t) =>
+      Te.map((t) =>
         e.createElement(
           `button`,
           {
@@ -3315,9 +3705,9 @@ function we() {
     ),
   );
 }
-function Te({ section: e }) {
-  let t = A();
-  if (e === `presets`) return t.createElement(we);
+function Fe({ section: e }) {
+  let t = P();
+  if (e === `presets`) return t.createElement(Pe);
   let n = {
       appearance: {
         title: `Appearance`,
@@ -3332,7 +3722,7 @@ function Te({ section: e }) {
         description: `Inspect the current runtime and copy diagnostics for troubleshooting.`,
       },
     }[e],
-    r = H.filter((t) => t.section === e);
+    r = we.filter((t) => t.section === e);
   return t.createElement(
     t.Fragment,
     null,
@@ -3342,21 +3732,21 @@ function Te({ section: e }) {
       t.createElement(`h2`, null, n.title),
       t.createElement(`p`, null, n.description),
     ),
-    r.map((e) => t.createElement(Ee, { key: e.key, setting: e })),
-    e === `advanced` && t.createElement(Ae),
+    r.map((e) => t.createElement(Ie, { key: e.key, setting: e })),
+    e === `advanced` && t.createElement(Be),
   );
 }
-function Ee({ setting: e }) {
+function Ie({ setting: e }) {
   return e.control === `toggle`
-    ? A().createElement(De, { setting: e })
+    ? P().createElement(Le, { setting: e })
     : e.control === `range`
-      ? A().createElement(Oe, { setting: e })
-      : A().createElement(ke, { setting: e });
+      ? P().createElement(Re, { setting: e })
+      : P().createElement(ze, { setting: e });
 }
-function De({ setting: e }) {
-  let t = A(),
-    n = j(),
-    [r, i] = P()(() => Luminous.Settings.get(e.key) === !0);
+function Le({ setting: e }) {
+  let t = P(),
+    n = F(),
+    [r, i] = R()(() => Luminous.Settings.get(e.key) === !0);
   return (
     n(
       () =>
@@ -3383,11 +3773,11 @@ function De({ setting: e }) {
     )
   );
 }
-function Oe({ setting: e }) {
-  let t = A(),
-    n = j(),
-    r = N(),
-    [i, a] = P()(() => Number(Luminous.Settings.get(e.key))),
+function Re({ setting: e }) {
+  let t = P(),
+    n = F(),
+    r = L(),
+    [i, a] = R()(() => Number(Luminous.Settings.get(e.key))),
     o = r(i),
     s = r(null),
     c = () => {
@@ -3401,7 +3791,7 @@ function Oe({ setting: e }) {
         s.current === null &&
           (s.current = window.setTimeout(() => {
             ((s.current = null), Luminous.Settings.set(e.key, o.current));
-          }, be)));
+          }, Ae)));
     };
   return (
     n(
@@ -3451,10 +3841,10 @@ function Oe({ setting: e }) {
     )
   );
 }
-function ke({ setting: e }) {
-  let t = A(),
-    n = j(),
-    [r, i] = P()(() => String(Luminous.Settings.get(e.key)));
+function ze({ setting: e }) {
+  let t = P(),
+    n = F(),
+    [r, i] = R()(() => String(Luminous.Settings.get(e.key)));
   return (
     n(
       () =>
@@ -3492,7 +3882,7 @@ function ke({ setting: e }) {
   );
 }
 function K({ setting: e }) {
-  let t = A();
+  let t = P();
   return t.createElement(
     `span`,
     { className: `luminous-theme-menu__copy` },
@@ -3500,13 +3890,13 @@ function K({ setting: e }) {
     t.createElement(`small`, null, e.description),
   );
 }
-function Ae() {
-  let e = A(),
-    t = j(),
-    [n, r] = P()(() => je());
+function Be() {
+  let e = P(),
+    t = F(),
+    [n, r] = R()(() => q());
   return (
     t(() => {
-      let e = () => r(je());
+      let e = () => r(q());
       return (
         Luminous.Background.addEventListener(`change`, e),
         Luminous.Canvas.addEventListener(`mount`, e),
@@ -3549,521 +3939,20 @@ function Ae() {
     )
   );
 }
-function je() {
+function q() {
   let e = Luminous.Diagnostics.get(),
     t = e.runtime.canvasMode ?? `none`;
   return `Background: ${e.runtime.background} · Canvas: ${t} · UI: ${e.runtime.uiHealth}`;
 }
-var Me = `luminous-playlist-background`,
-  Ne = `--luminous-playlist-background-image`,
-  Pe = `luminous-home-header-height`,
-  Fe = `--luminous-home-header-height`,
-  Ie = [
-    `.main-view-container`,
-    `.before-scroll-node`,
-    `.main-entityHeader-container`,
-    `.playlist-playlist-page`,
-    `.main-trackList-trackListContainer`,
-  ].join(`,`),
-  Le = [
-    `.main-home-homeHeader`,
-    `.main-home-filterChipsContainer`,
-    `.view-homeShortcutsGrid-shortcuts`,
-    `.main-home-content`,
-    `section[data-testid="home-page"]`,
-  ].join(`,`),
-  Re = [
-    `.playlist-playlist-page`,
-    `.main-trackList-trackListContainer`,
-    `.marketplace-content`,
-    `#searchPage`,
-    `section[data-testid="episode"]`,
-    `section[data-test-uri^="spotify:artist:"]`,
-    `.main-home-filterChipsContainer`,
-    `.view-homeShortcutsGrid-shortcuts`,
-    `.main-shelf-shelf`,
-    `div[data-testid="test-ref-div"]`,
-    `.main-entityHeader-image`,
-    `.main-actionBarBackground-background`,
-    `.playlist-playlist-actionBarBackground-background`,
-  ].join(`,`),
-  q = class {
-    static playlistBackground(e) {
-      let t = null,
-        n = null,
-        r = null,
-        i = null,
-        a = !1,
-        s = null,
-        c = null;
-      function l() {
-        c &&
-          (c.classList.remove(Me),
-          c.style.removeProperty(Ne),
-          (c = null),
-          (s = null));
-      }
-      function u(e) {
-        e !== r &&
-          (n?.disconnect(),
-          (n = null),
-          (r = e),
-          e &&
-            ((n = new MutationObserver(f)),
-            n.observe(e, {
-              attributes: !0,
-              attributeFilter: [`style`, `class`],
-            })));
-      }
-      function d() {
-        if (a) return;
-        let e =
-          x.getRoot()?.querySelector(`.main-view-container`) ??
-          document.querySelector(`.main-view-container`);
-        (e === t && t?.isConnected) || (u(null), l(), (t = e));
-      }
-      function f() {
-        a ||
-          i !== null ||
-          (i = requestAnimationFrame(() => {
-            ((i = null), d(), p());
-          }));
-      }
-      function p() {
-        if (!t) return;
-        let n = t.querySelector(`.before-scroll-node > div > :first-child`),
-          r =
-            t.querySelector(
-              `section > .main-entityHeader-container, section > div > .main-entityHeader-container`,
-            ) || t.querySelector(`main > div > .main-entityHeader-container`);
-        if ((u(n), !n || !r)) {
-          l();
-          return;
-        }
-        let i = getComputedStyle(n).backgroundImage;
-        if (!i || i === `none`) {
-          l();
-          return;
-        }
-        (r !== c && (l(), (c = r)),
-          i !== s &&
-            ((s = i),
-            r.classList.add(Me),
-            r.style.setProperty(Ne, i),
-            e?.onBackgroundChange?.(i, n, r)));
-      }
-      let m = x.subscribe(f, { filter: (e) => o(e, Ie) });
-      return {
-        disconnect() {
-          ((a = !0),
-            m(),
-            n?.disconnect(),
-            (n = null),
-            (r = null),
-            i !== null && (cancelAnimationFrame(i), (i = null)),
-            l(),
-            (t = null));
-        },
-      };
-    }
-    static homeHeaderHeight(e) {
-      let t = null,
-        n = null,
-        r = null,
-        i = !1,
-        a = null,
-        s = null,
-        c = null,
-        l = null;
-      function u() {
-        (s && (s.classList.remove(Pe), s.style.removeProperty(Fe)),
-          (s = null),
-          (a = null));
-      }
-      function d() {
-        (n?.disconnect(), (n = null), (c = null), (l = null));
-      }
-      function f(e) {
-        let t = getComputedStyle(e),
-          n = Number.parseFloat(t.marginTop) || 0,
-          r = Number.parseFloat(t.marginBottom) || 0;
-        return e.getBoundingClientRect().height + n + r;
-      }
-      function p(e, t) {
-        (e === c && t === l) ||
-          (d(),
-          (c = e),
-          (l = t),
-          typeof ResizeObserver < `u` &&
-            ((n = new ResizeObserver(h)), n.observe(e), n.observe(t)));
-      }
-      function m() {
-        if (i) return;
-        let e = x.getRoot();
-        (e === t && t?.isConnected) || (d(), u(), (t = e));
-      }
-      function h() {
-        i ||
-          r !== null ||
-          (r = requestAnimationFrame(() => {
-            ((r = null), m(), g());
-          }));
-      }
-      function g() {
-        if (!t) return;
-        let n = t.querySelector(`.main-home-homeHeader`),
-          r = t.querySelector(`.main-home-filterChipsContainer`),
-          i = t.querySelector(`section[data-testid="home-page"]`),
-          o = i?.querySelector(`.view-homeShortcutsGrid-shortcuts`)
-            ? i?.querySelector(`.main-home-content section:first-child`)
-            : null;
-        if (!n || !r || !o) {
-          (d(), u());
-          return;
-        }
-        p(r, o);
-        let c = f(r) + f(o);
-        (n !== s && (u(), (s = n)),
-          !(Math.abs(c - (a ?? -1)) < 0.5) &&
-            ((a = c),
-            n.classList.add(Pe),
-            n.style.setProperty(Fe, `${c}px`),
-            e?.onHeightChange?.(c, r, o, n)));
-      }
-      let _ = x.subscribe(h, { filter: (e) => o(e, Le) });
-      return (
-        window.addEventListener(`resize`, h, { passive: !0 }),
-        {
-          disconnect() {
-            ((i = !0),
-              _(),
-              n?.disconnect(),
-              window.removeEventListener(`resize`, h),
-              (n = null),
-              r !== null && (cancelAnimationFrame(r), (r = null)),
-              d(),
-              u(),
-              (t = null));
-          },
-        }
-      );
-    }
-    static mainViewState() {
-      let e = [
-          `luminous-page-playlist`,
-          `luminous-page-marketplace`,
-          `luminous-page-search`,
-          `luminous-page-episode`,
-          `luminous-page-artist`,
-          `luminous-page-home`,
-          `luminous-page-home-shortcuts`,
-          `luminous-page-shelf`,
-        ],
-        t = null,
-        n = !1,
-        r = new Set(),
-        i = new Set(),
-        a = new Set();
-      function s(e, t) {
-        return (e.forEach((e) => e.classList.remove(t)), new Set());
-      }
-      function c() {
-        (t?.classList.remove(...e),
-          (r = s(r, `luminous-hidden-test-ref-container`)),
-          (i = s(i, `luminous-artist-image-ancestor`)),
-          (a = s(a, `luminous-actionbar-background-parent`)));
-      }
-      function l() {
-        let e = x.getRoot();
-        (e === t && t?.isConnected) || (c(), (t = e));
-      }
-      function u(e, n) {
-        t?.classList.toggle(e, n);
-      }
-      function d() {
-        if (n || (l(), !t)) return;
-        (u(
-          `luminous-page-playlist`,
-          !!t.querySelector(
-            `.playlist-playlist-page, .main-trackList-trackListContainer`,
-          ),
-        ),
-          u(
-            `luminous-page-marketplace`,
-            !!t.querySelector(`.marketplace-content`),
-          ),
-          u(`luminous-page-search`, !!t.querySelector(`#searchPage`)),
-          u(
-            `luminous-page-episode`,
-            !!t.querySelector(`section[data-testid="episode"]`),
-          ),
-          u(
-            `luminous-page-artist`,
-            !!t.querySelector(`section[data-test-uri^="spotify:artist:"]`),
-          ),
-          u(
-            `luminous-page-home`,
-            !!t.querySelector(`.main-home-filterChipsContainer`),
-          ),
-          u(
-            `luminous-page-home-shortcuts`,
-            !!t.querySelector(
-              `section[data-testid="home-page"] .view-homeShortcutsGrid-shortcuts`,
-            ),
-          ),
-          u(`luminous-page-shelf`, !!t.querySelector(`.main-shelf-shelf`)));
-        let e = new Set();
-        (t.querySelectorAll(`div[data-testid="test-ref-div"]`).forEach((n) => {
-          let r = n.parentElement;
-          for (; r?.parentElement && r.parentElement !== t;)
-            r = r.parentElement;
-          r?.parentElement === t &&
-            (r.classList.add(`luminous-hidden-test-ref-container`), e.add(r));
-        }),
-          r.forEach((t) => {
-            e.has(t) ||
-              t.classList.remove(`luminous-hidden-test-ref-container`);
-          }),
-          (r = e));
-        let o = new Set(),
-          s =
-            t.querySelector(`.main-entityHeader-image`)?.parentElement ?? null;
-        for (; s && s !== t;)
-          (s.tagName === `DIV` &&
-            (s.classList.add(`luminous-artist-image-ancestor`), o.add(s)),
-            (s = s.parentElement));
-        (i.forEach((e) => {
-          o.has(e) || e.classList.remove(`luminous-artist-image-ancestor`);
-        }),
-          (i = o));
-        let c = new Set();
-        (t
-          .querySelectorAll(
-            `.main-actionBarBackground-background, .playlist-playlist-actionBarBackground-background`,
-          )
-          .forEach((e) => {
-            let n = e.parentElement;
-            for (; n && n !== t;) {
-              let e = n.parentElement,
-                t = e?.parentElement,
-                r = t?.parentElement,
-                i = r?.parentElement;
-              if (
-                n.tagName === `DIV` &&
-                e?.tagName === `DIV` &&
-                t?.tagName === `SECTION` &&
-                r?.tagName === `MAIN` &&
-                i?.classList.contains(`main-view-container__scroll-node-child`)
-              ) {
-                (n.classList.add(`luminous-actionbar-background-parent`),
-                  c.add(n));
-                break;
-              }
-              n = n.parentElement;
-            }
-          }),
-          a.forEach((e) => {
-            c.has(e) ||
-              e.classList.remove(`luminous-actionbar-background-parent`);
-          }),
-          (a = c));
-      }
-      let f = x.subscribe(d, { filter: (e) => o(e, Re) });
-      return {
-        disconnect() {
-          ((n = !0), f(), c(), (t = null));
-        },
-      };
-    }
-    static leftSidebarState() {
-      let e = null,
-        t = null,
-        n = !1;
-      function r() {
-        (t?.disconnect(),
-          (t = null),
-          document.documentElement.classList.remove(
-            `luminous-left-sidebar-expanded`,
-          ));
-      }
-      function i() {
-        if (n) return;
-        let r = document.querySelector(`#Desktop_LeftSidebar_Id`);
-        r !== e &&
-          (t?.disconnect(),
-          (t = null),
-          (e = r),
-          e &&
-            ((t = new MutationObserver(i)),
-            t.observe(e, { attributes: !0, attributeFilter: [`class`] })));
-        let a = !!e && e.getAttribute(`class`) !== `Root__nav-bar`;
-        document.documentElement.classList.toggle(
-          `luminous-left-sidebar-expanded`,
-          a,
-        );
-      }
-      let o = a.subscribe(i, {
-        filter: (e) => s(e, `#Desktop_LeftSidebar_Id`),
-      });
-      return {
-        disconnect() {
-          ((n = !0), o(), r(), (e = null));
-        },
-      };
-    }
-    static uiMountWatcher() {
-      let e = !1,
-        t = null;
-      function n() {
-        return (
-          document.querySelector(`.Root__top-container #main-view`) !== null
-        );
-      }
-      function r() {
-        return !!(
-          document.querySelector(`.Root__main-view`) ||
-          document.querySelector(`.main-view-container`) ||
-          document.querySelector(`[data-testid="main-view"]`)
-        );
-      }
-      function i() {
-        if (!e) {
-          if (!n()) {
-            ((t = null), m({ status: `booting`, brokenSince: null }));
-            return;
-          }
-          if (r()) {
-            ((t = null), m({ status: `ready`, brokenSince: null }));
-            return;
-          }
-          (t === null &&
-            ((t = Date.now()),
-            u.info(`Main`, `Waiting for Spotify UI mount...`)),
-            m({ status: `waiting`, brokenSince: t }));
-        }
-      }
-      let o = a.subscribe(i, {
-          filter: (e) => s(e, `.Root__top-container,#main-view`),
-        }),
-        c = x.subscribe(i, {
-          immediate: !1,
-          filter: (e) =>
-            s(
-              e,
-              `.Root__main-view,.main-view-container,[data-testid="main-view"]`,
-            ),
-        });
-      return {
-        disconnect() {
-          ((e = !0),
-            o(),
-            c(),
-            (t = null),
-            m({ status: `booting`, brokenSince: null }));
-        },
-      };
-    }
-    static observeCinema() {
-      let e = null,
-        t = !1,
-        n = null,
-        r = new Set();
-      function i() {
-        (n?.classList.remove(`luminous-cinema-has-video`),
-          r.forEach((e) =>
-            e.classList.remove(
-              `luminous-cinema-video-branch`,
-              `luminous-cinema-content-branch`,
-            ),
-          ),
-          (r = new Set()),
-          (n = null));
-      }
-      function s() {
-        let e = document.querySelector(`.Root__cinema-view`);
-        if ((e !== n && i(), (n = e), !n)) return;
-        n.classList.toggle(
-          `luminous-cinema-has-video`,
-          n.querySelector(`video`) !== null,
-        );
-        let t = new Set();
-        (n
-          .querySelectorAll(
-            `.main-actionBar-ActionBarContainer > div:not(.os-scrollbar)`,
-          )
-          .forEach((e) => {
-            for (let n of e.children) {
-              if (!(n instanceof HTMLElement)) continue;
-              let e =
-                n.querySelector(`#VideoPlayerCinema_ReactPortal`) !== null;
-              (n.classList.toggle(`luminous-cinema-video-branch`, e),
-                n.classList.toggle(`luminous-cinema-content-branch`, !e),
-                t.add(n));
-            }
-          }),
-          r.forEach((e) => {
-            t.has(e) ||
-              e.classList.remove(
-                `luminous-cinema-video-branch`,
-                `luminous-cinema-content-branch`,
-              );
-          }),
-          (r = t));
-      }
-      function c() {
-        t = !1;
-        let e = document.documentElement;
-        (e.hasAttribute(`data-transition`) &&
-          e.removeAttribute(`data-transition`),
-          [
-            `data-right-sidebar-open-preenter`,
-            `data-right-sidebar-open-preexit`,
-            `data-right-sidebar-open-duringexit`,
-            `data-right-sidebar-open-postexit`,
-          ].forEach((t) => {
-            e.hasAttribute(t) && e.removeAttribute(t);
-          }));
-      }
-      function l() {
-        t || ((t = !0), queueMicrotask(c));
-      }
-      ((e = new MutationObserver(l)),
-        e.observe(document.documentElement, {
-          attributes: !0,
-          attributeFilter: [
-            `data-transition`,
-            `data-right-sidebar-open-preenter`,
-            `data-right-sidebar-open-duringenter`,
-            `data-right-sidebar-open-postenter`,
-            `data-right-sidebar-open-preexit`,
-            `data-right-sidebar-open-duringexit`,
-            `data-right-sidebar-open-postexit`,
-          ],
-        }),
-        c(),
-        s());
-      let u = a.subscribe(s, {
-        immediate: !1,
-        filter: (e) =>
-          o(e, `.Root__cinema-view,#VideoPlayerCinema_ReactPortal`),
-      });
-      return {
-        disconnect() {
-          (e?.disconnect(), (e = null), u(), i(), (t = !1));
-        },
-      };
-    }
-  };
-function ze() {
+function Ve() {
   return (
-    j()(() => {
+    F()(() => {
       let e = [
-        q.uiMountWatcher(),
-        q.observeCinema(),
-        q.mainViewState(),
-        q.leftSidebarState(),
-        q.playlistBackground(),
-        q.homeHeaderHeight(),
+        k.uiMountWatcher(),
+        k.observeCinema(),
+        k.mainViewState(),
+        k.leftSidebarState(),
+        k.playlistBackground(),
       ];
       return () => {
         e.forEach((e) => e.disconnect());
@@ -4073,9 +3962,9 @@ function ze() {
   );
 }
 var J = `luminous-visibility-hold`;
-function Be() {
+function He() {
   return (
-    j()(() => {
+    F()(() => {
       let e = document.documentElement,
         t = null,
         n = () => {
@@ -4109,37 +3998,37 @@ function Be() {
     null
   );
 }
-function Ve() {
-  let e = A();
+function Ue() {
+  let e = P();
   return e.createElement(
     e.Fragment,
     null,
-    e.createElement(de),
-    e.createElement(ze),
-    e.createElement(Be),
-    e.createElement(oe),
-    e.createElement(Se),
+    e.createElement(_e),
+    e.createElement(Ve),
+    e.createElement(He),
+    e.createElement(fe),
+    e.createElement(Me),
   );
 }
 var Y = `luminous-react-root`,
-  He = 15e3,
+  We = 15e3,
   X = null,
   Z = 0,
   Q = null;
-function Ue() {
+function Ge() {
   let e = ++Z;
-  (qe(),
-    Ke(e)
+  (Ye(),
+    Je(e)
       .then(() => {
-        e === Z && Ge();
+        e === Z && qe();
       })
       .catch((t) => {
         e === Z &&
           Luminous.Logger.error(`Runtime`, `Failed to mount application`, t);
       }));
 }
-function We() {
-  if ((Z++, qe(), X?.unmount)) (X.unmount(), (X = null));
+function Ke() {
+  if ((Z++, Ye(), X?.unmount)) (X.unmount(), (X = null));
   else if (typeof Spicetify < `u` && Spicetify.ReactDOM) {
     let e = document.getElementById(Y);
     e &&
@@ -4148,11 +4037,11 @@ function We() {
   }
   document.getElementById(Y)?.remove();
 }
-function Ge() {
-  let e = A(),
+function qe() {
+  let e = P(),
     { ReactDOM: t } = Spicetify,
-    n = Je(),
-    r = e.createElement(Ve);
+    n = Xe(),
+    r = e.createElement(Ue);
   if (t.createRoot) {
     let e = X ?? t.createRoot(n);
     ((X = e), e.render(r));
@@ -4160,7 +4049,7 @@ function Ge() {
   }
   t.render(r, n);
 }
-function Ke(e) {
+function Je(e) {
   return new Promise((t, n) => {
     let r = performance.now(),
       i = () => {
@@ -4177,7 +4066,7 @@ function Ke(e) {
           t();
           return;
         }
-        if (performance.now() - r > He) {
+        if (performance.now() - r > We) {
           n(Error(`Spicetify React runtime not available`));
           return;
         }
@@ -4186,10 +4075,10 @@ function Ke(e) {
     i();
   });
 }
-function qe() {
+function Ye() {
   Q !== null && (cancelAnimationFrame(Q), (Q = null));
 }
-function Je() {
+function Xe() {
   let e = document.getElementById(Y);
   return (
     e ||
@@ -4200,11 +4089,11 @@ function Je() {
     e
   );
 }
-var Ye =
+var Ze =
     `luminous-runtime-active.luminous-bootstrap-pending.hideDynamicBackground.luminous-dynamic-palette.luminous-palette-transitioning.luminous-track-changing.luminous-glass-highlights.luminous-reduce-motion.luminous-runtime-suspended.luminous-settings-open.luminous-document-hidden.luminous-visibility-hold.luminous-parallax-enabled.luminous-source-auto.luminous-source-artwork.luminous-motion-still.luminous-motion-drift.luminous-motion-float.luminous-motion-orbit.luminous-quality-full.luminous-quality-balanced.luminous-quality-lite.luminous-effect-aurora.luminous-effect-ember.luminous-effect-bloom.luminous-effect-prism.luminous-effect-halo.luminous-effect-nebula.luminous-effect-energy-soft.luminous-effect-energy-flow.luminous-effect-energy-vivid.luminous-effect-tone-dark.luminous-effect-tone-balanced.luminous-effect-tone-light`.split(
       `.`,
     ),
-  Xe = [
+  Qe = [
     `--luminous-background`,
     `--luminous-background-blur`,
     `--luminous-background-brightness`,
@@ -4221,10 +4110,10 @@ var Ye =
     `--luminous-parallax-y`,
   ],
   $ = !1;
-function Ze() {
+function $e() {
   if ($) return;
   (($ = !0),
-    We(),
+    Ke(),
     Luminous.Background.destroy(),
     Luminous.Palette.clear(),
     Luminous.Canvas.destroy(),
@@ -4233,24 +4122,24 @@ function Ze() {
     x.destroy(),
     a.destroy());
   let e = document.documentElement;
-  (Ye.forEach((t) => e.classList.remove(t)),
-    Xe.forEach((t) => e.style.removeProperty(t)),
+  (Ze.forEach((t) => e.classList.remove(t)),
+    Qe.forEach((t) => e.style.removeProperty(t)),
     Luminous.Logger.info(`Runtime`, `Destroyed`));
 }
-function Qe() {
+function et() {
   (($ = !1),
     document.documentElement.classList.add(
       `luminous-runtime-active`,
       `luminous-bootstrap-pending`,
     ));
 }
-(ie(),
-  ae(Ze),
-  Qe(),
+(ue(),
+  de($e),
+  et(),
   Luminous.Logger.printBanner(),
-  he(),
+  Ee(),
   Luminous.Settings.init(),
   Luminous.Song.init().catch((e) => {
     Luminous.Logger.error(`Song`, `Initialization failed`, e);
   }),
-  Ue());
+  Ge());

@@ -732,7 +732,7 @@ html.luminous-direct-video-active
     #main-view,
     #Desktop_LeftSidebar_Id,
     .Root__globalNav,
-    .Root__now-playing-bar
+    aside[data-testid='now-playing-bar']
   ) {
   z-index: 20 !important;
 }
@@ -1498,21 +1498,25 @@ html.luminous-reduce-motion .luminous-background-effects > span {
     animation: none !important;
   }
 }
-.Root__now-playing-bar {
-  background: var(--luminous-background);
+aside[data-testid='now-playing-bar'] {
+  background: var(--luminous-ui-background);
+  border-radius: 8px;
   z-index: 11 !important;
 }
 div:has(.main-nowPlayingBar-container) {
-  background: var(--luminous-background);
+  background: var(--luminous-ui-background);
+  border-radius: 8px;
   z-index: 11 !important;
 }
-.Root__now-playing-bar > aside,
+div:has(div > aside[data-testid='now-playing-bar'])
+  > div:has(aside[data-testid='now-playing-bar']) {
+  background: 0 0;
+}
 .main-nowPlayingBar-nowPlayingBar {
   background: var(--luminous-ui-background);
   border-radius: 8px;
 }
-html.hideDynamicBackground
-  :is(.Root__now-playing-bar, .Root__now-playing-bar > aside) {
+html.hideDynamicBackground aside[data-testid='now-playing-bar'] {
   background: 0 0;
 }
 :is(
@@ -1523,7 +1527,7 @@ html.hideDynamicBackground
     html[data-cinema-npv-preexit],
     html[data-cinema-npv-duringexit]
   )
-  .Root__now-playing-bar
+  aside[data-testid='now-playing-bar']
   :is(button[data-testid='pip-toggle-button']) {
   opacity: var(--encore-opacity-disabled);
   color: var(--text-subdued);
@@ -1531,81 +1535,24 @@ html.hideDynamicBackground
   cursor: not-allowed;
   transition: opacity 0.25s;
 }
-.Root__cinema-view {
-  outline: 0;
-  z-index: 10 !important;
-}
-.Root__cinema-view .main-actionBar-ActionBarContainer {
-  background: 0;
+#lyrics-cinema {
   outline: 0;
 }
-.Root__cinema-view
-  > div:not(.main-actionBar-ActionBarContainer, .over-cinema-scroll):before {
-  background: 0 0 !important;
-}
-.Root__cinema-view
-  .main-actionBar-ActionBarContainer
-  > div:not(.os-scrollbar)
-  > .luminous-cinema-video-branch
-  > div
-  > div
-  > div
-  > div:empty {
-  display: none;
-}
-.Root__cinema-view
-  .main-actionBar-ActionBarContainer
-  > .os-scrollbar
-  .os-scrollbar-track {
-  visibility: hidden;
-}
-.Root__cinema-view
-  .main-actionBar-ActionBarContainer
-  > div:not(.os-scrollbar)
-  > .luminous-cinema-content-branch
-  > div
-  > div
-  > div
-  > div
-  > div:empty {
-  background: 0 0;
-}
-.Root__cinema-view
-  .main-actionBar-ActionBarContainer
-  > div:not(.os-scrollbar)
-  > .luminous-cinema-content-branch
-  > div {
-  margin-top: 128px;
-}
-.Root__cinema-view
-  .main-nowPlayingView-queue
-  .main-nowPlayingView-sectionHeader
-  .main-nowPlayingView-openQueue {
-  opacity: var(--encore-opacity-disabled);
-  color: var(--text-subdued);
-  pointer-events: none;
-  cursor: not-allowed;
-}
-.Root__cinema-view.luminous-cinema-has-video {
+#lyrics-cinema.luminous-cinema-has-video {
   --cinema-canvas-height: 70vh;
 }
 #Desktop_LeftSidebar_Id {
   background: var(--luminous-ui-background);
 }
-#Desktop_LeftSidebar_Id .search-searchCategory-carouselButton {
-  display: none;
-}
 #Desktop_LeftSidebar_Id
-  :is(.main-yourLibraryX-library, .main-yourLibraryX-libraryContainer) {
+  :is(.main-yourLibraryX-library, .main-yourLibraryX-libraryRootlist) {
   background: 0 0;
 }
-#Desktop_LeftSidebar_Id .main-yourLibraryX-listItem:hover > div > div:after {
+#Desktop_LeftSidebar_Id [data-encore-id='listRow']:hover > div > div:after,
+.main-yourLibraryX-header > div > div:last-child button[type='button'] {
   background: var(--luminous-ui-background);
 }
-#main-view > .luminous-hidden-test-ref-container,
-#main-view
-  div[data-testid='hpto-parent-container']
-  > div[data-testid='test-hpto-ref'] {
+#main-view > .luminous-hidden-test-ref-container {
   display: none;
 }
 #main-view {
@@ -1613,44 +1560,31 @@ html.hideDynamicBackground
 }
 #main-view
   :is(
-    .playlist-playlist-playlistContent,
-    .main-actionBarBackground-background,
-    .playlist-playlist-actionBarBackground-background,
-    .luminous-actionbar-background-parent
-  ),
-.before-scroll-node div[data-testid='overscroll-background'] {
+    section[data-testid='playlist-page'],
+    section[data-testid='playlist-page'] > div,
+    section[data-testid='album-page'],
+    section[data-testid='album-page'] > div
+  ) {
   background: 0 0 !important;
 }
-.before-scroll-node :not(div[data-testid='overscroll-background']) {
-  --scroll: 0;
-}
+#main-view .main-view-container .before-scroll-node,
 .main-topBar-container > div:empty,
-#main-view.luminous-page-playlist .main-topBar-container {
+.main-topBar-container {
   display: none;
-}
-#main-view.luminous-page-playlist .main-trackList-trackListHeader {
-  background: 0 0;
-  top: unset !important;
 }
 #main-view .marketplace-header {
   background: 0 0;
   position: relative;
 }
-#main-view.luminous-page-marketplace .main-topBar-background {
+html:has(#main-view.luminous-page-marketplace) .main-topBar-container {
   background: var(--luminous-ui-background);
   -webkit-backdrop-filter: blur(var(--luminous-ui-blur));
   backdrop-filter: blur(var(--luminous-ui-blur));
 }
-#main-view.luminous-page-marketplace
-  .main-topBar-background
-  > .main-topBar-overlay,
 #marketplace-readme {
   background: 0 0;
 }
-#main-view.luminous-page-search:not(.luminous-page-shelf)
-  main
-  > div
-  > div:first-child {
+#main-view.luminous-page-search main > div > div:first-child {
   background: var(--luminous-ui-background);
   -webkit-backdrop-filter: blur(var(--luminous-ui-blur));
   backdrop-filter: blur(var(--luminous-ui-blur));
@@ -1658,7 +1592,7 @@ html.hideDynamicBackground
 #main-view
   main
   > section[data-testid='episode']
-  div:not(.main-entityHeader-container) {
+  div:not([data-testid='entity-header']) {
   background: 0 0;
 }
 #main-view.luminous-page-episode ul[data-encore-id='navBarList'] {
@@ -1666,7 +1600,7 @@ html.hideDynamicBackground
   border-bottom: none;
   position: static;
 }
-#main-view.luminous-page-episode .main-topBar-container {
+html:has(#main-view.luminous-page-episode) .main-topBar-container {
   display: none;
 }
 #main-view.luminous-page-artist .luminous-artist-image-ancestor {
@@ -1677,35 +1611,16 @@ html.hideDynamicBackground
   background: 0 0;
   position: relative;
 }
-.artist-artistDiscography-headerContainer {
-  background: 0 0;
-}
 #main-view
   ul[role='treegrid']
   div[aria-labelledby^='listrow-title-spotify:album:'] {
   background: 0 0 !important;
 }
-#main-view.luminous-page-home .main-home-filterChipsContainer {
-  top: unset !important;
-}
-#main-view.luminous-page-home .main-home-filterChipsSectionActive {
-  display: none;
-}
-#main-view .main-home-homeHeader {
-  background-image:
-    linear-gradient(transparent 0%, var(--luminous-ui-background) 100%),
-    var(--background-noise);
-  height: 0;
-}
-#main-view:not(.luminous-page-home-shortcuts) .main-home-homeHeader,
 #main-view div[data-testid='home-ads-container'] {
   display: none;
 }
-#main-view .lyrics-lyrics-background,
-#main-view.luminous-page-shelf main div:last-child {
-  background: 0 0;
-}
-#main-view .main-entityHeader-container.luminous-playlist-background {
+#main-view [data-testid='entity-header'].luminous-playlist-background {
+  background-color: #0000;
   background-position: 50%;
   background-repeat: no-repeat;
   background-size:
@@ -1714,9 +1629,6 @@ html.hideDynamicBackground
   background-image:
     linear-gradient(#00000040, #000000bf),
     var(--luminous-playlist-background-image) !important;
-}
-#main-view .main-home-homeHeader.luminous-home-header-height {
-  height: var(--luminous-home-header-height);
 }
 #main-view:not(:has(.marketplace-content))
   .main-view-container__scroll-node-child
@@ -1756,7 +1668,7 @@ html.hideDynamicBackground
   .main-view-container__scroll-node-child
   > main
   > section[data-test-uri^='spotify:artist:']
-  div:has(.main-entityHeader-image) {
+  div:has([data-testid='entity-header']) {
   background: 0 0;
 }
 .YourLibraryX {
@@ -1774,50 +1686,53 @@ div:has(.YourLibraryX) {
 section[data-testid='artist-page'] div:has(div > img) {
   background: 0 0;
 }
-.Root__right-sidebar > div:first-child {
-  background: var(--luminous-ui-background);
+div[data-scroll-size-invariant-class][role='presentation']:has(
+    div[role='presentation']
+  ) {
+  display: none;
 }
-.Root__right-sidebar #Desktop_PanelContainer_Id,
+header[data-testid='topbar'] {
+  display: none;
+}
+.global-nav > div > div:has(div[data-testid='NPV_Panel_OpenDiv']) > div {
+  background: var(--luminous-ui-background);
+  -webkit-backdrop-filter: blur(var(--luminous-ui-blur));
+  backdrop-filter: blur(var(--luminous-ui-blur));
+}
+.main-view-container__scroll-node-child > main > div > div:empty,
+.main-view-container__scroll-node-child
+  > main
+  > section[data-testid='your-episodes-page']
+  > div:last-child
+  > div:empty {
+  background: 0 0 !important;
+}
+.main-nowPlayingView-headerWrapper {
+  background: var(--luminous-ui-background) !important;
+}
+.Root__top-container > div:has(#Desktop_PanelContainer_Id) {
+  background: var(--luminous-ui-background) !important;
+}
+#Desktop_PanelContainer_Id,
 #Desktop_PanelContainer_Id:before {
   background: 0 0 !important;
 }
-.Root__right-sidebar.luminous-has-canvas .main-nowPlayingView-headerWrapper {
-  --background-base: var(--luminous-ui-base);
-  box-shadow: none;
-  border-radius: 8px;
-}
-.Root__right-sidebar
-  .main-nowPlayingView-aboutArtist
-  :is(button, button > div > div:last-child) {
-  background: 0 0;
-}
-.Root__right-sidebar
-  .main-nowPlayingView-coverArtContainer
-  > div:not(
-    .main-nowPlayingView-coverArtVisualEnhancement,
-    #VideoPlayerNpv_ReactPortal
-  ):before {
-  background-image: linear-gradient(
-    to bottom,
-    transparent 0%,
-    var(--luminous-ui-base) 100%
-  );
-  border-radius: 8px;
-}
-.Root__right-sidebar.luminous-has-canvas .main-nowPlayingView-nowPlayingGrid {
-  gap: 0;
-}
-.Root__right-sidebar .luminous-canvas-frame-parent:after,
-.Root__right-sidebar .main-nowPlayingView-contextItemInfo:before {
-  display: none;
-}
-.Root__right-sidebar
-  .main-nowPlayingView-nowPlayingGrid
-  > .luminous-canvas-grid-item {
-  aspect-ratio: 9/14.5 !important;
-}
-.Root__right-sidebar:before {
+.Root__top-container > div:has(#Desktop_PanelContainer_Id):before {
   background: 0 0 !important;
+}
+#Desktop_PanelContainer_Id {
+  --section-background-base: var(--luminous-ui-background) !important;
+}
+[data-npv-root] {
+  --section-background-base: var(--luminous-ui-background);
+  background-color: #0000 !important;
+}
+#Desktop_PanelContainer_Id.luminous-has-canvas
+  .main-nowPlayingView-headerWrapper {
+  box-shadow: none;
+}
+#Desktop_PanelContainer_Id .luminous-canvas-frame-parent:after {
+  display: none;
 }
 :is(
     html[data-cinema-npv-postenter],
@@ -1831,28 +1746,36 @@ section[data-testid='artist-page'] div:has(div > img) {
       html[data-right-sidebar-open-duringenter]
     )
   )
-  :is(.Root__right-sidebar, .main-nowPlayingView-mainWrapper) {
+  :is(
+    #Desktop_PanelContainer_Id,
+    .Root__top-container > div:has(#Desktop_PanelContainer_Id)
+  ) {
   visibility: hidden !important;
   opacity: 0 !important;
   pointer-events: none !important;
 }
-:is(
-  .main-nowPlayingView-aboutArtist > div,
-  .main-nowPlayingView-aboutArtist > div > div > div:last-child
-) {
-  background: 0 0;
-}
-.Root__right-sidebar .main-nowPlayingView-section {
-  --section-background-base: var(--luminous-ui-background);
-}
 .NowPlayingView {
   background: 0 0;
 }
-.Root__top-container > div > div:has(.NowPlayingView) {
+.Root__top-container > div:has(.NowPlayingView) {
   background: var(--luminous-ui-background);
 }
-div[data-testid='NPV_Panel_OpenDiv'] > div > div > div:before {
+.Root__top-container > div:has(.NowPlayingView) > div {
   background: 0 0;
+}
+div[data-testid='NPV_Panel_OpenDiv'] > div > div > div:before,
+div[data-testid='NPV_Panel_OpenDiv'] > div:nth-child(2),
+div[data-testid='NPV_Panel_OpenDiv'] > div:nth-child(2) > div {
+  background: 0 0;
+}
+.luminous-canvas-frame-parent:before {
+  background: 0 0 !important;
+}
+div[data-testid='NPV_Panel_OpenDiv']
+  > div:has(.canvasVideoContainerNPV)
+  > div
+  > div:has(.canvasVideoContainerNPV) {
+  aspect-ratio: 9/14 !important;
 }
 .Root__top-container,
 .Root__globalNav {
@@ -1869,23 +1792,16 @@ div[data-testid='NPV_Panel_OpenDiv'] > div > div > div:before {
   .Root__globalNav {
   visibility: hidden;
 }
-.Root__globalNav
-  :is(
-    .main-globalNav-searchContainer,
-    .main-globalNav-historyButtonsContainer
-      .custom-navlinks-scrollable_container
-  ) {
-  --background-elevated-base: var(--luminous-ui-background);
+.Root__globalNav [data-top-bar-search] {
+  background: var(--luminous-ui-background) !important;
 }
 .Root__globalNav
   :is(
     button[data-testid='top-bar-back-button'],
     button[data-testid='top-bar-forward-button'],
-    .main-actionButtons-spacer.main-actionButtons button,
+    .main-actionButtons button,
     .main-globalNav-historyButtons button,
-    .main-globalNav-iconButton,
-    .main-globalNav-activityFeedButton,
-    .main-globalNav-friendsActivityButton
+    .main-globalNav-navLink
   ) {
   background: var(--luminous-ui-background);
   -webkit-backdrop-filter: blur(var(--luminous-ui-blur));
@@ -1895,11 +1811,8 @@ div[data-testid='NPV_Panel_OpenDiv'] > div > div > div:before {
   :is(
     button[data-testid='top-bar-back-button'],
     button[data-testid='top-bar-forward-button'],
-    .main-actionButtons-spacer.main-actionButtons button,
-    .main-globalNav-historyButtonsContainer button,
-    .main-globalNav-iconButton,
-    .main-globalNav-activityFeedButton,
-    .main-globalNav-friendsActivityButton
+    .main-actionButtons button,
+    .main-globalNav-historyButtons button
   ) {
   border-radius: 50%;
   width: 36px;
@@ -1910,11 +1823,8 @@ div[data-testid='NPV_Panel_OpenDiv'] > div > div > div:before {
   :is(
     button[data-testid='top-bar-back-button'],
     button[data-testid='top-bar-forward-button'],
-    .main-actionButtons-spacer.main-actionButtons button,
-    .main-globalNav-historyButtons button,
-    .main-globalNav-iconButton,
-    .main-globalNav-activityFeedButton,
-    .main-globalNav-friendsActivityButton
+    .main-actionButtons button,
+    .main-globalNav-historyButtons button
   ):hover {
   background: var(--luminous-ui-background);
 }
@@ -1924,19 +1834,12 @@ div[data-testid='NPV_Panel_OpenDiv'] > div > div > div:before {
 .Root__globalNav .main-userWidget-box {
   background-color: var(--luminous-ui-background);
 }
-.Root__globalNav
-  :is(.main-topBar-topbarContentRight, .main-globalNav-topbarContentRight) {
-  width: calc((135px + 32px) / (var(--zoom-level, 100) / 100));
-}
 .Root__globalNav .spicetify-sc-contentArea button {
   width: 48px !important;
   height: 48px !important;
 }
 .Root__globalNav .custom-navlinks-scrollable_container button {
   transform: none;
-}
-.main-actionButtons-spacer {
-  background: 0 0;
 }
 .main-globalNav-historyButtons {
   align-items: center;
@@ -1946,6 +1849,18 @@ div[data-testid='NPV_Panel_OpenDiv'] > div > div > div:before {
   height: 40px;
 }
 .spicetify-sc-scroller button {
+  background: var(--luminous-ui-background) !important;
+}
+#global-nav-bar {
+  background: 0 0;
+}
+input {
+  background: var(--luminous-ui-background) !important;
+}
+#global-nav-bar
+  > div
+  > div:has(input[data-encore-id='formInput'])
+  button:not(.e-10860-form-input-icon__icon > button) {
   background: var(--luminous-ui-background) !important;
 }
 /*$vite$:1*/
