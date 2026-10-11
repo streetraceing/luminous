@@ -83,3 +83,14 @@ div[data-testid='NPV_Panel_OpenDiv'] > div:nth-child(2) {
 div[data-testid='NPV_Panel_OpenDiv'] > div:nth-child(2) > div {
   background: transparent;
 }
+
+.luminous-canvas-frame-parent::before {
+  background: transparent !important;
+}
+
+div[data-testid='NPV_Panel_OpenDiv']
+  > div:has(.canvasVideoContainerNPV)
+  > div
+  > div:has(.canvasVideoContainerNPV) {
+  aspect-ratio: 9 / 14 !important;
+}

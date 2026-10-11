@@ -1,6 +1,7 @@
 import { getUiHealth } from '../ui/health';
 import { DomPulse } from '../ui/domPulse';
 import { MainViewPulse } from '../ui/mainViewPulse';
+import { getLastDetectedShell } from '../ui/synchronize';
 
 export type LuminousDiagnostics = {
   luminous: {
@@ -14,6 +15,7 @@ export type LuminousDiagnostics = {
     track: string | null;
     uiHealth: string;
     documentHidden: boolean;
+    shellSelector: string | null;
   };
   performance: {
     domPulse: ReturnType<typeof DomPulse.getStats>;
@@ -43,6 +45,7 @@ export class Diagnostics {
         track: song?.title ?? null,
         uiHealth: getUiHealth().status,
         documentHidden: document.hidden,
+        shellSelector: getLastDetectedShell(),
       },
       performance: {
         domPulse: DomPulse.getStats(),

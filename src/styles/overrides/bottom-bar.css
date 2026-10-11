@@ -1,13 +1,13 @@
-/* Now playing bar. Spotify 1.3.x removed the Root__now-playing-bar wrapper;
-   the aside.main-nowPlayingBar-container[data-testid='now-playing-bar'] is
-   the new stable hook and is itself the full-width bar strip. Keep the strip
-   on the opaque background and glass only on the inner 72px bar: painting the
-   aside glass would stack two translucent layers and darken the player. */
-
 aside[data-testid='now-playing-bar'],
 div:has(.main-nowPlayingBar-container) {
-  background: var(--luminous-background);
+  background: var(--luminous-ui-background);
   z-index: 11 !important;
+  border-radius: 8px;
+}
+
+div:has(div > aside[data-testid='now-playing-bar'])
+  > div:has(aside[data-testid='now-playing-bar']) {
+  background: transparent;
 }
 
 .main-nowPlayingBar-nowPlayingBar {

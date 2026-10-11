@@ -81,7 +81,9 @@ Useful checks:
 - `Luminous.Canvas.get()` - selected Spotify source/mode/revision;
 - `Luminous.Song.getSync()` - normalized current track;
 - `Luminous.Settings.snapshot()` - effective settings;
-- `Luminous.Diagnostics.toText()` - complete report including pulse counters.
+- `Luminous.Diagnostics.toText()` - complete report including pulse counters and the matched `runtime.shellSelector`.
+
+When `runtime.uiHealth` is `"booting"` and `runtime.shellSelector` is `null`, the user is almost certainly on a Spicetify build that predates the css-map entry for their Spotify version (Spotify 1.3.3 + Spicetify < 2.45.2 is the canonical recent case). The Player-based fallback inside `uiMountWatcher` will still promote `uiHealth` to `"ready"` after four seconds so the dynamic background renders, but the underlying css-map mismatch should be fixed by upgrading Spicetify.
 
 INFO logs can be enabled temporarily through `Luminous.Logger.enableLevel('INFO')` when tracing lifecycle events. Keep them disabled during performance measurement.
 

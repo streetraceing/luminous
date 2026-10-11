@@ -192,3 +192,18 @@ div:has(.YourLibraryX) {
 section[data-testid='artist-page'] div:has(div > img) {
   background: transparent;
 }
+
+div[data-scroll-size-invariant-class][role='presentation']:has(
+    div[role='presentation']
+  ) {
+  display: none;
+}
+
+header[data-testid='topbar'] {
+  display: none;
+}
+
+.global-nav > div > div:has(div[data-testid='NPV_Panel_OpenDiv']) > div {
+  background: var(--luminous-ui-background);
+  backdrop-filter: blur(var(--luminous-ui-blur));
+}

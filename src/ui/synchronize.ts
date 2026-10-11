@@ -3,7 +3,7 @@ import {
   SyncController,
 } from '../types/runtime/dynamic.types';
 import { Logger } from '../api/logger';
-import { setUiHealth } from './health';
+import { getUiHealth, setUiHealth } from './health';
 import {
   DomPulse,
   mutationAddsOrRemovesSelector,
@@ -33,6 +33,40 @@ const MAIN_VIEW_STATE_SELECTOR = [
   'div[data-testid="test-ref-div"]',
   '[data-testid="entity-header"]',
 ].join(',');
+
+// Spotify 1.3.3 (Oct 2026) rotated the hashed CSS-module class that
+// Spicetify aliases to `Root__top-container`. Spicetify shipped the new
+// css-map entry only in v2.45.2 (PR #3996), so on older Spicetify the
+// canonical `.Root__top-container #main-view` selector stops matching
+// even though the React tree is intact. The `#main-view` ID and the
+// `data-testid="main-view"` hook are written directly in Spotify's JSX
+// and are not subject to hash rotation, so they are the reliable
+// fallbacks. `main-view-container` is a Spicetify-aliased stable class
+// that survives the same way.
+const SHELL_SELECTORS = [
+  '.Root__top-container #main-view',
+  '.Root__top-container [data-testid="main-view"]',
+  '#main-view',
+  '[data-testid="main-view"]',
+  '.Root__top-container .main-view-container',
+  '.main-view-container',
+];
+
+let lastDetectedShell: string | null = null;
+
+export function detectSpotifyShell(): string | null {
+  for (const selector of SHELL_SELECTORS) {
+    if (document.querySelector(selector)) {
+      lastDetectedShell = selector;
+      return selector;
+    }
+  }
+  return null;
+}
+
+export function getLastDetectedShell(): string | null {
+  return lastDetectedShell;
+}
 
 export class Synchronize {
   static playlistBackground(
@@ -351,25 +385,67 @@ export class Synchronize {
   static uiMountWatcher(): SyncController {
     let disposed = false;
     let waitingSince: number | null = null;
+    let bootDeadline: number | null = null;
+
+    const BOOT_FALLBACK_MS = 4000;
 
     function hasSpotifyShell(): boolean {
-      return document.querySelector('.Root__top-container #main-view') !== null;
+      return detectSpotifyShell() !== null;
     }
 
     function hasSpotifyUi(): boolean {
       return !!(
         document.querySelector('.main-view-container') ||
-        document.querySelector('[data-testid="main-view"]')
+        document.querySelector('[data-testid="main-view"]') ||
+        document.querySelector('#main-view')
       );
+    }
+
+    function hasPlayerTrack(): boolean {
+      try {
+        return !!Spicetify?.Player?.data?.item;
+      } catch {
+        return false;
+      }
     }
 
     function check() {
       if (disposed) return;
 
       if (!hasSpotifyShell()) {
+        // The React shell selector is missing. If the Spicetify Player has
+        // still managed to load a track (so we know Spotify is alive), do
+        // not strand the user on a black screen forever: arm a one-shot
+        // deadline that promotes UI health to "ready" so the dynamic
+        // background can render even if the shell selector never recovers.
+        if (hasPlayerTrack()) {
+          if (bootDeadline === null) {
+            bootDeadline = window.setTimeout(() => {
+              bootDeadline = null;
+              if (disposed) return;
+              if (getUiHealth().status !== 'booting') return;
+
+              Logger.warn(
+                'Main',
+                'Spotify shell selector not found; promoting to ready because Player has a track. Spicetify ≥ 2.45.2 is required for Spotify 1.3.3+.',
+              );
+              waitingSince = null;
+              setUiHealth({ status: 'ready', brokenSince: null });
+            }, BOOT_FALLBACK_MS);
+          }
+        } else if (bootDeadline !== null) {
+          window.clearTimeout(bootDeadline);
+          bootDeadline = null;
+        }
+
         waitingSince = null;
         setUiHealth({ status: 'booting', brokenSince: null });
         return;
+      }
+
+      if (bootDeadline !== null) {
+        window.clearTimeout(bootDeadline);
+        bootDeadline = null;
       }
 
       if (hasSpotifyUi()) {
@@ -390,7 +466,7 @@ export class Synchronize {
       filter: (records) =>
         mutationAddsOrRemovesSelector(
           records,
-          '.Root__top-container,#main-view',
+          '.Root__top-container,#main-view,[data-testid="main-view"],.main-view-container',
         ),
     });
     const unsubscribeMainViewPulse = MainViewPulse.subscribe(check, {
@@ -398,13 +474,17 @@ export class Synchronize {
       filter: (records) =>
         mutationAddsOrRemovesSelector(
           records,
-          '.main-view-container,[data-testid="main-view"]',
+          '.main-view-container,[data-testid="main-view"],#main-view',
         ),
     });
 
     return {
       disconnect() {
         disposed = true;
+        if (bootDeadline !== null) {
+          window.clearTimeout(bootDeadline);
+          bootDeadline = null;
+        }
         unsubscribeDomPulse();
         unsubscribeMainViewPulse();
         waitingSince = null;

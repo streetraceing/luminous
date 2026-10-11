@@ -57,3 +57,20 @@ These counters make ad-block interaction measurable without telemetry. `Diagnost
 ## Selector maintenance policy
 
 Spotify DOM is not a stable API. Prefer IDs/portal anchors, narrow observers, and reversible class bridges. Before adding a relational selector or observer, ask whether the same state can be represented by an existing pulse subscription or by a direct media/resize event. Avoid document-wide attribute observation entirely.
+
+## Shell detection
+
+`Synchronize.uiMountWatcher()` gates the dynamic background, splash, and palette on the availability of the Spotify shell. The canonical selector is `.Root__top-container #main-view`, but `Root__top-container` is a Spicetify-aliased class: Spotify rotates the underlying hashed CSS-module name per build, and Spicetify ships the matching alias entry only in a later css-map update (Spotify 1.3.3 + Spicetify 2.45.2 is the most recent example, PR #3996). When the user is on an outdated Spicetify, the canonical selector stops matching even though the React tree is intact.
+
+To survive that window, the watcher now probes a list of stable selectors in priority order, exported as `detectSpotifyShell()`:
+
+1. `.Root__top-container #main-view` — canonical, requires Spicetify css-map alias for the current Spotify build.
+2. `.Root__top-container [data-testid="main-view"]` — same parent requirement, alternative stable child hook.
+3. `#main-view` — ID set directly in Spotify JSX, immune to hash rotation.
+4. `[data-testid="main-view"]` — alternative stable hook for the same element.
+5. `.Root__top-container .main-view-container` — Spicetify-aliased class for the inner scroll container.
+6. `.main-view-container` — inner container alone, last-resort fallback.
+
+As a defensive belt-and-suspenders for future renames that touch even the ID or `data-testid` hooks, the watcher also arms a one-shot 4-second deadline: if the Spicetify Player has loaded a track but no shell selector has matched yet, `uiHealth` is promoted to `"ready"` so `DynamicBackgroundFeature` can render the artwork immediately instead of stranding the user on a black screen. A `Logger.warn` is emitted so the issue is visible in the console and in any subsequent diagnostics report.
+
+Diagnostics now expose `runtime.shellSelector`, the selector that last matched. `null` means none matched and the Player-based fallback is in effect; the user should be advised to upgrade Spicetify to a version that ships the css-map entry for their Spotify build.

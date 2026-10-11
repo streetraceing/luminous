@@ -40,7 +40,7 @@ The simplest option is to install **Luminous** from the [Spicetify Marketplace](
 
 ### Requirements
 
-- [Spicetify](https://spicetify.app/) 2.44.0 or later.
+- [Spicetify](https://spicetify.app/) 2.45.2 or later (required for Spotify 1.3.3+, which rotated the hashed CSS-module class that Spicetify aliases to `Root__top-container`; Spicetify 2.44.0 still works for Spotify 1.2.x).
 - Node.js 22.13+ on the 22.x LTS line, or Node.js 24+ with npm for building from source.
 - Spotify desktop app with Spicetify already configured.
 
