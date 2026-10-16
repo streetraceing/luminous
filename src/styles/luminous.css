@@ -68,66 +68,11 @@ html.hideDynamicBackground #luminous-dynamic-background {
   display: none !important;
 }
 
-/* Mount over the real media frame, not inside Spotify's zero-size video
-   wrapper. Scoped rules also win over hashed NPV section backgrounds. */
-#Desktop_PanelContainer_Id .luminous-direct-video-placeholder {
-  position: absolute !important;
-  inset: 0 !important;
-  display: block !important;
-  width: 100% !important;
-  height: 100% !important;
-  min-width: 0;
-  overflow: hidden;
-  border-radius: inherit;
-  background: var(--spice-sidebar, #181818) !important;
-  isolation: isolate;
-  z-index: 1;
-  pointer-events: none;
-}
-
-#Desktop_PanelContainer_Id .luminous-direct-video-placeholder::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    180deg,
-    rgba(8, 10, 14, 0.08),
-    rgba(8, 10, 14, 0.6)
-  );
-  z-index: 1;
-}
-
-#Desktop_PanelContainer_Id .luminous-direct-video-placeholder-artwork {
-  position: absolute !important;
-  inset: 0 !important;
-  display: block !important;
-  width: 100% !important;
-  height: 100% !important;
-  max-width: none !important;
-  max-height: none !important;
-  object-fit: cover;
-  border-radius: inherit;
-}
-
-#Desktop_PanelContainer_Id
-  .luminous-direct-video-placeholder-artwork:not([src]) {
-  display: none !important;
-}
-
-#Desktop_PanelContainer_Id .luminous-direct-video-placeholder-label {
-  position: absolute;
-  left: 12px;
-  bottom: 12px;
-  z-index: 2;
-  max-width: calc(100% - 24px);
-  padding: 6px 10px;
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  border-radius: 999px;
-  background: rgba(0, 0, 0, 0.55);
-  color: white;
-  font-size: 12px;
-  line-height: 1.4;
-  pointer-events: none;
+/* The body-level placeholder is positioned/clipped by the renderer. Essential
+   styles are inline so a cached stylesheet cannot turn it into empty space. */
+html.luminous-settings-open .luminous-direct-video-placeholder,
+html.hideDynamicBackground .luminous-direct-video-placeholder {
+  visibility: hidden !important;
 }
 
 video.luminous-direct-video-background {

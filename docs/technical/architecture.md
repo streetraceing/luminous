@@ -72,3 +72,7 @@ New runtime work should follow these rules:
 5. keep expensive filter paint separate from transform-only animation when possible;
 6. disable Canvas discovery when the dynamic background is disabled or artwork-only mode is selected;
 7. preserve Spotify media ownership and provide artwork fallback when video is unavailable.
+
+## Explicit current-track refresh
+
+`Song.getSync()` remains a cached payload read. `Song.refresh()` synchronizes from `Spicetify.Player.data.item`, emits only when the track signature changed, and returns the current payload. The music-video Artwork setting uses this explicit refresh to handle live metadata updates that arrive without `songchange`. Both payload construction and track signatures share the same non-empty artwork URL resolver, including metadata-only image variants.

@@ -56,6 +56,8 @@ export class Background {
       element: HTMLDivElement;
       frame: HTMLElement;
       observer: ResizeObserver;
+      sync: () => void;
+      dispose: () => void;
       styles: Map<string, { value: string; priority: string }>;
     }
   >();
@@ -639,7 +641,7 @@ export class Background {
     }
 
     if (this.directVideoSource && this.directVideoSource !== sourceVideo) {
-      this.deactivateDirectVideo();
+      this.deactivateDirectVideo(true);
     }
 
     this.cancelDirectVideoCleanup(sourceVideo);
@@ -762,6 +764,7 @@ export class Background {
     if (!video?.isConnected) return null;
     const slot = this.directVideoSlots.get(video);
     const host = this.directVideoHosts.get(video);
+    if (slot) this.directVideoPlaceholders.get(slot)?.sync();
     return slot?.isConnected && host?.contains(slot) ? video : null;
   }
 
@@ -833,14 +836,61 @@ export class Background {
       'aria-label',
       'Music video is playing in the background',
     );
+    // Like the main media renderer, keep essential presentation inline. The
+    // placeholder must still work if a client has an older cached user.css.
+    Object.assign(placeholder.style, {
+      position: 'fixed',
+      display: 'block',
+      overflow: 'hidden',
+      background: 'var(--spice-sidebar, #181818)',
+      borderRadius: '8px',
+      pointerEvents: 'none',
+      isolation: 'isolate',
+      zIndex: '100',
+    });
     const image = document.createElement('img');
     image.className = 'luminous-direct-video-placeholder-artwork';
     image.alt = '';
     image.decoding = 'async';
+    Object.assign(image.style, {
+      position: 'absolute',
+      inset: '0',
+      width: '100%',
+      height: '100%',
+      objectFit: 'cover',
+      maxWidth: 'none',
+      maxHeight: 'none',
+    });
+    image.addEventListener('error', () => {
+      image.style.visibility = 'hidden';
+    });
+    image.addEventListener('load', () => {
+      image.style.visibility = 'visible';
+    });
+    const shade = document.createElement('span');
+    Object.assign(shade.style, {
+      position: 'absolute',
+      inset: '0',
+      background:
+        'linear-gradient(180deg, rgba(8,10,14,.08), rgba(8,10,14,.6))',
+    });
     const badge = document.createElement('span');
     badge.className = 'luminous-direct-video-placeholder-label';
     badge.textContent = 'Video in background';
-    placeholder.append(image, badge);
+    Object.assign(badge.style, {
+      position: 'absolute',
+      left: '12px',
+      bottom: '12px',
+      maxWidth: 'calc(100% - 24px)',
+      padding: '6px 10px',
+      border: '1px solid rgba(255,255,255,.16)',
+      borderRadius: '999px',
+      background: 'rgba(0,0,0,.55)',
+      color: '#fff',
+      fontSize: '12px',
+      lineHeight: '1.4',
+    });
+    placeholder.append(image, shade, badge);
 
     const styles = new Map<string, { value: string; priority: string }>();
     const override = (property: string, value: string) => {
@@ -852,8 +902,6 @@ export class Background {
       }
       frame.style.setProperty(property, value, 'important');
     };
-    if (getComputedStyle(frame).position === 'static')
-      override('position', 'relative');
     const ratio =
       rect.width > 0 && rect.height > 0
         ? rect.width / rect.height
@@ -874,15 +922,104 @@ export class Background {
       }
     };
     reserveHeight();
-    const observer = new ResizeObserver(reserveHeight);
+    const initialFrame = frame.getBoundingClientRect();
+    const panel = host as HTMLElement;
+    const initialPanel = panel.getBoundingClientRect();
+    const origin = initialFrame.width > 0 ? frame : panel;
+    const initialOrigin = origin === frame ? initialFrame : initialPanel;
+    const mediaWidth = rect.width || initialOrigin.width;
+    const mediaHeight = rect.height || mediaWidth / ratio;
+    const offsetX = rect.width > 0 ? rect.left - initialOrigin.left : 0;
+    const offsetY = rect.height > 0 ? rect.top - initialOrigin.top : 0;
+    let scheduled: number | null = null;
+    const place = () => {
+      scheduled = null;
+      if (
+        !slot.isConnected ||
+        !panel.contains(slot) ||
+        panel.getClientRects().length === 0 ||
+        panel.getBoundingClientRect().width <= 0 ||
+        getComputedStyle(panel).visibility === 'hidden'
+      ) {
+        placeholder.style.display = 'none';
+        return;
+      }
+      reserveHeight();
+      const bounds = origin.getBoundingClientRect();
+      const scale =
+        bounds.width > 0 && initialOrigin.width > 0
+          ? bounds.width / initialOrigin.width
+          : 1;
+      const left = bounds.left + offsetX * scale;
+      const top = bounds.top + offsetY * scale;
+      const width = mediaWidth * scale;
+      const height = mediaHeight * scale;
+      let clipLeft = Math.max(0, left);
+      let clipTop = Math.max(0, top);
+      let clipRight = Math.min(window.innerWidth, left + width);
+      let clipBottom = Math.min(window.innerHeight, top + height);
+      // Paint outside Spotify's stacking contexts, but remain clipped to the
+      // actual panel/scrollports and below its sticky NPV title.
+      for (
+        let ancestor: HTMLElement | null = frame;
+        ancestor && ancestor !== document.body;
+        ancestor = ancestor.parentElement
+      ) {
+        const box = ancestor.getBoundingClientRect();
+        if (box.width <= 0 || box.height <= 0) continue;
+        const style = getComputedStyle(ancestor);
+        if (
+          ancestor === panel ||
+          /(auto|scroll|hidden|clip)/.test(style.overflowX)
+        ) {
+          clipLeft = Math.max(clipLeft, box.left);
+          clipRight = Math.min(clipRight, box.right);
+        }
+        if (
+          ancestor === panel ||
+          /(auto|scroll|hidden|clip)/.test(style.overflowY)
+        ) {
+          clipTop = Math.max(clipTop, box.top);
+          clipBottom = Math.min(clipBottom, box.bottom);
+        }
+      }
+      const header = panel.querySelector('.main-nowPlayingView-headerWrapper');
+      if (header)
+        clipTop = Math.max(clipTop, header.getBoundingClientRect().bottom);
+      placeholder.style.display =
+        clipRight > clipLeft && clipBottom > clipTop ? 'block' : 'none';
+      Object.assign(placeholder.style, {
+        left: `${left}px`,
+        top: `${top}px`,
+        width: `${width}px`,
+        height: `${height}px`,
+        clipPath: `inset(${Math.max(0, clipTop - top)}px ${Math.max(0, left + width - clipRight)}px ${Math.max(0, top + height - clipBottom)}px ${Math.max(0, clipLeft - left)}px)`,
+      });
+    };
+    const sync = () => {
+      if (scheduled === null) scheduled = requestAnimationFrame(place);
+    };
+    const observer = new ResizeObserver(sync);
     observer.observe(frame);
-    frame.append(placeholder);
+    if (panel !== frame) observer.observe(panel);
+    window.addEventListener('resize', sync, { passive: true });
+    document.addEventListener('scroll', sync, { capture: true, passive: true });
+    // A body-level overlay cannot be hidden underneath Spotify's opaque
+    // video shells, pseudo-elements, or a clipped/zero-size React wrapper.
+    document.body.append(placeholder);
     this.directVideoPlaceholders.set(slot, {
       element: placeholder,
       frame,
       observer,
       styles,
+      sync,
+      dispose: () => {
+        if (scheduled !== null) cancelAnimationFrame(scheduled);
+        window.removeEventListener('resize', sync);
+        document.removeEventListener('scroll', sync, true);
+      },
     });
+    place();
     this.updateDirectVideoPlaceholder(slot, artwork);
     return slot;
   }
@@ -899,13 +1036,16 @@ export class Background {
       if (image.getAttribute('src') !== source) image.src = source;
     } else {
       image.removeAttribute('src');
+      image.style.visibility = 'hidden';
     }
+    this.directVideoPlaceholders.get(slot)?.sync();
   }
 
   private static removeDirectVideoPlaceholder(slot: HTMLDivElement) {
     const state = this.directVideoPlaceholders.get(slot);
     if (!state) return;
     state.observer.disconnect();
+    state.dispose();
     state.element.remove();
     state.styles.forEach(({ value, priority }, property) => {
       if (value) state.frame.style.setProperty(property, value, priority);

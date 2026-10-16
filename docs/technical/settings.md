@@ -42,3 +42,5 @@ The modal keeps the performance fixes from the refactor: no fullscreen `backdrop
 ## Full-length music video preference
 
 Appearance → **Music video background** offers **Video** and **Artwork**. It is persisted independently from Background source and applies immediately without restarting Spotify. Video uses the original player in the shared background layer with an artwork placeholder in NPV; Artwork leaves the player in NPV and uses the track cover behind the UI. Short Canvas loops are unaffected. Global artwork-only mode overrides this preference. Presets leave this independent preference unchanged; Reset all restores Video.
+
+Selecting **Artwork** refreshes the current track from live player data and reapplies its cover if needed; it does not wait for a song change or require reopening NPV. Empty image entries are skipped, and track metadata's high-resolution/large/standard/small cover URLs are used when the regular track/album image arrays are absent. The setting does not change Spotify's audio/video playback mode.

@@ -35,9 +35,9 @@ export function DynamicBackgroundFeature() {
     if (useVideo) {
       return `canvas:${canvas.mode}:${canvas.source ?? ''}:${canvas.revision}:${song?.image ?? ''}`;
     }
-    if (song?.image) return `image:${song.image}`;
-    return 'empty';
-  }, [appActive, canvas, enabled, song?.image, useVideo]);
+    if (song?.image) return `image:${musicVideoBackground}:${song.image}`;
+    return `empty:${musicVideoBackground}`;
+  }, [appActive, canvas, enabled, song?.image, useVideo, musicVideoBackground]);
 
   effect(() => {
     let songKey = song ? `${song.uri}\u0000${song.image ?? ''}` : null;
@@ -80,7 +80,16 @@ export function DynamicBackgroundFeature() {
     );
     const unsubscribeMusicVideoSetting = Luminous.Settings.subscribe<string>(
       'musicVideoBackground',
-      setMusicVideoBackground,
+      (value) => {
+        if (value === 'artwork') {
+          const currentSong = Luminous.Song.refresh();
+          if (currentSong) {
+            Luminous.Background.preloadImage(currentSong.image);
+            handleSong(currentSong);
+          }
+        }
+        setMusicVideoBackground(value);
+      },
       { immediate: true },
     );
     const unsubscribePaletteSetting = Luminous.Settings.subscribe<boolean>(

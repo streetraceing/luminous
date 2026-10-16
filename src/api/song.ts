@@ -112,6 +112,14 @@ export class Song {
     return this.current ? this.createPayload(this.current) : null;
   }
 
+  /** Re-read Player.data on explicit UI refreshes, even without songchange. */
+  static refresh(): SongPayload | null {
+    if (typeof Spicetify !== 'undefined' && Spicetify.Player?.data?.item) {
+      this.syncCurrentTrack();
+    }
+    return this.getSync();
+  }
+
   private static async initialize(timeout: number): Promise<void> {
     await this.waitForPlayer(timeout);
     this.bindEvents();
@@ -226,24 +234,14 @@ export class Song {
 
   private static createTrackSignature(track: Spicetify.PlayerTrack): string {
     const artists = track.artists?.map((artist) => artist.name).join('|') ?? '';
-    const image = normalizeImageUrl(
-      track.images?.[0]?.url ??
-        track.album?.images?.[0]?.url ??
-        track.metadata?.image_url ??
-        null,
-    );
+    const image = getTrackImage(track);
 
     return `${track.uri}\u0000${track.name}\u0000${artists}\u0000${image ?? ''}`;
   }
 
   private static createPayload(track: Spicetify.PlayerTrack): SongPayload {
     const artists = track.artists?.map((artist) => artist.name) ?? [];
-    const image = normalizeImageUrl(
-      track.images?.[0]?.url ??
-        track.album?.images?.[0]?.url ??
-        track.metadata?.image_url ??
-        null,
-    );
+    const image = getTrackImage(track);
 
     return {
       track,
@@ -305,4 +303,20 @@ function normalizeImageUrl(image: string | null | undefined): string | null {
   }
 
   return image;
+}
+
+function getTrackImage(track: Spicetify.PlayerTrack): string | null {
+  const candidates = [
+    ...(track.images ?? []).map((image) => image.url),
+    ...(track.album?.images ?? []).map((image) => image.url),
+    track.metadata?.image_xlarge_url,
+    track.metadata?.image_large_url,
+    track.metadata?.image_url,
+    track.metadata?.image_small_url,
+  ];
+  for (const candidate of candidates) {
+    const image = normalizeImageUrl(candidate?.trim());
+    if (image) return image;
+  }
+  return null;
 }
