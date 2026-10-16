@@ -84,6 +84,10 @@ div[data-testid='NPV_Panel_OpenDiv'] > div:nth-child(2) > div {
   background: transparent;
 }
 
+div[data-testid='NPV_Panel_OpenDiv'] > div:nth-child(2) > div > div > div {
+  background-color: var(--section-background-base);
+}
+
 .luminous-canvas-frame-parent::before {
   background: transparent !important;
 }

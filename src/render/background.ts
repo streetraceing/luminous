@@ -49,10 +49,7 @@ export class Background {
     HTMLVideoElement,
     HTMLElement | null
   >();
-  private static directVideoBridgeSnapshots = new Map<
-    HTMLVideoElement,
-    Map<HTMLElement, Map<string, { value: string; priority: string }>>
-  >();
+  private static directVideoSlots = new Map<HTMLVideoElement, HTMLDivElement>();
   private static directVideoCleanupTimers = new Map<HTMLVideoElement, number>();
 
   private static currentType: BackgroundType = 'none';
@@ -192,6 +189,7 @@ export class Background {
   private static ensureBackground() {
     if (this.root?.isConnected) return;
 
+    this.restoreAllDirectVideos();
     this.cancelVideoCleanup();
     this.videoLayers?.forEach((video) => this.resetVideo(video));
     this.root?.remove();
@@ -599,14 +597,15 @@ export class Background {
       // through the artwork fallback.
       this.directVideoKey = sourceKey;
       this.currentCanvasKey = sourceKey;
-      const host = this.directVideoHosts.get(sourceVideo);
-      if (host) {
-        this.prepareDirectVideoPlaceholder(
-          host,
-          sourceVideo,
-          fallbackImage ?? sourceVideo.poster,
-        );
+      const slot = this.directVideoSlots.get(sourceVideo);
+      if (!slot?.isConnected) {
+        this.deactivateDirectVideo(true);
+        return false;
       }
+      this.updateDirectVideoPlaceholder(
+        slot,
+        fallbackImage ?? sourceVideo.poster,
+      );
       return true;
     }
 
@@ -636,9 +635,12 @@ export class Background {
 
     this.cancelDirectVideoCleanup(sourceVideo);
 
-    const host = sourceVideo.closest(
-      '#Desktop_PanelContainer_Id',
-    ) as HTMLElement | null;
+    const host =
+      (sourceVideo.closest(
+        '#Desktop_PanelContainer_Id',
+      ) as HTMLElement | null) ??
+      this.directVideoHosts.get(sourceVideo) ??
+      null;
 
     if (!host) {
       Luminous.Logger.warn(
@@ -649,15 +651,22 @@ export class Background {
       return false;
     }
 
-    this.prepareDirectVideoBridge(sourceVideo, host);
-    this.prepareDirectVideoPlaceholder(
-      host,
-      sourceVideo,
+    if (!this.mediaStage || !sourceVideo.parentElement) return false;
+
+    const slot =
+      this.directVideoSlots.get(sourceVideo) ??
+      this.createDirectVideoPlaceholder(
+        sourceVideo,
+        fallbackImage ?? sourceVideo.poster,
+      );
+    if (!slot.isConnected || !host.contains(slot)) return false;
+    this.updateDirectVideoPlaceholder(
+      slot,
       fallbackImage ?? sourceVideo.poster,
     );
+    this.directVideoSlots.set(sourceVideo, slot);
+    this.moveDirectVideo(sourceVideo, this.mediaStage);
     sourceVideo.classList.add('luminous-direct-video-background');
-    host.classList.add('luminous-direct-video-host');
-    document.documentElement.classList.add('luminous-direct-video-active');
 
     this.directVideoSource = sourceVideo;
     this.directVideoKey = sourceKey;
@@ -670,7 +679,7 @@ export class Background {
     void sourceVideo.offsetWidth;
     sourceVideo.classList.add('luminous-direct-video-background--active');
 
-    this.transitionTo('canvas', sourceVideo);
+    this.transitionTo('canvas', sourceVideo, true);
     Luminous.Logger.info(
       'Background',
       'Using original protected video as background',
@@ -717,154 +726,88 @@ export class Background {
       'luminous-direct-video-background--active',
     );
 
-    const host = this.directVideoHosts.get(sourceVideo);
     this.directVideoHosts.delete(sourceVideo);
 
-    if (host && !host.querySelector('video.luminous-direct-video-background')) {
-      host.classList.remove('luminous-direct-video-host');
-      this.restoreDirectVideoPlaceholder(host);
+    const slot = this.directVideoSlots.get(sourceVideo);
+    this.directVideoSlots.delete(sourceVideo);
+    if (slot?.parentElement) {
+      // Even a detached Spotify subtree must get its own media node back.
+      // Never revive an old player by inserting it into a new panel.
+      this.moveDirectVideo(sourceVideo, slot.parentElement, slot);
+    } else if (sourceVideo.parentElement === this.mediaStage) {
+      sourceVideo.remove();
     }
-
-    this.restoreDirectVideoBridge(sourceVideo);
-
-    if (this.directVideoHosts.size === 0) {
-      document.documentElement.classList.remove('luminous-direct-video-active');
-    }
+    slot?.remove();
   }
 
-  private static prepareDirectVideoBridge(
-    sourceVideo: HTMLVideoElement,
-    host: HTMLElement,
+  /** Discovery must follow the original slot, not the video's new DOM parent. */
+  static getDirectVideoSource(): HTMLVideoElement | null {
+    const video =
+      this.directVideoSource ??
+      Array.from(this.directVideoHosts.keys()).find(
+        (candidate) =>
+          candidate.isConnected &&
+          this.directVideoSlots.get(candidate)?.isConnected,
+      );
+    if (!video?.isConnected) return null;
+    const slot = this.directVideoSlots.get(video);
+    const host = this.directVideoHosts.get(video);
+    return slot?.isConnected && host?.contains(slot) ? video : null;
+  }
+
+  private static moveDirectVideo(
+    video: HTMLVideoElement,
+    parent: HTMLElement,
+    before: Node | null = null,
   ) {
-    this.restoreDirectVideoBridge(sourceVideo);
-
-    const snapshots = new Map<
-      HTMLElement,
-      Map<string, { value: string; priority: string }>
-    >();
-
-    const override = (
-      element: HTMLElement,
-      property: string,
-      value: string,
-    ) => {
-      let elementSnapshot = snapshots.get(element);
-      if (!elementSnapshot) {
-        elementSnapshot = new Map();
-        snapshots.set(element, elementSnapshot);
-      }
-
-      if (!elementSnapshot.has(property)) {
-        elementSnapshot.set(property, {
-          value: element.style.getPropertyValue(property),
-          priority: element.style.getPropertyPriority(property),
-        });
-      }
-
-      element.style.setProperty(property, value, 'important');
+    // Chromium's state-preserving move avoids restarting an EME player where
+    // available. Older Spotify clients retain the same media element/keys.
+    const target = parent as HTMLElement & {
+      moveBefore?: (node: Node, child: Node | null) => void;
     };
-
-    let element: HTMLElement | null = host;
-
-    while (element && element !== document.body) {
-      const style = getComputedStyle(element);
-
-      // A fixed descendant needs only the properties that establish a fixed
-      // containing block neutralised. Spotify's sidebar layout (overflow,
-      // clip, position, z-index) is left intact so scrolling/sticky/clipping
-      // behavior is preserved.
-      if (style.transform !== 'none') override(element, 'transform', 'none');
-      if (style.translate !== 'none') override(element, 'translate', 'none');
-      if (style.rotate !== 'none') override(element, 'rotate', 'none');
-      if (style.scale !== 'none') override(element, 'scale', 'none');
-      if (style.perspective !== 'none') {
-        override(element, 'perspective', 'none');
-      }
-      if (style.filter !== 'none') override(element, 'filter', 'none');
-      if (style.backdropFilter !== 'none') {
-        override(element, 'backdrop-filter', 'none');
-      }
-      if (style.contain !== 'none') override(element, 'contain', 'none');
-      if (style.containerType !== 'normal') {
-        override(element, 'container-type', 'normal');
-      }
-      if (style.contentVisibility !== 'visible') {
-        override(element, 'content-visibility', 'visible');
-      }
-      if (style.willChange !== 'auto') {
-        override(element, 'will-change', 'auto');
-      }
-
-      element.classList.add('luminous-direct-video-bridge');
-
-      if (element.classList.contains('Root__top-container')) break;
-      element = element.parentElement;
+    if (target.moveBefore && parent.isConnected && video.isConnected) {
+      target.moveBefore(video, before);
+    } else {
+      parent.insertBefore(video, before);
     }
-
-    this.directVideoBridgeSnapshots.set(sourceVideo, snapshots);
   }
 
-  private static prepareDirectVideoPlaceholder(
-    host: HTMLElement,
-    sourceVideo: HTMLVideoElement,
+  private static createDirectVideoPlaceholder(
+    video: HTMLVideoElement,
+    artwork?: string | null,
+  ): HTMLDivElement {
+    const rect = video.getBoundingClientRect();
+    const slot = document.createElement('div');
+    slot.className = 'luminous-direct-video-placeholder';
+    const ratio =
+      rect.width > 0 && rect.height > 0
+        ? rect.width / rect.height
+        : video.videoWidth / video.videoHeight;
+    slot.style.aspectRatio = String(ratio || 16 / 9);
+    slot.setAttribute('role', 'img');
+    slot.setAttribute('aria-label', 'Music video is playing in the background');
+    const badge = document.createElement('span');
+    badge.className = 'luminous-direct-video-placeholder-label';
+    badge.textContent = 'Video in background';
+    slot.append(badge);
+    this.updateDirectVideoPlaceholder(slot, artwork);
+    video.before(slot);
+    return slot;
+  }
+
+  private static updateDirectVideoPlaceholder(
+    slot: HTMLDivElement,
     artwork?: string | null,
   ) {
-    const hostRect = host.getBoundingClientRect();
-    const storedHeight = Number.parseFloat(
-      host.style.getPropertyValue('--luminous-direct-video-placeholder-height'),
-    );
-    const videoHeight = sourceVideo.classList.contains(
-      'luminous-direct-video-background',
-    )
-      ? 0
-      : sourceVideo.getBoundingClientRect().height;
-    const placeholderHeight = Math.max(
-      Number.isFinite(storedHeight) ? storedHeight : 0,
-      hostRect.height,
-      videoHeight,
-    );
-
-    if (placeholderHeight > 0) {
-      host.style.setProperty(
-        '--luminous-direct-video-placeholder-height',
-        `${Math.round(placeholderHeight)}px`,
-      );
-    } else {
-      host.style.removeProperty('--luminous-direct-video-placeholder-height');
-    }
     const image = artwork?.trim();
     if (image) {
-      host.style.setProperty(
+      slot.style.setProperty(
         '--luminous-direct-video-placeholder-image',
         `url(${JSON.stringify(image)})`,
       );
     } else {
-      host.style.removeProperty('--luminous-direct-video-placeholder-image');
+      slot.style.removeProperty('--luminous-direct-video-placeholder-image');
     }
-  }
-
-  private static restoreDirectVideoPlaceholder(host: HTMLElement) {
-    host.style.removeProperty('--luminous-direct-video-placeholder-image');
-    host.style.removeProperty('--luminous-direct-video-placeholder-height');
-  }
-
-  private static restoreDirectVideoBridge(sourceVideo: HTMLVideoElement) {
-    const snapshots = this.directVideoBridgeSnapshots.get(sourceVideo);
-    if (!snapshots) return;
-
-    snapshots.forEach((properties, element) => {
-      properties.forEach(({ value, priority }, property) => {
-        if (value) {
-          element.style.setProperty(property, value, priority);
-        } else {
-          element.style.removeProperty(property);
-        }
-      });
-
-      element.classList.remove('luminous-direct-video-bridge');
-    });
-
-    this.directVideoBridgeSnapshots.delete(sourceVideo);
   }
 
   private static restoreAllDirectVideos() {
@@ -872,16 +815,9 @@ export class Background {
       window.clearTimeout(timer),
     );
     this.directVideoCleanupTimers.clear();
-
     Array.from(this.directVideoHosts.keys()).forEach((video) =>
       this.restoreDirectVideo(video),
     );
-
-    this.directVideoBridgeSnapshots.forEach((_snapshots, video) =>
-      this.restoreDirectVideoBridge(video),
-    );
-    document.documentElement.classList.remove('luminous-direct-video-active');
-
     this.directVideoSource = null;
     this.directVideoKey = null;
   }
@@ -921,10 +857,12 @@ export class Background {
   private static transitionTo(
     type: BackgroundType,
     activeElement: BackgroundElement | null = null,
+    force = false,
   ) {
     if (!this.imageLayers || !this.videoLayers) return;
 
-    if (this.currentType === type && this.get() === activeElement) return;
+    if (!force && this.currentType === type && this.get() === activeElement)
+      return;
 
     if (
       this.directVideoSource &&

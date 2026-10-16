@@ -4,20 +4,21 @@ Settings are schema-backed and persisted under the `luminous-settings` LocalStor
 
 ## Active settings
 
-| Key                    | Default    | Range / values            | Runtime effect                                                     |
-| ---------------------- | ---------- | ------------------------- | ------------------------------------------------------------------ |
-| `dynamicBackground`    | `true`     | boolean                   | Enables/disables media and Canvas discovery/work.                  |
-| `backgroundSource`     | `auto`     | `auto`, `artwork`         | Enables Canvas discovery or disables it for artwork-only mode.     |
-| `dynamicPalette`       | `true`     | boolean                   | Enables adaptive cover-derived lighting.                           |
-| `backgroundBlur`       | `24`       | 0–48 px                   | Media blur.                                                        |
-| `backgroundBrightness` | `75`       | 30–120 %                  | Media brightness.                                                  |
-| `uiOpacity`            | `50`       | 0–100 %                   | Opacity of translucent Spotify surfaces.                           |
-| `uiBlur`               | `16`       | 0–32 px                   | Glass-surface blur.                                                |
-| `paletteStrength`      | `24`       | 0–50                      | Adaptive-effect opacity.                                           |
-| `backgroundMotion`     | `drift`    | `still`, `drift`, `float` | Uses the stable pre-refactor motion modes.                         |
-| `motionDuration`       | `20`       | 8–60 s                    | Scales media/effect motion timing.                                 |
-| `reduceMotion`         | `false`    | boolean                   | Adds `luminous-reduce-motion`; CSS also honors the OS media query. |
-| `backgroundEnergy`     | `adaptive` | compatibility-only        | Preserved normalized legacy value.                                 |
+| Key                    | Default    | Range / values            | Runtime effect                                                      |
+| ---------------------- | ---------- | ------------------------- | ------------------------------------------------------------------- |
+| `dynamicBackground`    | `true`     | boolean                   | Enables/disables media and Canvas discovery/work.                   |
+| `backgroundSource`     | `auto`     | `auto`, `artwork`         | Enables Canvas discovery or disables it for artwork-only mode.      |
+| `musicVideoBackground` | `video`    | `video`, `artwork`        | Selects media for full-length NPV video only; requires Auto source. |
+| `dynamicPalette`       | `true`     | boolean                   | Enables adaptive cover-derived lighting.                            |
+| `backgroundBlur`       | `24`       | 0–48 px                   | Media blur.                                                         |
+| `backgroundBrightness` | `75`       | 30–120 %                  | Media brightness.                                                   |
+| `uiOpacity`            | `50`       | 0–100 %                   | Opacity of translucent Spotify surfaces.                            |
+| `uiBlur`               | `16`       | 0–32 px                   | Glass-surface blur.                                                 |
+| `paletteStrength`      | `24`       | 0–50                      | Adaptive-effect opacity.                                            |
+| `backgroundMotion`     | `drift`    | `still`, `drift`, `float` | Uses the stable pre-refactor motion modes.                          |
+| `motionDuration`       | `20`       | 8–60 s                    | Scales media/effect motion timing.                                  |
+| `reduceMotion`         | `false`    | boolean                   | Adds `luminous-reduce-motion`; CSS also honors the OS media query.  |
+| `backgroundEnergy`     | `adaptive` | compatibility-only        | Preserved normalized legacy value.                                  |
 
 ## Removed experimental controls
 
@@ -37,3 +38,7 @@ Presets remain in a dedicated tab and use one batched `setMany()` operation:
 ## Settings UI performance
 
 The modal keeps the performance fixes from the refactor: no fullscreen `backdrop-filter`, sticky header, no synchronous animated-height measurement, and coalesced range application while dragging. Opening Settings may pause Luminous-owned CSS animations through `luminous-settings-open`, but it does not alter Spotify playback or Canvas source nodes.
+
+## Full-length music video preference
+
+Appearance → **Music video background** offers **Video** and **Artwork**. It is persisted independently from Background source and applies immediately without restarting Spotify. Video uses the original player in the shared background layer with an artwork placeholder in NPV; Artwork leaves the player in NPV and uses the track cover behind the UI. Short Canvas loops are unaffected. Global artwork-only mode overrides this preference. Presets leave this independent preference unchanged; Reset all restores Video.

@@ -15,6 +15,9 @@ export function DynamicBackgroundFeature() {
   const [enabled, setEnabled] = state(
     () => Luminous.Settings.get('dynamicBackground') !== false,
   );
+  const [musicVideoBackground, setMusicVideoBackground] = state(() =>
+    Luminous.Settings.get<string>('musicVideoBackground'),
+  );
   const [dynamicPalette, setDynamicPalette] = state(
     () => Luminous.Settings.get('dynamicPalette') !== false,
   );
@@ -22,15 +25,19 @@ export function DynamicBackgroundFeature() {
     () => getUiHealth().status !== 'booting',
   );
 
+  const useVideo =
+    !!canvas.video &&
+    (canvas.mode !== 'npv-video' || musicVideoBackground !== 'artwork');
+
   const renderKey = memo(() => {
     if (!appActive) return 'inactive';
     if (!enabled) return 'disabled';
-    if (canvas.video) {
-      return `canvas:${canvas.source ?? ''}:${canvas.revision}:${song?.image ?? ''}`;
+    if (useVideo) {
+      return `canvas:${canvas.mode}:${canvas.source ?? ''}:${canvas.revision}:${song?.image ?? ''}`;
     }
     if (song?.image) return `image:${song.image}`;
     return 'empty';
-  }, [appActive, canvas, enabled, song?.image]);
+  }, [appActive, canvas, enabled, song?.image, useVideo]);
 
   effect(() => {
     let songKey = song ? `${song.uri}\u0000${song.image ?? ''}` : null;
@@ -71,6 +78,11 @@ export function DynamicBackgroundFeature() {
       (value) => setEnabled(value !== false),
       { immediate: true },
     );
+    const unsubscribeMusicVideoSetting = Luminous.Settings.subscribe<string>(
+      'musicVideoBackground',
+      setMusicVideoBackground,
+      { immediate: true },
+    );
     const unsubscribePaletteSetting = Luminous.Settings.subscribe<boolean>(
       'dynamicPalette',
       (value) => setDynamicPalette(value !== false),
@@ -86,6 +98,7 @@ export function DynamicBackgroundFeature() {
       unsubscribeHealth();
       unsubscribeSetting();
       unsubscribePaletteSetting();
+      unsubscribeMusicVideoSetting();
       Luminous.Background.destroy();
       Luminous.Palette.clear();
     };
@@ -102,7 +115,7 @@ export function DynamicBackgroundFeature() {
       return;
     }
 
-    if (canvas.video) {
+    if (useVideo) {
       Luminous.Background.render({
         canvas: canvas.video,
         canvasSource: canvas.source,

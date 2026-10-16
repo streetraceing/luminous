@@ -153,6 +153,13 @@ export class Canvas {
     const npvLongform = this.findVisibleVideo(this.NPV_LONGFORM_VIDEO_SELECTOR);
     if (npvLongform) return this.createPayload(npvLongform, 'npv-video');
 
+    // Promoted protected media lives in the shared background root. Keep its
+    // identity/mode while the original NPV slot is still mounted.
+    const promoted = Luminous.Background.getDirectVideoSource();
+    if (promoted && !promoted.ended) {
+      return this.createPayload(promoted, 'npv-video');
+    }
+
     const cinema = this.findCinemaVideo();
     if (cinema) return this.createPayload(cinema, 'cinema');
 

@@ -26,11 +26,15 @@ Canvas discovery is disabled entirely when the dynamic background is off or the 
 
 ## Protected long-form NPV video
 
-`CanvasMode = npv-video` bypasses `captureStream()` because DRM/EME media is not reliably capturable. Spotify's original `<video>` remains React-owned and is not re-parented. Luminous promotes that same element to a fixed, blurred, pointer-inert viewport background, but only neutralises ancestor properties that establish a fixed containing block (`transform`, `filter`, containment and related compositor hints). Sidebar `overflow`, clipping, positioning and z-index are never changed, so the NPV panel keeps its normal scroll and layout behavior.
+`CanvasMode = npv-video` bypasses `captureStream()` because DRM/EME media is not reliably capturable. In Video mode the original `<video>` is temporarily moved into `.luminous-background-media-stage`, exactly alongside the artwork and captured Canvas buffers. This escapes the NPV sidebar's stacking context and clipping without changing sidebar ancestors, shell z-index, or Spotify's overflow rules. No media URL, keys, audio state, or playback controls are copied or modified.
 
-The promoted video still belongs to the right-sidebar stacking context. During direct-video mode Luminous therefore elevates the normal Spotify shell regions (`#main-view`, the left sidebar, global navigation, and now-playing bar) above that context instead of trying to tear down the sidebar's own stacking/layout rules. The video remains visually behind the interface while the right sidebar keeps its native scroll/clipping behavior.
+Where available, Chromium's state-preserving `moveBefore()` is used; older clients fall back to `insertBefore()` with the same media element. Actual EME playback and Spotify's React player lifecycle must be verified in the target desktop client, especially on older Chromium versions. Reparenting third-party React-owned DOM can conflict with a player update that removes the video node directly; subtree removal and normal Luminous cleanup restore the original node via its saved slot, but do not guarantee compatibility with every Spotify renderer revision.
 
-Before promotion, Luminous records the rendered height of the NPV video slot. The portal keeps that minimum height while the video is fixed and paints the current artwork into the vacated area, so the panel does not collapse or show an empty black hole. The placeholder geometry, artwork variable, ancestor overrides, and direct-video classes are all removed during cleanup.
+A real `.luminous-direct-video-placeholder` is inserted immediately before the original video, not on the whole sidebar. It uses the original rendered aspect ratio, current artwork, a dark gradient and a “Video in background” badge. The responsive slot remains until the video returns. If the original subtree is detached, cleanup restores the video only to that detached subtree, never into another player.
+
+Discovery checks both native NPV media and the promoted video's original slot. A newly mounted native player takes priority. An ended video or removed slot is no longer treated as active; repeated discovery does not unmount a video merely because it now lives in the background. Rapid reactivation cancels delayed restoration and reuses the same slot.
+
+`musicVideoBackground` selects `video` (default) or `artwork` only for full-length NPV video, whether DRM-protected or not. Spotify does not expose a reliable DRM marker here, so the option intentionally follows the `npv-video` mode. Normal Canvas and cinema discovery are unchanged. The global `backgroundSource = artwork` and disabled dynamic background take precedence. Artwork mode returns the original video to its panel and displays the cover behind the interface; no placeholder is needed in that mode.
 
 ## Adaptive effect compositor
 
@@ -54,7 +58,7 @@ Opening the settings modal pauses decorative CSS animation through `luminous-set
 
 ## Cleanup
 
-Inactive captured-video buffers are cleaned after the fixed media transition. Cleanup pauses the clone, stops `MediaStreamTrack`s, clears `srcObject`/`src`, and calls `load()`. `destroy()` invalidates pending image/video work, restores any direct-video bridge, stops streams, removes the background root, and resets state.
+Inactive captured-video buffers are cleaned after the fixed media transition. Cleanup pauses the clone, stops `MediaStreamTrack`s, clears `srcObject`/`src`, and calls `load()`. `destroy()` invalidates pending image/video work, returns all promoted videos to their original slots, stops streams, removes the background root, and resets state.
 
 ## Performance regression checklist
 

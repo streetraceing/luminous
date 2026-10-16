@@ -63,42 +63,41 @@ html.hideDynamicBackground #luminous-dynamic-background {
   display: none;
 }
 
-/* Protected long-form NPV videos cannot be mirrored via captureStream().
-   The original Spotify <video> stays React-owned and is promoted with
-   position: fixed; only ancestor properties that establish a fixed
-   containing block are neutralised. Sidebar overflow/clipping/position and
-   z-index are deliberately left intact. */
-
-.luminous-direct-video-host {
-  --luminous-direct-video-placeholder-image: none;
-  --luminous-direct-video-placeholder-height: 0px;
-  min-height: var(--luminous-direct-video-placeholder-height);
+/* Original EME media shares the artwork/Canvas stage; no sidebar overrides. */
+.luminous-direct-video-placeholder {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+  flex-shrink: 0;
+  overflow: hidden;
+  border-radius: 8px;
   background:
-    linear-gradient(180deg, rgba(8, 10, 14, 0.16), rgba(8, 10, 14, 0.58)),
-    var(--luminous-direct-video-placeholder-image) center / cover no-repeat,
-    color-mix(in srgb, var(--luminous-ui-base) 88%, black) !important;
-  box-shadow: inset 0 -80px 120px rgba(0, 0, 0, 0.2);
+    linear-gradient(180deg, rgba(8, 10, 14, 0.08), rgba(8, 10, 14, 0.6)),
+    var(--luminous-direct-video-placeholder-image, none) center / cover
+      no-repeat,
+    var(--spice-sidebar);
 }
 
-/* The protected video remains a descendant of Spotify's right-sidebar
-   stacking context even after its fixed containing blocks are neutralised.
-   Keep the normal Spotify shell above that context instead of mutating the
-   sidebar's own z-index/overflow/position. */
-html.luminous-direct-video-active
-  :is(
-    #main-view,
-    #Desktop_LeftSidebar_Id,
-    .Root__globalNav,
-    aside[data-testid='now-playing-bar']
-  ) {
-  z-index: 20 !important;
+.luminous-direct-video-placeholder-label {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  max-width: calc(100% - 24px);
+  padding: 6px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.55);
+  color: white;
+  font-size: 12px;
+  line-height: 1.4;
+  pointer-events: none;
 }
 
 video.luminous-direct-video-background {
-  position: fixed !important;
-  inset: -10vh -10vw !important;
-  width: 120vw !important;
-  height: 120vh !important;
+  position: absolute !important;
+  inset: -10% !important;
+  width: 120% !important;
+  height: 120% !important;
   min-width: 0 !important;
   min-height: 0 !important;
   max-width: none !important;
@@ -116,7 +115,7 @@ video.luminous-direct-video-background {
   user-select: none !important;
   visibility: visible !important;
   display: block !important;
-  z-index: -2147483647 !important;
+  z-index: 0 !important;
   opacity: 0 !important;
   transition: opacity 250ms linear !important;
   will-change: opacity, transform !important;

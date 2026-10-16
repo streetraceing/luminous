@@ -12,6 +12,7 @@ export type BackgroundSource = (typeof backgroundSources)[number];
 export type LuminousSettingValues = {
   dynamicBackground: boolean;
   backgroundSource: BackgroundSource;
+  musicVideoBackground: 'video' | 'artwork';
   dynamicPalette: boolean;
   backgroundBlur: number;
   backgroundBrightness: number;
@@ -164,6 +165,10 @@ export const settingDefinitions: {
       syncCanvasEnabled();
     },
   },
+  musicVideoBackground: {
+    default: 'video',
+    normalize: choiceNormalizer(['video', 'artwork'] as const, 'video'),
+  },
   dynamicPalette: {
     default: true,
     normalize: booleanNormalizer(true),
@@ -209,6 +214,18 @@ export const settingsUi: readonly SettingUiDefinition[] = [
     control: 'choice',
     options: [
       { value: 'auto', label: 'Auto' },
+      { value: 'artwork', label: 'Artwork' },
+    ],
+  },
+  {
+    key: 'musicVideoBackground',
+    label: 'Music video background',
+    description:
+      'For full-length NPV videos only. Auto source must be enabled.',
+    section: 'appearance',
+    control: 'choice',
+    options: [
+      { value: 'video', label: 'Video' },
       { value: 'artwork', label: 'Artwork' },
     ],
   },

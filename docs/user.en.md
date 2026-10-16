@@ -10,3 +10,7 @@ Open **Luminous → Settings** in Spotify.
 In `2.2.3` the visual pipeline is intentionally reduced to the proven stable path: parallax, Orbit, grain/vignette/detail-quality, and configurable cross-fade from the previous refactor were removed to eliminate track-change interface flicker.
 
 - Protected long-form NPV video uses the original Spotify video element directly as the background instead of DRM-incompatible stream capture; Spotify's main shell stays above the promoted video, the right sidebar keeps native scrolling/clipping, and the vacated video slot keeps its size with the current artwork as a placeholder.
+
+### Full-length music videos
+
+In Appearance → **Music video background**, choose **Video** to use the original video in the shared background with an artwork placeholder in NPV, or **Artwork** to keep the video in its panel and show the cover behind the UI. Requires **Background source → Auto**. The preference is saved and applies immediately; short Canvas loops are unaffected.
