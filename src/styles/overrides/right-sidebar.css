@@ -76,6 +76,10 @@ div[data-testid='NPV_Panel_OpenDiv'] > div:nth-child(2) > div {
   background: transparent;
 }
 
+div[data-testid='NPV_Panel_OpenDiv'] > div:nth-child(2) > div > div div {
+  background: transparent;
+}
+
 div[data-testid='NPV_Panel_OpenDiv']
   > div:nth-child(2):not(:has(h2))
   > div
