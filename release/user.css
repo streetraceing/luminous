@@ -717,32 +717,20 @@ html:root {
 html.hideDynamicBackground #luminous-dynamic-background {
   display: none;
 }
-.luminous-direct-video-host {
-  --luminous-direct-video-placeholder-image: none;
-  --luminous-direct-video-placeholder-height: 0px;
-  min-height: var(--luminous-direct-video-placeholder-height);
-  box-shadow: inset 0 -80px 120px #0003;
-  background:
-    linear-gradient(180deg, #080a0e29, #080a0e94),
-    var(--luminous-direct-video-placeholder-image) center / cover no-repeat,
-    color-mix(in srgb, var(--luminous-ui-base) 88%, black) !important;
+.luminous-direct-video-anchor {
+  display: none !important;
 }
-html.luminous-direct-video-active
-  :is(
-    #main-view,
-    #Desktop_LeftSidebar_Id,
-    .Root__globalNav,
-    aside[data-testid='now-playing-bar']
-  ) {
-  z-index: 20 !important;
+html.luminous-settings-open .luminous-direct-video-placeholder,
+html.hideDynamicBackground .luminous-direct-video-placeholder {
+  visibility: hidden !important;
 }
 video.luminous-direct-video-background {
   object-fit: cover !important;
   object-position: center !important;
-  width: 120vw !important;
+  width: 120% !important;
   min-width: 0 !important;
   max-width: none !important;
-  height: 120vh !important;
+  height: 120% !important;
   min-height: 0 !important;
   max-height: none !important;
   filter: blur(var(--luminous-background-blur))
@@ -752,7 +740,7 @@ video.luminous-direct-video-background {
   -webkit-user-select: none !important;
   user-select: none !important;
   visibility: visible !important;
-  z-index: -2147483647 !important;
+  z-index: 0 !important;
   opacity: 0 !important;
   will-change: opacity, transform !important;
   border: 0 !important;
@@ -760,8 +748,8 @@ video.luminous-direct-video-background {
   margin: 0 !important;
   transition: opacity 0.25s linear !important;
   display: block !important;
-  position: fixed !important;
-  inset: -10vh -10vw !important;
+  position: absolute !important;
+  inset: -10% !important;
   transform: translateZ(0) !important;
 }
 video.luminous-direct-video-background--active {
@@ -1512,10 +1500,6 @@ div:has(div > aside[data-testid='now-playing-bar'])
   > div:has(aside[data-testid='now-playing-bar']) {
   background: 0 0;
 }
-.main-nowPlayingBar-nowPlayingBar {
-  background: var(--luminous-ui-background);
-  border-radius: 8px;
-}
 html.hideDynamicBackground aside[data-testid='now-playing-bar'] {
   background: 0 0;
 }
@@ -1704,15 +1688,7 @@ header[data-testid='topbar'] {
   > main
   > section[data-testid='your-episodes-page']
   > div:last-child
-  > div:empty {
-  background: 0 0 !important;
-}
-.main-nowPlayingView-headerWrapper {
-  background: var(--luminous-ui-background) !important;
-}
-.Root__top-container > div:has(#Desktop_PanelContainer_Id) {
-  background: var(--luminous-ui-background) !important;
-}
+  > div:empty,
 #Desktop_PanelContainer_Id,
 #Desktop_PanelContainer_Id:before {
   background: 0 0 !important;
@@ -1757,16 +1733,25 @@ header[data-testid='topbar'] {
 .NowPlayingView {
   background: 0 0;
 }
-.Root__top-container > div:has(.NowPlayingView) {
-  background: var(--luminous-ui-background);
-}
 .Root__top-container > div:has(.NowPlayingView) > div {
   background: 0 0;
 }
-div[data-testid='NPV_Panel_OpenDiv'] > div > div > div:before,
-div[data-testid='NPV_Panel_OpenDiv'] > div:nth-child(2),
-div[data-testid='NPV_Panel_OpenDiv'] > div:nth-child(2) > div {
+div[data-testid='NPV_Panel_OpenDiv'] > div > div > div:before {
   background: 0 0;
+}
+div[data-testid='NPV_Panel_OpenDiv'] > div:nth-child(2):not(:has(h2)) {
+  background: 0 0;
+}
+div[data-testid='NPV_Panel_OpenDiv'] > div:nth-child(2) > div,
+div[data-testid='NPV_Panel_OpenDiv'] > div:nth-child(2) > div > div div {
+  background: 0 0;
+}
+div[data-testid='NPV_Panel_OpenDiv']
+  > div:nth-child(2):not(:has(h2))
+  > div
+  > div
+  > div {
+  background-color: var(--section-background-base);
 }
 .luminous-canvas-frame-parent:before {
   background: 0 0 !important;
@@ -1775,6 +1760,41 @@ div[data-testid='NPV_Panel_OpenDiv']
   > div:has(.canvasVideoContainerNPV)
   > div
   > div:has(.canvasVideoContainerNPV) {
+  aspect-ratio: 9/14 !important;
+}
+div[data-testid='NPV_Panel_OpenDiv']
+  > div
+  > div
+  > div:not(:is(div:empty, div[data-testid='track-visual-enhancement'])):has(
+    img
+  )
+  :before {
+  background: 0 0 !important;
+}
+div[data-testid='NPV_Panel_OpenDiv']
+  > div
+  > div
+  > div:not(:is(div:empty, div[data-testid='track-visual-enhancement'])):has(
+    img
+  )
+  :after {
+  background: 0 0 !important;
+}
+div[data-testid='NPV_Panel_OpenDiv']
+  > div
+  > div
+  > div:not(:is(div:empty, div[data-testid='track-visual-enhancement'])):has(
+    img
+  )
+  img {
+  aspect-ratio: 9/14;
+}
+div[data-testid='NPV_Panel_OpenDiv']
+  > div
+  > div
+  > div:has(> div[data-testid='track-visual-enhancement']):has(
+    > div[aria-hidden='true'] > div[draggable='true'] > div > img
+  ) {
   aspect-ratio: 9/14 !important;
 }
 .Root__top-container,

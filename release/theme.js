@@ -22,7 +22,8 @@ var e = class {
     static directVideoSource = null;
     static directVideoKey = null;
     static directVideoHosts = new Map();
-    static directVideoBridgeSnapshots = new Map();
+    static directVideoSlots = new Map();
+    static directVideoPlaceholders = new Map();
     static directVideoCleanupTimers = new Map();
     static currentType = `none`;
     static listeners = new Map();
@@ -117,7 +118,8 @@ var e = class {
     }
     static ensureBackground() {
       if (this.root?.isConnected) return;
-      (this.cancelVideoCleanup(),
+      (this.restoreAllDirectVideos(),
+        this.cancelVideoCleanup(),
         this.videoLayers?.forEach((e) => this.resetVideo(e)),
         this.root?.remove(),
         (this.root = document.createElement(`div`)),
@@ -416,11 +418,10 @@ var e = class {
         e.classList.contains(`luminous-direct-video-background--active`)
       ) {
         ((this.directVideoKey = t), (this.currentCanvasKey = t));
-        let r = this.directVideoHosts.get(e);
-        return (
-          r && this.prepareDirectVideoPlaceholder(r, e, n ?? e.poster),
-          !0
-        );
+        let r = this.directVideoSlots.get(e);
+        return r?.isConnected
+          ? (this.updateDirectVideoPlaceholder(r, n ?? e.poster), !0)
+          : (this.deactivateDirectVideo(!0), !1);
       }
       if (
         !e.isConnected ||
@@ -441,17 +442,31 @@ var e = class {
       }
       (this.directVideoSource &&
         this.directVideoSource !== e &&
-        this.deactivateDirectVideo(),
+        this.deactivateDirectVideo(!0),
         this.cancelDirectVideoCleanup(e));
-      let r = e.closest(`#Desktop_PanelContainer_Id`);
-      return r
-        ? (this.prepareDirectVideoBridge(e, r),
-          this.prepareDirectVideoPlaceholder(r, e, n ?? e.poster),
-          e.classList.add(`luminous-direct-video-background`),
-          r.classList.add(`luminous-direct-video-host`),
-          document.documentElement.classList.add(
-            `luminous-direct-video-active`,
+      let r =
+        e.closest(`#Desktop_PanelContainer_Id`) ??
+        this.directVideoHosts.get(e) ??
+        null;
+      if (!r)
+        return (
+          Luminous.Logger.warn(
+            `Background`,
+            `Protected video has no NPV panel host`,
+            e,
           ),
+          !1
+        );
+      if (!this.mediaStage || !e.parentElement) return !1;
+      let i =
+        this.directVideoSlots.get(e) ??
+        this.createDirectVideoPlaceholder(e, n ?? e.poster);
+      return !i.isConnected || !r.contains(i)
+        ? !1
+        : (this.updateDirectVideoPlaceholder(i, n ?? e.poster),
+          this.directVideoSlots.set(e, i),
+          this.moveDirectVideo(e, this.mediaStage),
+          e.classList.add(`luminous-direct-video-background`),
           (this.directVideoSource = e),
           (this.directVideoKey = t),
           this.directVideoHosts.set(e, r),
@@ -459,19 +474,13 @@ var e = class {
           (this.currentCanvasKey = t),
           e.offsetWidth,
           e.classList.add(`luminous-direct-video-background--active`),
-          this.transitionTo(`canvas`, e),
+          this.transitionTo(`canvas`, e, !0),
           Luminous.Logger.info(
             `Background`,
             `Using original protected video as background`,
             e,
           ),
-          !0)
-        : (Luminous.Logger.warn(
-            `Background`,
-            `Protected video has no NPV panel host`,
-            e,
-          ),
-          !1);
+          !0);
     }
     static deactivateDirectVideo(e = !1) {
       let t = this.directVideoSource;
@@ -501,107 +510,258 @@ var e = class {
         e.classList.remove(
           `luminous-direct-video-background`,
           `luminous-direct-video-background--active`,
-        ));
-      let t = this.directVideoHosts.get(e);
-      (this.directVideoHosts.delete(e),
-        t &&
-          !t.querySelector(`video.luminous-direct-video-background`) &&
-          (t.classList.remove(`luminous-direct-video-host`),
-          this.restoreDirectVideoPlaceholder(t)),
-        this.restoreDirectVideoBridge(e),
-        this.directVideoHosts.size === 0 &&
-          document.documentElement.classList.remove(
-            `luminous-direct-video-active`,
-          ));
-    }
-    static prepareDirectVideoBridge(e, t) {
-      this.restoreDirectVideoBridge(e);
-      let n = new Map(),
-        r = (e, t, r) => {
-          let i = n.get(e);
-          (i || ((i = new Map()), n.set(e, i)),
-            i.has(t) ||
-              i.set(t, {
-                value: e.style.getPropertyValue(t),
-                priority: e.style.getPropertyPriority(t),
-              }),
-            e.style.setProperty(t, r, `important`));
-        },
-        i = t;
-      for (; i && i !== document.body;) {
-        let e = getComputedStyle(i);
-        if (
-          (e.transform !== `none` && r(i, `transform`, `none`),
-          e.translate !== `none` && r(i, `translate`, `none`),
-          e.rotate !== `none` && r(i, `rotate`, `none`),
-          e.scale !== `none` && r(i, `scale`, `none`),
-          e.perspective !== `none` && r(i, `perspective`, `none`),
-          e.filter !== `none` && r(i, `filter`, `none`),
-          e.backdropFilter !== `none` && r(i, `backdrop-filter`, `none`),
-          e.contain !== `none` && r(i, `contain`, `none`),
-          e.containerType !== `normal` && r(i, `container-type`, `normal`),
-          e.contentVisibility !== `visible` &&
-            r(i, `content-visibility`, `visible`),
-          e.willChange !== `auto` && r(i, `will-change`, `auto`),
-          i.classList.add(`luminous-direct-video-bridge`),
-          i.classList.contains(`Root__top-container`))
-        )
-          break;
-        i = i.parentElement;
-      }
-      this.directVideoBridgeSnapshots.set(e, n);
-    }
-    static prepareDirectVideoPlaceholder(e, t, n) {
-      let r = e.getBoundingClientRect(),
-        i = Number.parseFloat(
-          e.style.getPropertyValue(
-            `--luminous-direct-video-placeholder-height`,
-          ),
         ),
-        a = t.classList.contains(`luminous-direct-video-background`)
-          ? 0
-          : t.getBoundingClientRect().height,
-        o = Math.max(Number.isFinite(i) ? i : 0, r.height, a);
-      o > 0
-        ? e.style.setProperty(
-            `--luminous-direct-video-placeholder-height`,
-            `${Math.round(o)}px`,
-          )
-        : e.style.removeProperty(`--luminous-direct-video-placeholder-height`);
-      let s = n?.trim();
-      s
-        ? e.style.setProperty(
-            `--luminous-direct-video-placeholder-image`,
-            `url(${JSON.stringify(s)})`,
-          )
-        : e.style.removeProperty(`--luminous-direct-video-placeholder-image`);
+        this.directVideoHosts.delete(e));
+      let t = this.directVideoSlots.get(e);
+      (this.directVideoSlots.delete(e),
+        t?.parentElement
+          ? this.moveDirectVideo(e, t.parentElement, t)
+          : e.parentElement === this.mediaStage && e.remove(),
+        t && this.removeDirectVideoPlaceholder(t),
+        t?.remove());
     }
-    static restoreDirectVideoPlaceholder(e) {
-      (e.style.removeProperty(`--luminous-direct-video-placeholder-image`),
-        e.style.removeProperty(`--luminous-direct-video-placeholder-height`));
+    static getDirectVideoSource() {
+      let e =
+        this.directVideoSource ??
+        Array.from(this.directVideoHosts.keys()).find(
+          (e) => e.isConnected && this.directVideoSlots.get(e)?.isConnected,
+        );
+      if (!e?.isConnected) return null;
+      let t = this.directVideoSlots.get(e),
+        n = this.directVideoHosts.get(e);
+      return (
+        t && this.directVideoPlaceholders.get(t)?.sync(),
+        t?.isConnected && n?.contains(t) ? e : null
+      );
     }
-    static restoreDirectVideoBridge(e) {
-      let t = this.directVideoBridgeSnapshots.get(e);
-      t &&
-        (t.forEach((e, t) => {
-          (e.forEach(({ value: e, priority: n }, r) => {
-            e ? t.style.setProperty(r, e, n) : t.style.removeProperty(r);
-          }),
-            t.classList.remove(`luminous-direct-video-bridge`));
+    static moveDirectVideo(e, t, n = null) {
+      let r = t;
+      r.moveBefore && t.isConnected && e.isConnected
+        ? r.moveBefore(e, n)
+        : t.insertBefore(e, n);
+    }
+    static createDirectVideoPlaceholder(e, t) {
+      let n = e.getBoundingClientRect(),
+        r = e.closest(`#Desktop_PanelContainer_Id`),
+        i = e.parentElement,
+        a = i;
+      for (let e = i; e && e !== r; e = e.parentElement) {
+        let t = e.getBoundingClientRect(),
+          r =
+            Math.abs(t.width - n.width) <= 4 &&
+            (t.height === 0 || Math.abs(t.height - n.height) <= 4),
+          i =
+            n.width > 0 &&
+            n.height > 0 &&
+            t.width >= n.width - 4 &&
+            t.width <= n.width * 1.5 &&
+            t.height <= n.height * 1.5 &&
+            Math.abs(t.left - n.left) <= 4 &&
+            Math.abs(t.top - n.top) <= 4;
+        if (t.width > 0 && (r || i)) {
+          a = e;
+          break;
+        }
+      }
+      let o = document.createElement(`div`);
+      ((o.className = `luminous-direct-video-anchor`),
+        (o.hidden = !0),
+        e.before(o));
+      let s = document.createElement(`div`);
+      ((s.className = `luminous-direct-video-placeholder`),
+        s.setAttribute(`role`, `img`),
+        s.setAttribute(
+          `aria-label`,
+          `Music video is playing in the background`,
+        ),
+        Object.assign(s.style, {
+          position: `fixed`,
+          display: `block`,
+          overflow: `hidden`,
+          background: `var(--spice-sidebar, #181818)`,
+          borderRadius: `8px`,
+          pointerEvents: `none`,
+          isolation: `isolate`,
+          zIndex: `100`,
+        }));
+      let c = document.createElement(`img`);
+      ((c.className = `luminous-direct-video-placeholder-artwork`),
+        (c.alt = ``),
+        (c.decoding = `async`),
+        Object.assign(c.style, {
+          position: `absolute`,
+          inset: `0`,
+          width: `100%`,
+          height: `100%`,
+          objectFit: `cover`,
+          maxWidth: `none`,
+          maxHeight: `none`,
         }),
-        this.directVideoBridgeSnapshots.delete(e));
+        c.addEventListener(`error`, () => {
+          c.style.visibility = `hidden`;
+        }),
+        c.addEventListener(`load`, () => {
+          c.style.visibility = `visible`;
+        }));
+      let l = document.createElement(`span`);
+      Object.assign(l.style, {
+        position: `absolute`,
+        inset: `0`,
+        background: `linear-gradient(180deg, rgba(8,10,14,.08), rgba(8,10,14,.6))`,
+      });
+      let u = document.createElement(`span`);
+      ((u.className = `luminous-direct-video-placeholder-label`),
+        (u.textContent = `Video in background`),
+        Object.assign(u.style, {
+          position: `absolute`,
+          left: `12px`,
+          bottom: `12px`,
+          maxWidth: `calc(100% - 24px)`,
+          padding: `6px 10px`,
+          border: `1px solid rgba(255,255,255,.16)`,
+          borderRadius: `999px`,
+          background: `rgba(0,0,0,.55)`,
+          color: `#fff`,
+          fontSize: `12px`,
+          lineHeight: `1.4`,
+        }),
+        s.append(c, l, u));
+      let d = new Map(),
+        f = (e, t) => {
+          (d.has(e) ||
+            d.set(e, {
+              value: a.style.getPropertyValue(e),
+              priority: a.style.getPropertyPriority(e),
+            }),
+            a.style.setProperty(e, t, `important`));
+        },
+        p =
+          n.width > 0 && n.height > 0
+            ? n.width / n.height
+            : e.videoWidth / e.videoHeight || 16 / 9,
+        m = () => {
+          let e = a.getBoundingClientRect().width || n.width,
+            t = getComputedStyle(a),
+            r =
+              t.boxSizing === `border-box`
+                ? 0
+                : (parseFloat(t.paddingTop) || 0) +
+                  (parseFloat(t.paddingBottom) || 0) +
+                  (parseFloat(t.borderTopWidth) || 0) +
+                  (parseFloat(t.borderBottomWidth) || 0),
+            i = `${Math.max(0, e / p - r)}px`;
+          a.style.getPropertyValue(`min-height`) !== i && f(`min-height`, i);
+        };
+      m();
+      let h = a.getBoundingClientRect(),
+        g = r,
+        _ = g.getBoundingClientRect(),
+        v = h.width > 0 ? a : g,
+        y = v === a ? h : _,
+        b = n.width || y.width,
+        x = n.height || b / p,
+        S = n.width > 0 ? n.left - y.left : 0,
+        C = n.height > 0 ? n.top - y.top : 0,
+        w = null,
+        T = () => {
+          if (
+            ((w = null),
+            !o.isConnected ||
+              !g.contains(o) ||
+              g.getClientRects().length === 0 ||
+              g.getBoundingClientRect().width <= 0 ||
+              getComputedStyle(g).visibility === `hidden`)
+          ) {
+            s.style.display = `none`;
+            return;
+          }
+          m();
+          let e = v.getBoundingClientRect(),
+            t = e.width > 0 && y.width > 0 ? e.width / y.width : 1,
+            n = e.left + S * t,
+            r = e.top + C * t,
+            i = b * t,
+            c = x * t,
+            l = Math.max(0, n),
+            u = Math.max(0, r),
+            d = Math.min(window.innerWidth, n + i),
+            f = Math.min(window.innerHeight, r + c);
+          for (let e = a; e && e !== document.body; e = e.parentElement) {
+            let t = e.getBoundingClientRect();
+            if (t.width <= 0 || t.height <= 0) continue;
+            let n = getComputedStyle(e);
+            ((e === g || /(auto|scroll|hidden|clip)/.test(n.overflowX)) &&
+              ((l = Math.max(l, t.left)), (d = Math.min(d, t.right))),
+              (e === g || /(auto|scroll|hidden|clip)/.test(n.overflowY)) &&
+                ((u = Math.max(u, t.top)), (f = Math.min(f, t.bottom))));
+          }
+          let p = g.querySelector(`.main-nowPlayingView-headerWrapper`);
+          (p && (u = Math.max(u, p.getBoundingClientRect().bottom)),
+            (s.style.display = d > l && f > u ? `block` : `none`),
+            Object.assign(s.style, {
+              left: `${n}px`,
+              top: `${r}px`,
+              width: `${i}px`,
+              height: `${c}px`,
+              clipPath: `inset(${Math.max(0, u - r)}px ${Math.max(0, n + i - d)}px ${Math.max(0, r + c - f)}px ${Math.max(0, l - n)}px)`,
+            }));
+        },
+        E = () => {
+          w === null && (w = requestAnimationFrame(T));
+        },
+        D = new ResizeObserver(E);
+      return (
+        D.observe(a),
+        g !== a && D.observe(g),
+        window.addEventListener(`resize`, E, { passive: !0 }),
+        document.addEventListener(`scroll`, E, { capture: !0, passive: !0 }),
+        document.body.append(s),
+        this.directVideoPlaceholders.set(o, {
+          element: s,
+          frame: a,
+          observer: D,
+          styles: d,
+          sync: E,
+          dispose: () => {
+            (w !== null && cancelAnimationFrame(w),
+              window.removeEventListener(`resize`, E),
+              document.removeEventListener(`scroll`, E, !0));
+          },
+        }),
+        T(),
+        this.updateDirectVideoPlaceholder(o, t),
+        o
+      );
+    }
+    static updateDirectVideoPlaceholder(e, t) {
+      let n = this.directVideoPlaceholders
+        .get(e)
+        ?.element?.querySelector(`img`);
+      if (!n) return;
+      let r = t?.trim();
+      (r
+        ? n.getAttribute(`src`) !== r && (n.src = r)
+        : (n.removeAttribute(`src`), (n.style.visibility = `hidden`)),
+        this.directVideoPlaceholders.get(e)?.sync());
+    }
+    static removeDirectVideoPlaceholder(e) {
+      let t = this.directVideoPlaceholders.get(e);
+      t &&
+        (t.observer.disconnect(),
+        t.dispose(),
+        t.element.remove(),
+        t.styles.forEach(({ value: e, priority: n }, r) => {
+          e
+            ? t.frame.style.setProperty(r, e, n)
+            : t.frame.style.removeProperty(r);
+        }),
+        this.directVideoPlaceholders.delete(e));
     }
     static restoreAllDirectVideos() {
       (this.directVideoCleanupTimers.forEach((e) => window.clearTimeout(e)),
         this.directVideoCleanupTimers.clear(),
         Array.from(this.directVideoHosts.keys()).forEach((e) =>
           this.restoreDirectVideo(e),
-        ),
-        this.directVideoBridgeSnapshots.forEach((e, t) =>
-          this.restoreDirectVideoBridge(t),
-        ),
-        document.documentElement.classList.remove(
-          `luminous-direct-video-active`,
         ),
         (this.directVideoSource = null),
         (this.directVideoKey = null));
@@ -634,10 +794,10 @@ var e = class {
         this.clearPendingCanvas(),
         this.transitionTo(`none`));
     }
-    static transitionTo(e, t = null) {
+    static transitionTo(e, t = null, n = !1) {
       if (
         !(!this.imageLayers || !this.videoLayers) &&
-        !(this.currentType === e && this.get() === t)
+        !(!n && this.currentType === e && this.get() === t)
       ) {
         if (
           (this.directVideoSource &&
@@ -1027,9 +1187,11 @@ var l = class {
       if (e) return this.createPayload(e, `npv`);
       let t = this.findVisibleVideo(this.NPV_LONGFORM_VIDEO_SELECTOR);
       if (t) return this.createPayload(t, `npv-video`);
-      let n = this.findCinemaVideo();
-      return n
-        ? this.createPayload(n, `cinema`)
+      let n = Luminous.Background.getDirectVideoSource();
+      if (n && !n.ended) return this.createPayload(n, `npv-video`);
+      let r = this.findCinemaVideo();
+      return r
+        ? this.createPayload(r, `cinema`)
         : this.createPayload(null, null);
     }
     static findCinemaVideo() {
@@ -1219,12 +1381,12 @@ var l = class {
     }
     static printBanner() {
       (console.log(
-        `%c Luminous v2.4.3 %c by streetraceing `,
+        `%c Luminous v2.4.4 %c by streetraceing `,
         `background:#1DB954;color:#000;padding:6px 12px;border-radius:8px 0 0 8px;font-weight:600;`,
         `background:#181818;color:#1DB954;padding:6px 12px;border-radius:0 8px 8px 0;font-weight:500;`,
       ),
         console.log(
-          `%c build: 11/10/2026 03:46:55 UTC+03:00 `,
+          `%c build: 16/10/2026 18:31:30 UTC+03:00 `,
           `color:#888;font-size:12px;`,
         ));
     }
@@ -1820,8 +1982,8 @@ var k = class {
         t = Luminous.Song.getSync();
       return {
         luminous: {
-          version: `2.4.3`,
-          buildTime: `11/10/2026 03:46:55 UTC+03:00`,
+          version: `2.4.4`,
+          buildTime: `16/10/2026 18:31:30 UTC+03:00`,
         },
         runtime: {
           background: Luminous.Background.getType(),
@@ -2008,8 +2170,8 @@ var k = class {
   ],
   j = 48,
   oe = 24,
-  M = 20,
-  se = class {
+  se = 20,
+  ce = class {
     static requestId = 0;
     static source = null;
     static cache = new Map();
@@ -2025,8 +2187,8 @@ var k = class {
         this.clearAppliedPalette());
     }
     static setMotionDuration(e) {
-      let t = Number.isFinite(e) ? Math.min(60, Math.max(8, e)) : M;
-      ((this.motionScale = t / M),
+      let t = Number.isFinite(e) ? Math.min(60, Math.max(8, e)) : se;
+      ((this.motionScale = t / se),
         this.currentProfile &&
           this.applyDurations(this.currentProfile.baseDurations));
     }
@@ -2422,7 +2584,7 @@ var k = class {
       return this.getTarget()?.classList.contains(A) === !0;
     }
   },
-  ce = class {
+  le = class {
     static STORAGE_KEY = `luminous-settings`;
     static PERSIST_DELAY_MS = 180;
     static registry = new Map();
@@ -2656,7 +2818,7 @@ var k = class {
       return (t || ((t = new Set()), this.listeners.set(e, t)), t);
     }
   },
-  le = class {
+  ue = class {
     static PLAYER_TIMEOUT_MESSAGE = `Spicetify Player not available`;
     static INITIAL_TRACK_SYNC_INTERVAL = 100;
     static current = null;
@@ -2734,6 +2896,14 @@ var k = class {
     }
     static getSync() {
       return this.current ? this.createPayload(this.current) : null;
+    }
+    static refresh() {
+      return (
+        typeof Spicetify < `u` &&
+          Spicetify.Player?.data?.item &&
+          this.syncCurrentTrack(),
+        this.getSync()
+      );
     }
     static async initialize(e) {
       (await this.waitForPlayer(e),
@@ -2820,22 +2990,12 @@ var k = class {
     }
     static createTrackSignature(e) {
       let t = e.artists?.map((e) => e.name).join(`|`) ?? ``,
-        n = N(
-          e.images?.[0]?.url ??
-            e.album?.images?.[0]?.url ??
-            e.metadata?.image_url ??
-            null,
-        );
+        n = M(e);
       return `${e.uri}\u0000${e.name}\u0000${t}\u0000${n ?? ``}`;
     }
     static createPayload(e) {
       let t = e.artists?.map((e) => e.name) ?? [],
-        n = N(
-          e.images?.[0]?.url ??
-            e.album?.images?.[0]?.url ??
-            e.metadata?.image_url ??
-            null,
-        );
+        n = M(e);
       return {
         track: e,
         name: e.name,
@@ -2869,7 +3029,7 @@ var k = class {
       });
     }
   };
-function N(e) {
+function de(e) {
   if (!e) return null;
   if (e.startsWith(`spotify:image:`)) {
     let t = e.slice(14);
@@ -2877,7 +3037,22 @@ function N(e) {
   }
   return e;
 }
-function ue() {
+function M(e) {
+  let t = [
+    ...(e.images ?? []).map((e) => e.url),
+    ...(e.album?.images ?? []).map((e) => e.url),
+    e.metadata?.image_xlarge_url,
+    e.metadata?.image_large_url,
+    e.metadata?.image_url,
+    e.metadata?.image_small_url,
+  ];
+  for (let e of t) {
+    let t = de(e?.trim());
+    if (t) return t;
+  }
+  return null;
+}
+function fe() {
   let e = window.Luminous;
   if (typeof e?.destroy == `function`)
     try {
@@ -2886,59 +3061,61 @@ function ue() {
       console.warn(`[Luminous] Failed to clean previous runtime`, e);
     }
 }
-function de(t) {
+function pe(t) {
   Object.defineProperty(window, 'Luminous', {
     value: {
       Background: e,
       Canvas: l,
       Diagnostics: ne,
-      Song: le,
+      Song: ue,
       Native: re,
-      Palette: se,
-      Settings: ce,
+      Palette: ce,
+      Settings: le,
       Logger: u,
       destroy: t,
-      version: `2.4.3`,
+      version: `2.4.4`,
     },
     configurable: !0,
   });
 }
-function P() {
+function N() {
   return Spicetify.React;
 }
+function P() {
+  return N().useEffect;
+}
 function F() {
-  return P().useEffect;
+  return N().useMemo;
 }
 function I() {
-  return P().useMemo;
+  return N().useRef;
 }
 function L() {
-  return P().useRef;
+  return N().useState;
 }
-function R() {
-  return P().useState;
-}
-function fe() {
-  let e = F(),
-    t = I(),
-    n = R(),
+function me() {
+  let e = P(),
+    t = F(),
+    n = L(),
     [r, i] = n(() => Luminous.Song.getSync()),
     [a, o] = n(() => Luminous.Canvas.get()),
     [s, c] = n(() => Luminous.Settings.get(`dynamicBackground`) !== !1),
-    [l, u] = n(() => Luminous.Settings.get(`dynamicPalette`) !== !1),
-    [d, f] = n(() => p().status !== `booting`),
-    m = t(
+    [l, u] = n(() => Luminous.Settings.get(`musicVideoBackground`)),
+    [d, f] = n(() => Luminous.Settings.get(`dynamicPalette`) !== !1),
+    [m, g] = n(() => p().status !== `booting`),
+    _ = !!a.video && (a.mode !== `npv-video` || l !== `artwork`),
+    v = t(
       () =>
-        d
+        m
           ? s
-            ? a.video
-              ? `canvas:${a.source ?? ``}:${a.revision}:${r?.image ?? ``}`
+            ? _
+              ? `canvas:${a.mode}:${a.source ?? ``}:${a.revision}:${r?.image ?? ``}`
               : r?.image
-                ? `image:${r.image}`
-                : `empty`
+                ? `image:${l}:${r.image}`
+                : `empty:${l}`
             : `disabled`
           : `inactive`,
-      [d, a, s, r?.image],
+      [m, a, s, r?.image, _, l],
     );
   return (
     e(() => {
@@ -2963,14 +3140,25 @@ function fe() {
         Luminous.Canvas.addEventListener(`change`, l),
         Luminous.Canvas.addEventListener(`unmount`, l));
       let d = h((e) => {
-          f(e.status !== `booting`);
+          g(e.status !== `booting`);
         }),
         p = Luminous.Settings.subscribe(
           `dynamicBackground`,
           (e) => c(e !== !1),
           { immediate: !0 },
         ),
-        m = Luminous.Settings.subscribe(`dynamicPalette`, (e) => u(e !== !1), {
+        m = Luminous.Settings.subscribe(
+          `musicVideoBackground`,
+          (e) => {
+            if (e === `artwork`) {
+              let e = Luminous.Song.refresh();
+              e && (Luminous.Background.preloadImage(e.image), s(e));
+            }
+            u(e);
+          },
+          { immediate: !0 },
+        ),
+        _ = Luminous.Settings.subscribe(`dynamicPalette`, (e) => f(e !== !1), {
           immediate: !0,
         });
       return () => {
@@ -2981,13 +3169,14 @@ function fe() {
           Luminous.Canvas.removeEventListener(`unmount`, l),
           d(),
           p(),
+          _(),
           m(),
           Luminous.Background.destroy(),
           Luminous.Palette.clear());
       };
     }, []),
     e(() => {
-      if (!d) {
+      if (!m) {
         Luminous.Background.destroy();
         return;
       }
@@ -2995,7 +3184,7 @@ function fe() {
         Luminous.Background.clear();
         return;
       }
-      if (a.video) {
+      if (_) {
         Luminous.Background.render({
           canvas: a.video,
           canvasSource: a.source,
@@ -3009,27 +3198,27 @@ function fe() {
         return;
       }
       Luminous.Background.render();
-    }, [m]),
+    }, [v]),
     e(() => {
-      if (!d || !s || !l) {
+      if (!m || !s || !d) {
         Luminous.Palette.clear();
         return;
       }
       Luminous.Palette.applyFromImage(r?.image);
-    }, [d, l, s, r?.image]),
+    }, [m, d, s, r?.image]),
     null
   );
 }
-var pe = 600,
-  me = 2600,
-  he = 1500,
-  ge = Date.now();
-function _e() {
-  let e = P(),
-    t = F(),
-    n = I(),
-    r = L(),
-    i = R(),
+var he = 600,
+  ge = 2600,
+  _e = 1500,
+  ve = Date.now();
+function ye() {
+  let e = N(),
+    t = P(),
+    n = F(),
+    r = I(),
+    i = L(),
     [a, o] = i(!0),
     [s, c] = i(() => p()),
     [l, u] = i(() => Date.now()),
@@ -3045,9 +3234,9 @@ function _e() {
     }, [a]),
     t(() => {
       if (!m || f.current) return;
-      d.current === null && (d.current = ge);
+      d.current === null && (d.current = ve);
       let e = Date.now() - d.current,
-        t = s.status === `ready` ? pe : me,
+        t = s.status === `ready` ? he : ge,
         n = Math.max(0, t - e),
         r = window.setTimeout(() => {
           ((f.current = !0), o(!1));
@@ -3064,7 +3253,7 @@ function _e() {
   let g = n(
       () =>
         s.status === `waiting` && s.brokenSince
-          ? `Waiting for Spotify UI... (${ve(l - s.brokenSince)})`
+          ? `Waiting for Spotify UI... (${be(l - s.brokenSince)})`
           : s.status === `ready`
             ? `Welcome back. Lighting up Spotify...`
             : `Starting Luminous...`,
@@ -3073,7 +3262,7 @@ function _e() {
     _ =
       s.status === `waiting` &&
       s.brokenSince !== null &&
-      l - s.brokenSince >= he;
+      l - s.brokenSince >= _e;
   return m
     ? e.createElement(
         `div`,
@@ -3118,11 +3307,11 @@ function _e() {
       )
     : null;
 }
-function ve(e) {
+function be(e) {
   return `${Math.max(0, Math.floor(e / 1e3))}s`;
 }
-var z = [`still`, `drift`, `float`],
-  ye = [`auto`, `artwork`],
+var R = [`still`, `drift`, `float`],
+  z = [`auto`, `artwork`],
   B = (e, t, n) => (r) => {
     if (
       (typeof r != `number` && typeof r != `string`) ||
@@ -3133,18 +3322,18 @@ var z = [`still`, `drift`, `float`],
     return Number.isFinite(i) ? Math.min(n, Math.max(t, i)) : e;
   },
   V = (e) => (t) => (typeof t == `boolean` ? t : e),
-  be = (e, t) => (n) => (typeof n == `string` && e.includes(n) ? n : t),
-  xe = (e, t, n) => {
+  H = (e, t) => (n) => (typeof n == `string` && e.includes(n) ? n : t),
+  U = (e, t, n) => {
     t.forEach((t) => {
       Luminous.Settings.toggleClass(`${e}${t}`, t === n);
     });
   },
-  Se = () => {
+  W = () => {
     let e = Luminous.Settings.get(`dynamicBackground`) !== !1,
       t = Luminous.Settings.get(`backgroundSource`);
     Luminous.Canvas.setEnabled(e && t === `auto`);
   },
-  Ce = {
+  xe = {
     backgroundBlur: {
       default: 24,
       normalize: B(24, 0, 48),
@@ -3190,7 +3379,7 @@ var z = [`still`, `drift`, `float`],
       normalize: V(!0),
       apply: (e) => {
         if (
-          (Luminous.Settings.toggleClass(`hideDynamicBackground`, !e), Se(), e)
+          (Luminous.Settings.toggleClass(`hideDynamicBackground`, !e), W(), e)
         ) {
           (Luminous.Settings.setVar(`--luminous-background`, `transparent`),
             Luminous.Settings.setVar(
@@ -3210,10 +3399,14 @@ var z = [`still`, `drift`, `float`],
     },
     backgroundSource: {
       default: `auto`,
-      normalize: be(ye, `auto`),
+      normalize: H(z, `auto`),
       apply: (e) => {
-        (xe(`luminous-source-`, ye, e), Se());
+        (U(`luminous-source-`, z, e), W());
       },
+    },
+    musicVideoBackground: {
+      default: `video`,
+      normalize: H([`video`, `artwork`], `video`),
     },
     dynamicPalette: {
       default: !0,
@@ -3224,8 +3417,8 @@ var z = [`still`, `drift`, `float`],
     },
     backgroundMotion: {
       default: `drift`,
-      normalize: be(z, `drift`),
-      apply: (e) => xe(`luminous-motion-`, z, e),
+      normalize: H(R, `drift`),
+      apply: (e) => U(`luminous-motion-`, R, e),
     },
     motionDuration: {
       default: 20,
@@ -3241,7 +3434,7 @@ var z = [`still`, `drift`, `float`],
       apply: (e) => Luminous.Settings.toggleClass(`luminous-reduce-motion`, e),
     },
   },
-  we = [
+  Se = [
     {
       key: `dynamicBackground`,
       label: `Dynamic background`,
@@ -3257,6 +3450,17 @@ var z = [`still`, `drift`, `float`],
       control: `choice`,
       options: [
         { value: `auto`, label: `Auto` },
+        { value: `artwork`, label: `Artwork` },
+      ],
+    },
+    {
+      key: `musicVideoBackground`,
+      label: `Music video background`,
+      description: `For full-length NPV videos only. Auto source must be enabled.`,
+      section: `appearance`,
+      control: `choice`,
+      options: [
+        { value: `video`, label: `Video` },
         { value: `artwork`, label: `Artwork` },
       ],
     },
@@ -3353,7 +3557,7 @@ var z = [`still`, `drift`, `float`],
       control: `toggle`,
     },
   ],
-  Te = [
+  Ce = [
     {
       id: `balanced`,
       label: `Balanced`,
@@ -3421,35 +3625,35 @@ var z = [`still`, `drift`, `float`],
       },
     },
   ];
-function Ee() {
-  Object.entries(Ce).forEach(([e, t]) => {
+function we() {
+  Object.entries(xe).forEach(([e, t]) => {
     Luminous.Settings.register(e, t);
   });
 }
-var De = `Luminous Settings`,
-  Oe = `brightness`,
-  H = `luminous-theme-modal`,
-  U = `luminous-theme-modal-title`,
-  W = `luminous-theme-modal-description`,
+var Te = `Luminous Settings`,
+  Ee = `brightness`,
+  G = `luminous-theme-modal`,
+  De = `luminous-theme-modal-title`,
+  Oe = `luminous-theme-modal-description`,
   ke = [
     `button:not([disabled])`,
     `input:not([disabled])`,
     `[href]`,
     `[tabindex]:not([tabindex="-1"])`,
   ].join(`,`),
-  G = [
+  K = [
     { id: `presets`, label: `Presets` },
     { id: `appearance`, label: `Appearance` },
     { id: `motion`, label: `Motion` },
     { id: `advanced`, label: `Advanced` },
   ],
   Ae = 32,
-  je = we.map((e) => e.key);
+  je = Se.map((e) => e.key);
 function Me() {
-  let e = P(),
-    t = F(),
-    n = L(),
-    r = R(),
+  let e = N(),
+    t = P(),
+    n = I(),
+    r = L(),
     i = n(null),
     [a, o] = r(!1);
   return (
@@ -3462,7 +3666,7 @@ function Me() {
             t = window.setTimeout(n, 250);
             return;
           }
-          let r = new Spicetify.Menu.Item(De, !1, () => o(!0), Oe);
+          let r = new Spicetify.Menu.Item(Te, !1, () => o(!0), Ee);
           (r.register(), (i.current = r));
         };
       return (
@@ -3479,10 +3683,10 @@ function Me() {
   );
 }
 function Ne({ onClose: e }) {
-  let t = P(),
-    n = F(),
-    r = L(),
-    i = R(),
+  let t = N(),
+    n = P(),
+    r = I(),
+    i = L(),
     a = r(null),
     o = r(null),
     s = r({ presets: null, appearance: null, motion: null, advanced: null }),
@@ -3535,13 +3739,13 @@ function Ne({ onClose: e }) {
       );
     }, [e]));
   let d = (e, t) => {
-    let n = G.findIndex((e) => e.id === t),
+    let n = K.findIndex((e) => e.id === t),
       r = null;
-    (e.key === `ArrowRight` && (r = (n + 1) % G.length),
-      e.key === `ArrowLeft` && (r = (n - 1 + G.length) % G.length),
+    (e.key === `ArrowRight` && (r = (n + 1) % K.length),
+      e.key === `ArrowLeft` && (r = (n - 1 + K.length) % K.length),
       e.key === `Home` && (r = 0),
-      e.key === `End` && (r = G.length - 1),
-      r !== null && (e.preventDefault(), u(G[r].id, !0)));
+      e.key === `End` && (r = K.length - 1),
+      r !== null && (e.preventDefault(), u(K[r].id, !0)));
   };
   return t.createElement(
     `div`,
@@ -3555,12 +3759,12 @@ function Ne({ onClose: e }) {
       `div`,
       {
         ref: a,
-        id: H,
+        id: G,
         className: `luminous-theme-menu`,
         role: `dialog`,
         'aria-modal': `true`,
-        'aria-labelledby': U,
-        'aria-describedby': W,
+        'aria-labelledby': De,
+        'aria-describedby': Oe,
       },
       t.createElement(
         `div`,
@@ -3581,10 +3785,10 @@ function Ne({ onClose: e }) {
         t.createElement(
           `div`,
           { className: `luminous-theme-menu__title` },
-          t.createElement(`span`, { id: U }, `Luminous`),
+          t.createElement(`span`, { id: De }, `Luminous`),
           t.createElement(
             `small`,
-            { id: W },
+            { id: Oe },
             `Theme preferences · v${Luminous.version}`,
           ),
         ),
@@ -3623,7 +3827,7 @@ function Ne({ onClose: e }) {
           role: `tablist`,
           'aria-label': `Luminous settings sections`,
         },
-        G.map((e) =>
+        K.map((e) =>
           t.createElement(
             `button`,
             {
@@ -3631,13 +3835,13 @@ function Ne({ onClose: e }) {
               ref: (t) => {
                 s.current[e.id] = t;
               },
-              id: `${H}-${e.id}-tab`,
+              id: `${G}-${e.id}-tab`,
               className: `luminous-theme-menu__tab${c === e.id ? ` luminous-theme-menu__tab--active` : ``}`,
               type: `button`,
               role: `tab`,
               tabIndex: c === e.id ? 0 : -1,
               'aria-selected': String(c === e.id),
-              'aria-controls': `${H}-${e.id}-panel`,
+              'aria-controls': `${G}-${e.id}-panel`,
               onClick: () => u(e.id),
               onKeyDown: (t) => d(t, e.id),
             },
@@ -3648,10 +3852,10 @@ function Ne({ onClose: e }) {
       t.createElement(
         `div`,
         {
-          id: `${H}-${c}-panel`,
+          id: `${G}-${c}-panel`,
           className: `luminous-theme-menu__panel`,
           role: `tabpanel`,
-          'aria-labelledby': `${H}-${c}-tab`,
+          'aria-labelledby': `${G}-${c}-tab`,
         },
         t.createElement(
           `div`,
@@ -3668,7 +3872,7 @@ function Ne({ onClose: e }) {
   );
 }
 function Pe() {
-  let e = P();
+  let e = N();
   return e.createElement(
     e.Fragment,
     null,
@@ -3685,7 +3889,7 @@ function Pe() {
     e.createElement(
       `div`,
       { className: `luminous-theme-menu__preset-grid` },
-      Te.map((t) =>
+      Ce.map((t) =>
         e.createElement(
           `button`,
           {
@@ -3706,7 +3910,7 @@ function Pe() {
   );
 }
 function Fe({ section: e }) {
-  let t = P();
+  let t = N();
   if (e === `presets`) return t.createElement(Pe);
   let n = {
       appearance: {
@@ -3722,7 +3926,7 @@ function Fe({ section: e }) {
         description: `Inspect the current runtime and copy diagnostics for troubleshooting.`,
       },
     }[e],
-    r = we.filter((t) => t.section === e);
+    r = Se.filter((t) => t.section === e);
   return t.createElement(
     t.Fragment,
     null,
@@ -3738,15 +3942,15 @@ function Fe({ section: e }) {
 }
 function Ie({ setting: e }) {
   return e.control === `toggle`
-    ? P().createElement(Le, { setting: e })
+    ? N().createElement(Le, { setting: e })
     : e.control === `range`
-      ? P().createElement(Re, { setting: e })
-      : P().createElement(ze, { setting: e });
+      ? N().createElement(Re, { setting: e })
+      : N().createElement(ze, { setting: e });
 }
 function Le({ setting: e }) {
-  let t = P(),
-    n = F(),
-    [r, i] = R()(() => Luminous.Settings.get(e.key) === !0);
+  let t = N(),
+    n = P(),
+    [r, i] = L()(() => Luminous.Settings.get(e.key) === !0);
   return (
     n(
       () =>
@@ -3758,7 +3962,7 @@ function Le({ setting: e }) {
     t.createElement(
       `label`,
       { className: `luminous-theme-menu__row luminous-theme-menu__toggle` },
-      t.createElement(K, { setting: e }),
+      t.createElement(q, { setting: e }),
       t.createElement(
         `span`,
         { className: `luminous-theme-menu__switch` },
@@ -3774,10 +3978,10 @@ function Le({ setting: e }) {
   );
 }
 function Re({ setting: e }) {
-  let t = P(),
-    n = F(),
-    r = L(),
-    [i, a] = R()(() => Number(Luminous.Settings.get(e.key))),
+  let t = N(),
+    n = P(),
+    r = I(),
+    [i, a] = L()(() => Number(Luminous.Settings.get(e.key))),
     o = r(i),
     s = r(null),
     c = () => {
@@ -3820,7 +4024,7 @@ function Re({ setting: e }) {
       t.createElement(
         `span`,
         { className: `luminous-theme-menu__range-header` },
-        t.createElement(K, { setting: e }),
+        t.createElement(q, { setting: e }),
         t.createElement(`strong`, null, `${i}${e.unit ?? ``}`),
       ),
       t.createElement(
@@ -3842,9 +4046,9 @@ function Re({ setting: e }) {
   );
 }
 function ze({ setting: e }) {
-  let t = P(),
-    n = F(),
-    [r, i] = R()(() => String(Luminous.Settings.get(e.key)));
+  let t = N(),
+    n = P(),
+    [r, i] = L()(() => String(Luminous.Settings.get(e.key)));
   return (
     n(
       () =>
@@ -3856,7 +4060,7 @@ function ze({ setting: e }) {
     t.createElement(
       `div`,
       { className: `luminous-theme-menu__row luminous-theme-menu__choice` },
-      t.createElement(K, { setting: e }),
+      t.createElement(q, { setting: e }),
       t.createElement(
         `div`,
         {
@@ -3881,8 +4085,8 @@ function ze({ setting: e }) {
     )
   );
 }
-function K({ setting: e }) {
-  let t = P();
+function q({ setting: e }) {
+  let t = N();
   return t.createElement(
     `span`,
     { className: `luminous-theme-menu__copy` },
@@ -3891,12 +4095,12 @@ function K({ setting: e }) {
   );
 }
 function Be() {
-  let e = P(),
-    t = F(),
-    [n, r] = R()(() => q());
+  let e = N(),
+    t = P(),
+    [n, r] = L()(() => Ve());
   return (
     t(() => {
-      let e = () => r(q());
+      let e = () => r(Ve());
       return (
         Luminous.Background.addEventListener(`change`, e),
         Luminous.Canvas.addEventListener(`mount`, e),
@@ -3939,14 +4143,14 @@ function Be() {
     )
   );
 }
-function q() {
+function Ve() {
   let e = Luminous.Diagnostics.get(),
     t = e.runtime.canvasMode ?? `none`;
   return `Background: ${e.runtime.background} · Canvas: ${t} · UI: ${e.runtime.uiHealth}`;
 }
-function Ve() {
+function He() {
   return (
-    F()(() => {
+    P()(() => {
       let e = [
         k.uiMountWatcher(),
         k.observeCinema(),
@@ -3962,9 +4166,9 @@ function Ve() {
   );
 }
 var J = `luminous-visibility-hold`;
-function He() {
+function Ue() {
   return (
-    F()(() => {
+    P()(() => {
       let e = document.documentElement,
         t = null,
         n = () => {
@@ -3998,37 +4202,37 @@ function He() {
     null
   );
 }
-function Ue() {
-  let e = P();
+function We() {
+  let e = N();
   return e.createElement(
     e.Fragment,
     null,
-    e.createElement(_e),
-    e.createElement(Ve),
+    e.createElement(ye),
     e.createElement(He),
-    e.createElement(fe),
+    e.createElement(Ue),
+    e.createElement(me),
     e.createElement(Me),
   );
 }
 var Y = `luminous-react-root`,
-  We = 15e3,
+  Ge = 15e3,
   X = null,
   Z = 0,
   Q = null;
-function Ge() {
+function Ke() {
   let e = ++Z;
-  (Ye(),
-    Je(e)
+  (Xe(),
+    Ye(e)
       .then(() => {
-        e === Z && qe();
+        e === Z && Je();
       })
       .catch((t) => {
         e === Z &&
           Luminous.Logger.error(`Runtime`, `Failed to mount application`, t);
       }));
 }
-function Ke() {
-  if ((Z++, Ye(), X?.unmount)) (X.unmount(), (X = null));
+function qe() {
+  if ((Z++, Xe(), X?.unmount)) (X.unmount(), (X = null));
   else if (typeof Spicetify < `u` && Spicetify.ReactDOM) {
     let e = document.getElementById(Y);
     e &&
@@ -4037,11 +4241,11 @@ function Ke() {
   }
   document.getElementById(Y)?.remove();
 }
-function qe() {
-  let e = P(),
+function Je() {
+  let e = N(),
     { ReactDOM: t } = Spicetify,
-    n = Xe(),
-    r = e.createElement(Ue);
+    n = Ze(),
+    r = e.createElement(We);
   if (t.createRoot) {
     let e = X ?? t.createRoot(n);
     ((X = e), e.render(r));
@@ -4049,7 +4253,7 @@ function qe() {
   }
   t.render(r, n);
 }
-function Je(e) {
+function Ye(e) {
   return new Promise((t, n) => {
     let r = performance.now(),
       i = () => {
@@ -4066,7 +4270,7 @@ function Je(e) {
           t();
           return;
         }
-        if (performance.now() - r > We) {
+        if (performance.now() - r > Ge) {
           n(Error(`Spicetify React runtime not available`));
           return;
         }
@@ -4075,10 +4279,10 @@ function Je(e) {
     i();
   });
 }
-function Ye() {
+function Xe() {
   Q !== null && (cancelAnimationFrame(Q), (Q = null));
 }
-function Xe() {
+function Ze() {
   let e = document.getElementById(Y);
   return (
     e ||
@@ -4089,11 +4293,11 @@ function Xe() {
     e
   );
 }
-var Ze =
+var Qe =
     `luminous-runtime-active.luminous-bootstrap-pending.hideDynamicBackground.luminous-dynamic-palette.luminous-palette-transitioning.luminous-track-changing.luminous-glass-highlights.luminous-reduce-motion.luminous-runtime-suspended.luminous-settings-open.luminous-document-hidden.luminous-visibility-hold.luminous-parallax-enabled.luminous-source-auto.luminous-source-artwork.luminous-motion-still.luminous-motion-drift.luminous-motion-float.luminous-motion-orbit.luminous-quality-full.luminous-quality-balanced.luminous-quality-lite.luminous-effect-aurora.luminous-effect-ember.luminous-effect-bloom.luminous-effect-prism.luminous-effect-halo.luminous-effect-nebula.luminous-effect-energy-soft.luminous-effect-energy-flow.luminous-effect-energy-vivid.luminous-effect-tone-dark.luminous-effect-tone-balanced.luminous-effect-tone-light`.split(
       `.`,
     ),
-  Qe = [
+  $e = [
     `--luminous-background`,
     `--luminous-background-blur`,
     `--luminous-background-brightness`,
@@ -4110,10 +4314,10 @@ var Ze =
     `--luminous-parallax-y`,
   ],
   $ = !1;
-function $e() {
+function et() {
   if ($) return;
   (($ = !0),
-    Ke(),
+    qe(),
     Luminous.Background.destroy(),
     Luminous.Palette.clear(),
     Luminous.Canvas.destroy(),
@@ -4122,24 +4326,24 @@ function $e() {
     x.destroy(),
     a.destroy());
   let e = document.documentElement;
-  (Ze.forEach((t) => e.classList.remove(t)),
-    Qe.forEach((t) => e.style.removeProperty(t)),
+  (Qe.forEach((t) => e.classList.remove(t)),
+    $e.forEach((t) => e.style.removeProperty(t)),
     Luminous.Logger.info(`Runtime`, `Destroyed`));
 }
-function et() {
+function tt() {
   (($ = !1),
     document.documentElement.classList.add(
       `luminous-runtime-active`,
       `luminous-bootstrap-pending`,
     ));
 }
-(ue(),
-  de($e),
-  et(),
+(fe(),
+  pe(et),
+  tt(),
   Luminous.Logger.printBanner(),
-  Ee(),
+  we(),
   Luminous.Settings.init(),
   Luminous.Song.init().catch((e) => {
     Luminous.Logger.error(`Song`, `Initialization failed`, e);
   }),
-  Ge());
+  Ke());
