@@ -76,7 +76,7 @@ div[data-testid='NPV_Panel_OpenDiv'] > div > div > div::before {
   background: transparent;
 }
 
-div[data-testid='NPV_Panel_OpenDiv'] > div:nth-child(2) {
+div[data-testid='NPV_Panel_OpenDiv'] > div:nth-child(2):not(:has(h2)) {
   background: transparent;
 }
 
@@ -84,7 +84,11 @@ div[data-testid='NPV_Panel_OpenDiv'] > div:nth-child(2) > div {
   background: transparent;
 }
 
-div[data-testid='NPV_Panel_OpenDiv'] > div:nth-child(2) > div > div > div {
+div[data-testid='NPV_Panel_OpenDiv']
+  > div:nth-child(2):not(:has(h2))
+  > div
+  > div
+  > div {
   background-color: var(--section-background-base);
 }
 
@@ -96,5 +100,44 @@ div[data-testid='NPV_Panel_OpenDiv']
   > div:has(.canvasVideoContainerNPV)
   > div
   > div:has(.canvasVideoContainerNPV) {
+  aspect-ratio: 9 / 14 !important;
+}
+
+div[data-testid='NPV_Panel_OpenDiv']
+  > div
+  > div
+  > div:not(:is(div:empty, div[data-testid='track-visual-enhancement'])):has(
+    img
+  )
+  ::before {
+  background: transparent !important;
+}
+
+div[data-testid='NPV_Panel_OpenDiv']
+  > div
+  > div
+  > div:not(:is(div:empty, div[data-testid='track-visual-enhancement'])):has(
+    img
+  )
+  ::after {
+  background: transparent !important;
+}
+
+div[data-testid='NPV_Panel_OpenDiv']
+  > div
+  > div
+  > div:not(:is(div:empty, div[data-testid='track-visual-enhancement'])):has(
+    img
+  )
+  img {
+  aspect-ratio: 9 / 14;
+}
+
+div[data-testid='NPV_Panel_OpenDiv']
+  > div
+  > div
+  > div:has(> div[data-testid='track-visual-enhancement']):has(
+    > div[aria-hidden='true'] > div[draggable='true'] > div > img
+  ) {
   aspect-ratio: 9 / 14 !important;
 }

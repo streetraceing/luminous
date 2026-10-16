@@ -50,6 +50,15 @@ export class Background {
     HTMLElement | null
   >();
   private static directVideoSlots = new Map<HTMLVideoElement, HTMLDivElement>();
+  private static directVideoPlaceholders = new Map<
+    HTMLDivElement,
+    {
+      element: HTMLDivElement;
+      frame: HTMLElement;
+      observer: ResizeObserver;
+      styles: Map<string, { value: string; priority: string }>;
+    }
+  >();
   private static directVideoCleanupTimers = new Map<HTMLVideoElement, number>();
 
   private static currentType: BackgroundType = 'none';
@@ -737,6 +746,7 @@ export class Background {
     } else if (sourceVideo.parentElement === this.mediaStage) {
       sourceVideo.remove();
     }
+    if (slot) this.removeDirectVideoPlaceholder(slot);
     slot?.remove();
   }
 
@@ -777,21 +787,103 @@ export class Background {
     artwork?: string | null,
   ): HTMLDivElement {
     const rect = video.getBoundingClientRect();
+    const host = video.closest('#Desktop_PanelContainer_Id');
+    const parent = video.parentElement!;
+    let frame = parent;
+
+    // A player can nest an absolutely positioned video in a zero-size wrapper.
+    // A normal-flow sibling in that wrapper is clipped or has no usable width.
+    // Find the actual media-sized frame, never the entire NPV panel.
+    for (
+      let candidate: HTMLElement | null = parent;
+      candidate && candidate !== host;
+      candidate = candidate.parentElement
+    ) {
+      const bounds = candidate.getBoundingClientRect();
+      const matchesVideo =
+        Math.abs(bounds.width - rect.width) <= 4 &&
+        (bounds.height === 0 || Math.abs(bounds.height - rect.height) <= 4);
+      // The sidebar may have resized while Spotify still reports the previous
+      // intrinsic player layout. Accept a slightly larger media frame too.
+      const containsVideo =
+        rect.width > 0 &&
+        rect.height > 0 &&
+        bounds.width >= rect.width - 4 &&
+        bounds.width <= rect.width * 1.5 &&
+        bounds.height <= rect.height * 1.5 &&
+        Math.abs(bounds.left - rect.left) <= 4 &&
+        Math.abs(bounds.top - rect.top) <= 4;
+      if (bounds.width > 0 && (matchesVideo || containsVideo)) {
+        frame = candidate;
+        break;
+      }
+    }
+
+    // Keep restoration/discovery anchored to the original parent, independent
+    // of where the visible placeholder needs to be mounted.
     const slot = document.createElement('div');
-    slot.className = 'luminous-direct-video-placeholder';
-    const ratio =
-      rect.width > 0 && rect.height > 0
-        ? rect.width / rect.height
-        : video.videoWidth / video.videoHeight;
-    slot.style.aspectRatio = String(ratio || 16 / 9);
-    slot.setAttribute('role', 'img');
-    slot.setAttribute('aria-label', 'Music video is playing in the background');
+    slot.className = 'luminous-direct-video-anchor';
+    slot.hidden = true;
+    video.before(slot);
+
+    const placeholder = document.createElement('div');
+    placeholder.className = 'luminous-direct-video-placeholder';
+    placeholder.setAttribute('role', 'img');
+    placeholder.setAttribute(
+      'aria-label',
+      'Music video is playing in the background',
+    );
+    const image = document.createElement('img');
+    image.className = 'luminous-direct-video-placeholder-artwork';
+    image.alt = '';
+    image.decoding = 'async';
     const badge = document.createElement('span');
     badge.className = 'luminous-direct-video-placeholder-label';
     badge.textContent = 'Video in background';
-    slot.append(badge);
+    placeholder.append(image, badge);
+
+    const styles = new Map<string, { value: string; priority: string }>();
+    const override = (property: string, value: string) => {
+      if (!styles.has(property)) {
+        styles.set(property, {
+          value: frame.style.getPropertyValue(property),
+          priority: frame.style.getPropertyPriority(property),
+        });
+      }
+      frame.style.setProperty(property, value, 'important');
+    };
+    if (getComputedStyle(frame).position === 'static')
+      override('position', 'relative');
+    const ratio =
+      rect.width > 0 && rect.height > 0
+        ? rect.width / rect.height
+        : video.videoWidth / video.videoHeight || 16 / 9;
+    const reserveHeight = () => {
+      const width = frame.getBoundingClientRect().width || rect.width;
+      const computed = getComputedStyle(frame);
+      const verticalInsets =
+        computed.boxSizing === 'border-box'
+          ? 0
+          : (parseFloat(computed.paddingTop) || 0) +
+            (parseFloat(computed.paddingBottom) || 0) +
+            (parseFloat(computed.borderTopWidth) || 0) +
+            (parseFloat(computed.borderBottomWidth) || 0);
+      const height = `${Math.max(0, width / ratio - verticalInsets)}px`;
+      if (frame.style.getPropertyValue('min-height') !== height) {
+        override('min-height', height);
+      }
+    };
+    reserveHeight();
+    const observer = new ResizeObserver(reserveHeight);
+    observer.observe(frame);
+    frame.append(placeholder);
+    this.directVideoPlaceholders.set(slot, {
+      element: placeholder,
+      frame,
+      observer,
+      styles,
+    });
     this.updateDirectVideoPlaceholder(slot, artwork);
-    video.before(slot);
     return slot;
   }
 
@@ -799,15 +891,27 @@ export class Background {
     slot: HTMLDivElement,
     artwork?: string | null,
   ) {
-    const image = artwork?.trim();
-    if (image) {
-      slot.style.setProperty(
-        '--luminous-direct-video-placeholder-image',
-        `url(${JSON.stringify(image)})`,
-      );
+    const placeholder = this.directVideoPlaceholders.get(slot)?.element;
+    const image = placeholder?.querySelector('img');
+    if (!image) return;
+    const source = artwork?.trim();
+    if (source) {
+      if (image.getAttribute('src') !== source) image.src = source;
     } else {
-      slot.style.removeProperty('--luminous-direct-video-placeholder-image');
+      image.removeAttribute('src');
     }
+  }
+
+  private static removeDirectVideoPlaceholder(slot: HTMLDivElement) {
+    const state = this.directVideoPlaceholders.get(slot);
+    if (!state) return;
+    state.observer.disconnect();
+    state.element.remove();
+    state.styles.forEach(({ value, priority }, property) => {
+      if (value) state.frame.style.setProperty(property, value, priority);
+      else state.frame.style.removeProperty(property);
+    });
+    this.directVideoPlaceholders.delete(slot);
   }
 
   private static restoreAllDirectVideos() {
