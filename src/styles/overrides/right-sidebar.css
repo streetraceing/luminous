@@ -1,10 +1,7 @@
-/* Right sidebar panel. Spotify 1.3.x hashed the Root__right-sidebar wrapper;
-   the aside#Desktop_PanelContainer_Id inside it is still stable. */
-
-.Root__top-container > div:has(#Desktop_PanelContainer_Id),
+/* .Root__top-container > div:has(#Desktop_PanelContainer_Id),
 .main-nowPlayingView-headerWrapper {
   background: var(--luminous-ui-background) !important;
-}
+} */
 
 .Root__top-container > div:has(#Desktop_PanelContainer_Id)::before,
 #Desktop_PanelContainer_Id,
@@ -12,11 +9,6 @@
   background: transparent !important;
 }
 
-/* The NPV root (stable data-npv-root attribute) paints Spotify's opaque
-   --background-base and re-defines --section-background-base for every hashed
-   section inside. Re-point both variables and clear the root itself to keep
-   the panel on Luminous glass. Sticky headers inside the panel consume
-   --background-base through inheritance. */
 #Desktop_PanelContainer_Id {
   --section-background-base: var(--luminous-ui-background) !important;
 }
@@ -64,9 +56,9 @@
   background: transparent;
 }
 
-.Root__top-container > div:has(.NowPlayingView) {
+/* .Root__top-container > div:has(.NowPlayingView) {
   background: var(--luminous-ui-background);
-}
+} */
 
 .Root__top-container > div:has(.NowPlayingView) > div {
   background: transparent;

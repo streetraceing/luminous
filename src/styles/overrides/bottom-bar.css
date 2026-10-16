@@ -10,10 +10,10 @@ div:has(div > aside[data-testid='now-playing-bar'])
   background: transparent;
 }
 
-.main-nowPlayingBar-nowPlayingBar {
+/* .main-nowPlayingBar-nowPlayingBar {
   background: var(--luminous-ui-background);
   border-radius: 8px;
-}
+} */
 
 html.hideDynamicBackground aside[data-testid='now-playing-bar'] {
   background: transparent;
