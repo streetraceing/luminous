@@ -137,3 +137,9 @@ div[data-testid='NPV_Panel_OpenDiv']
   ) {
   aspect-ratio: 9 / 14 !important;
 }
+
+.Root__top-container
+  > div:has(#Desktop_PanelContainer_Id)
+  > div:has(#Desktop_PanelContainer_Id) {
+  background: var(--luminous-ui-background) !important;
+}
