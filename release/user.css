@@ -1797,7 +1797,17 @@ div[data-testid='NPV_Panel_OpenDiv']
   ) {
   aspect-ratio: 9/14 !important;
 }
-.Root__top-container,
+.Root__top-container
+  > div:has(#Desktop_PanelContainer_Id)
+  > div:has(#Desktop_PanelContainer_Id) {
+  background: var(--luminous-ui-background) !important;
+}
+.Root__top-container {
+  background: var(--luminous-background);
+}
+.ReactModalPortal > div {
+  z-index: 10000;
+}
 .Root__globalNav {
   background: var(--luminous-background);
 }
