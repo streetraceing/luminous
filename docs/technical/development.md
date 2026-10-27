@@ -41,6 +41,10 @@ The most important CPU rule is to avoid multiplying Spotify/ad-block DOM churn.
 - `DomPulse`: one global child-list observer, no global attribute observation, and no duplicate processing of records already inside `#main-view`. Retained records are bounded; saturated streams slow to roughly 4-5 dispatches per second and force a complete catch-up only about every 750 ms.
 - `MainViewPulse`: one `#main-view` child-list observer shared by all page synchronizers with the same bounded/filterable saturation policy.
 - local attributes: the playlist source, left-sidebar class, `<html>` Cinema transition attributes, and the active protected-video frame-to-panel geometry chain are observed directly. The DRM chain observer exists only while its placeholder is mounted and is disconnected on cleanup.
+- page-state and playlist-artwork subscriptions distinguish page/header/source replacement from ordinary track-row churn. Late artist images, reused page roots, and background-source child replacement still refresh their bridges; saturation catch-up remains unchanged.
+- protected-video placement ignores scroll events from unrelated elements. Panel/ancestor scrolls, document scroll, resizing, and the existing local geometry observer retain their placement behavior.
+- pending artwork preload handlers share one cancellation path used by image replacement, Canvas activation, clear, and destroy. Empty video buffers skip redundant `pause()`/`load()` calls; real streams are still stopped and detached.
+- disabled dynamic background does not prefetch covers from song events. The hidden splash loader is paused, while its fade-out remains intact.
 - Canvas uses both existing structural pulses (including NPV mounted inside `#main-view`) plus events from only the currently selected video.
 - palette variables/classes live on `.luminous-background-effects`, not `<html>`.
 - gradient blur is painted on static inner surfaces while transforms animate outer wrappers; artwork/captured-video blur is similarly separated from Drift/Float motion through a shared media-stage wrapper.
@@ -60,6 +64,12 @@ When profiling in Chromium DevTools, distinguish:
 - compositing: transform animation and media layers.
 
 A new optimization should target the measured category rather than blindly reducing visual settings.
+
+## Performance validation scope
+
+Keep disposable browser fixtures, profiling scripts, and logs outside the delivered project tree, as required by `AGENTS.md`. Compare the original snapshot and the changed source against the same DOM and event sequence. Useful checks are page queries/source-style reads during track-row churn, protected-placeholder rectangle reads during unrelated scrolls, and media reset calls for empty buffers. These are targeted operation counts, not an FPS benchmark or a guarantee for every desktop GPU.
+
+Also test actual Blob-video capture/playback and clone cleanup, artwork buffer swaps, cancelled image loads, page navigation, late/replaced artist images, saturation catch-up, DRM slot restoration, and dynamic NPV cards. The gradients, blur strengths, motion keyframes, palette algorithm, source selection, defaults, and settings schema are deliberately unchanged. Profile the real Spotify desktop client before making GPU/raster-quality trade-offs; the local Chromium fixture does not reproduce its full renderer, DRM stack, display resolution, or driver.
 
 ## Validation order
 

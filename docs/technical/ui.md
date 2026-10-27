@@ -25,6 +25,10 @@ Page detection anchors on stable Spotify hooks: `data-testid="playlist-page"`, `
 
 This replaces the active broad `:has()` selectors used by Luminous with simple class matching while keeping the same visual rules, including the right-sidebar Canvas marker. The Cinema bridge now tracks `#lyrics-cinema` and its `luminous-cinema-has-video` state; the old cinema branch markers were tied to the removed `.main-actionBar-ActionBarContainer` structure.
 
+Page-state and playlist-artwork filters now key off added/removed page/header hooks rather than every mutation under a tracklist. Background-source subtree replacement and its local style observer remain active, as do late artist-image updates and direct content changes on reused route roots. Existing marker classes are only written when missing. Full refreshes on saturated pulses and visibility return are unchanged.
+
+Repeated main-view CSS exclusions use the existing `luminous-page-marketplace` marker instead of rescanning for a nested `.marketplace-content` in five negative `:has()` selectors. The visual declarations are unchanged. The splash loader pauses once the splash is hidden rather than running indefinitely behind the UI.
+
 Playlist artwork synchronization keeps a single attribute observer only on the current source element (`.before-scroll-node > div > :first-child`, the playlist background-image element) and mirrors its background onto the current `[data-testid="entity-header"]`. The left sidebar expansion state is width-based because the sidebar's collapsed/expanded classes are hashed.
 
 ## Canvas UI state

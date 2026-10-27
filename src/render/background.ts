@@ -32,6 +32,7 @@ export class Background {
     null;
   private static activeImage = 0;
   private static imageRenderId = 0;
+  private static cancelImageLoad: (() => void) | null = null;
   private static preloadedImages = new Map<string, HTMLImageElement>();
 
   private static videoLayers: [HTMLVideoElement, HTMLVideoElement] | null =
@@ -322,7 +323,7 @@ export class Background {
       return;
     }
 
-    const renderId = ++this.imageRenderId;
+    const renderId = this.invalidateImageRender();
     const nextIndex = this.activeImage === 0 ? 1 : 0;
     const current = this.imageLayers[this.activeImage];
     const next = this.imageLayers[nextIndex];
@@ -356,27 +357,42 @@ export class Background {
       return;
     }
 
-    preload.addEventListener('load', showImage, { once: true });
-    preload.addEventListener(
-      'error',
-      () => {
-        if (renderId !== this.imageRenderId) return;
+    const cleanup = () => {
+      preload.removeEventListener('load', handleLoad);
+      preload.removeEventListener('error', handleError);
+      if (this.cancelImageLoad === cleanup) this.cancelImageLoad = null;
+    };
+    const handleLoad = () => {
+      cleanup();
+      showImage();
+    };
+    const handleError = () => {
+      cleanup();
+      if (renderId !== this.imageRenderId) return;
 
-        Luminous.Logger.warn('Background', 'Failed to load image', src);
+      Luminous.Logger.warn('Background', 'Failed to load image', src);
 
-        if (
-          this.currentType === 'image' &&
-          current.complete &&
-          current.naturalWidth > 0
-        ) {
-          this.transitionTo('image', current);
-          return;
-        }
+      if (
+        this.currentType === 'image' &&
+        current.complete &&
+        current.naturalWidth > 0
+      ) {
+        this.transitionTo('image', current);
+        return;
+      }
 
-        this.clear();
-      },
-      { once: true },
-    );
+      this.clear();
+    };
+    this.cancelImageLoad = cleanup;
+    preload.addEventListener('load', handleLoad, { once: true });
+    preload.addEventListener('error', handleError, { once: true });
+  }
+
+  private static invalidateImageRender(): number {
+    this.imageRenderId++;
+    this.cancelImageLoad?.();
+    this.cancelImageLoad = null;
+    return this.imageRenderId;
   }
 
   private static async waitForImageReady(
@@ -470,6 +486,7 @@ export class Background {
       this.currentCanvasKey === canvasKey &&
       this.isCanvasLayerUsable(this.get())
     ) {
+      this.invalidateImageRender();
       return true;
     }
 
@@ -478,6 +495,7 @@ export class Background {
       this.pendingCanvasKey === canvasKey &&
       this.pendingCanvasVideo?.isConnected
     ) {
+      this.invalidateImageRender();
       if (fallbackImage !== undefined) {
         this.pendingCanvasFallback = fallbackImage;
       }
@@ -527,7 +545,7 @@ export class Background {
     }
 
     this.cancelVideoCleanup();
-    this.imageRenderId++;
+    this.invalidateImageRender();
 
     const nextIndex = this.activeVideo === 0 ? 1 : 0;
     const next = this.videoLayers[nextIndex];
@@ -607,6 +625,8 @@ export class Background {
       !sourceVideo.ended &&
       sourceVideo.classList.contains('luminous-direct-video-background--active')
     ) {
+      // A pending artwork request must not win after Video is reselected.
+      this.invalidateImageRender();
       // Spotify can reuse the same protected <video> across brief
       // currentSrc/readyState changes; keep it promoted instead of bouncing
       // through the artwork fallback.
@@ -635,7 +655,7 @@ export class Background {
     }
 
     this.cancelVideoCleanup();
-    this.imageRenderId++;
+    this.invalidateImageRender();
     this.videoRenderId++;
 
     if (this.pendingCanvasVideo) {
@@ -1056,7 +1076,15 @@ export class Background {
       if (ancestor === panel) break;
     }
     window.addEventListener('resize', sync, { passive: true });
-    document.addEventListener('scroll', sync, { capture: true, passive: true });
+    const handleScroll = (event: Event) => {
+      const target = event.target;
+      if (target instanceof Element && !target.contains(frame)) return;
+      sync();
+    };
+    document.addEventListener('scroll', handleScroll, {
+      capture: true,
+      passive: true,
+    });
     // A body-level overlay cannot be hidden underneath Spotify's opaque
     // video shells, pseudo-elements, or a clipped/zero-size React wrapper.
     document.body.append(placeholder);
@@ -1070,7 +1098,7 @@ export class Background {
         geometryObserver.disconnect();
         if (scheduled !== null) cancelAnimationFrame(scheduled);
         window.removeEventListener('resize', sync);
-        document.removeEventListener('scroll', sync, true);
+        document.removeEventListener('scroll', handleScroll, true);
       },
     });
     place();
@@ -1121,7 +1149,7 @@ export class Background {
   }
 
   static destroy() {
-    this.imageRenderId++;
+    this.invalidateImageRender();
     this.videoRenderId++;
     this.currentCanvasSource = null;
     this.currentCanvasKey = null;
@@ -1144,7 +1172,7 @@ export class Background {
   }
 
   static clear() {
-    this.imageRenderId++;
+    this.invalidateImageRender();
     this.videoRenderId++;
     this.currentCanvasSource = null;
     this.currentCanvasKey = null;
@@ -1280,9 +1308,10 @@ export class Background {
 
   private static resetVideo(video: HTMLVideoElement) {
     video.onplaying = null;
-    video.pause();
-
     const stream = video.srcObject;
+    if (!stream && !video.hasAttribute('src') && !video.currentSrc) return;
+
+    video.pause();
     if (stream instanceof MediaStream) {
       stream.getTracks().forEach((track) => track.stop());
     }

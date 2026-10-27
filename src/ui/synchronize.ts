@@ -166,8 +166,11 @@ export class Synchronize {
     }
 
     const unsubscribeMainViewPulse = MainViewPulse.subscribe(scheduleSync, {
+      // Row virtualization is not a page/header replacement. Source style
+      // changes are already handled by the dedicated attribute observer.
       filter: (records) =>
-        mutationTouchesSelector(records, PLAYLIST_STRUCTURE_SELECTOR),
+        mutationAddsOrRemovesSelector(records, PLAYLIST_STRUCTURE_SELECTOR) ||
+        mutationTouchesSelector(records, '.before-scroll-node'),
     });
 
     return {
@@ -275,7 +278,13 @@ export class Synchronize {
           }
 
           if (container?.parentElement === root) {
-            container.classList.add('luminous-hidden-test-ref-container');
+            if (
+              !container.classList.contains(
+                'luminous-hidden-test-ref-container',
+              )
+            ) {
+              container.classList.add('luminous-hidden-test-ref-container');
+            }
             nextHiddenTestRefs.add(container);
           }
         });
@@ -294,7 +303,11 @@ export class Synchronize {
       let artistAncestor = artistImage?.parentElement ?? null;
       while (artistAncestor && artistAncestor !== root) {
         if (artistAncestor.tagName === 'DIV') {
-          artistAncestor.classList.add('luminous-artist-image-ancestor');
+          if (
+            !artistAncestor.classList.contains('luminous-artist-image-ancestor')
+          ) {
+            artistAncestor.classList.add('luminous-artist-image-ancestor');
+          }
           nextArtistImageAncestors.add(artistAncestor);
         }
         artistAncestor = artistAncestor.parentElement;
@@ -309,7 +322,21 @@ export class Synchronize {
 
     const unsubscribeMainViewPulse = MainViewPulse.subscribe(sync, {
       filter: (records) =>
-        mutationTouchesSelector(records, MAIN_VIEW_STATE_SELECTOR),
+        mutationAddsOrRemovesSelector(records, MAIN_VIEW_STATE_SELECTOR) ||
+        records.some((record) => {
+          const target = record.target;
+          if (!(target instanceof Element)) return false;
+          // A reused route root may acquire its hook before children arrive.
+          // Do not treat every row beneath a tracklist as a page change.
+          return (
+            target.matches(
+              '[data-testid="playlist-page"],.marketplace-content,#searchPage,section[data-testid="episode"],section[data-test-uri^="spotify:artist:"],section[data-testid="home-page"]',
+            ) ||
+            (target.closest('section[data-test-uri^="spotify:artist:"]') !==
+              null &&
+              mutationAddsOrRemovesSelector([record], 'img'))
+          );
+        }),
     });
 
     return {

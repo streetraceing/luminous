@@ -50,7 +50,9 @@ export function DynamicBackgroundFeature() {
 
       songKey = nextKey;
       Luminous.Palette.cancel();
-      Luminous.Background.preloadImage(nextSong.image);
+      if (Luminous.Settings.get('dynamicBackground') !== false) {
+        Luminous.Background.preloadImage(nextSong.image);
+      }
       setSong(nextSong);
     };
 
@@ -84,7 +86,9 @@ export function DynamicBackgroundFeature() {
         if (value === 'artwork') {
           const currentSong = Luminous.Song.refresh();
           if (currentSong) {
-            Luminous.Background.preloadImage(currentSong.image);
+            if (Luminous.Settings.get('dynamicBackground') !== false) {
+              Luminous.Background.preloadImage(currentSong.image);
+            }
             handleSong(currentSong);
           }
         }

@@ -178,3 +178,9 @@ html.luminous-bootstrap-pending body::after {
     animation-duration: 1.8s;
   }
 }
+
+/* The hidden splash remains mounted for its fade-out, but its loader no
+   longer needs a perpetual animation after the welcome screen has closed. */
+.luminous-splash--hidden .luminous-splash__loader > span {
+  animation-play-state: paused;
+}
