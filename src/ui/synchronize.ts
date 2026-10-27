@@ -577,11 +577,21 @@ export class Synchronize {
         mutationTouchesSelector(records, '#lyrics-cinema,video'),
     });
 
+    const unsubscribeMainViewPulse = MainViewPulse.subscribe(
+      syncCinemaMarkers,
+      {
+        immediate: false,
+        filter: (records) =>
+          mutationTouchesSelector(records, '#lyrics-cinema,video'),
+      },
+    );
+
     return {
       disconnect() {
         observer?.disconnect();
         observer = null;
         unsubscribeDomPulse();
+        unsubscribeMainViewPulse();
         clearCinemaMarkers();
         scheduled = false;
       },

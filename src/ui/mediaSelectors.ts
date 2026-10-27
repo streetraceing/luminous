@@ -8,14 +8,33 @@ export const NPV_CANVAS_VIDEO_SELECTOR = [
   `#Desktop_PanelContainer_Id ${CANVAS_SURFACE_SELECTOR} video`,
   `${LEGACY_CANVAS_SELECTOR} video`,
 ].join(',');
+// This hook identifies the full-length NPV player, not Canvas or Cinema.
+export const NPV_PLAYER_SELECTOR = '[data-testid="video-player-npv"]';
+export const NPV_VIDEO_CONTAINER_SELECTOR = '[data-video-container="true"]';
+export const NPV_PLAYER_VIDEO_SELECTOR = [
+  `${NPV_PLAYER_SELECTOR} video`,
+  `${NPV_ROOT_SELECTOR} ${NPV_VIDEO_CONTAINER_SELECTOR} video`,
+  `#Desktop_PanelContainer_Id ${NPV_VIDEO_CONTAINER_SELECTOR} video`,
+].join(',');
 export const NPV_VIDEO_SELECTOR = `${NPV_ROOT_SELECTOR} video, #Desktop_PanelContainer_Id video`;
 export const CINEMA_VIDEO_SKIP_SELECTOR = [
   '#main-view',
   '[data-testid="main-view"]',
   '#Desktop_PanelContainer_Id',
   NPV_ROOT_SELECTOR,
+  NPV_PLAYER_SELECTOR,
   CANVAS_SURFACE_SELECTOR,
   LEGACY_CANVAS_SELECTOR,
   '.main-nowPlayingBar-container',
   '#luminous-dynamic-background',
 ].join(',');
+
+// Use the panel for clipping when available; data-root/player fallbacks keep
+// promotion and restoration working without a Spicetify panel alias.
+export function findNpvVideoHost(video: HTMLVideoElement): HTMLElement | null {
+  return (
+    video.closest<HTMLElement>('#Desktop_PanelContainer_Id') ??
+    video.closest<HTMLElement>(NPV_ROOT_SELECTOR) ??
+    video.closest<HTMLElement>(NPV_PLAYER_SELECTOR)
+  );
+}

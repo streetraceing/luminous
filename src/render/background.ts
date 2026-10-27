@@ -1,4 +1,8 @@
 import type { CanvasMode } from '../types/runtime/canvas.types';
+import {
+  findNpvVideoHost,
+  NPV_VIDEO_CONTAINER_SELECTOR,
+} from '../ui/mediaSelectors';
 
 export type BackgroundType = 'none' | 'image' | 'canvas';
 
@@ -647,9 +651,7 @@ export class Background {
     this.cancelDirectVideoCleanup(sourceVideo);
 
     const host =
-      (sourceVideo.closest(
-        '#Desktop_PanelContainer_Id',
-      ) as HTMLElement | null) ??
+      findNpvVideoHost(sourceVideo) ??
       this.directVideoHosts.get(sourceVideo) ??
       null;
 
@@ -668,6 +670,7 @@ export class Background {
       this.directVideoSlots.get(sourceVideo) ??
       this.createDirectVideoPlaceholder(
         sourceVideo,
+        host,
         fallbackImage ?? sourceVideo.poster,
       );
     if (!slot.isConnected || !host.contains(slot)) return false;
@@ -787,19 +790,22 @@ export class Background {
 
   private static createDirectVideoPlaceholder(
     video: HTMLVideoElement,
+    host: HTMLElement,
     artwork?: string | null,
   ): HTMLDivElement {
     const rect = video.getBoundingClientRect();
-    const host = video.closest('#Desktop_PanelContainer_Id');
     const parent = video.parentElement!;
-    let frame = parent;
+    const container = video.closest<HTMLElement>(NPV_VIDEO_CONTAINER_SELECTOR);
+    const playerFrame =
+      container && host.contains(container) ? container : null;
+    let frame = playerFrame ?? parent;
 
     // A player can nest an absolutely positioned video in a zero-size wrapper.
     // A normal-flow sibling in that wrapper is clipped or has no usable width.
     // Find the actual media-sized frame, never the entire NPV panel.
     for (
       let candidate: HTMLElement | null = parent;
-      candidate && candidate !== host;
+      !playerFrame && candidate && candidate !== host;
       candidate = candidate.parentElement
     ) {
       const bounds = candidate.getBoundingClientRect();

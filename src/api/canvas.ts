@@ -5,18 +5,24 @@ import {
   CanvasPayload,
 } from '../types/runtime/canvas.types';
 import { DomPulse, mutationTouchesSelector } from '../ui/domPulse';
+import { MainViewPulse } from '../ui/mainViewPulse';
 import {
   CANVAS_SURFACE_SELECTOR,
   CINEMA_VIDEO_SKIP_SELECTOR,
   LEGACY_CANVAS_SELECTOR,
   NPV_CANVAS_VIDEO_SELECTOR,
   NPV_ROOT_SELECTOR,
+  NPV_PLAYER_SELECTOR,
+  NPV_PLAYER_VIDEO_SELECTOR,
+  NPV_VIDEO_CONTAINER_SELECTOR,
   NPV_VIDEO_SELECTOR,
 } from '../ui/mediaSelectors';
 
 export class Canvas {
   private static readonly STRUCTURAL_SELECTOR = [
     NPV_ROOT_SELECTOR,
+    NPV_PLAYER_SELECTOR,
+    NPV_VIDEO_CONTAINER_SELECTOR,
     CANVAS_SURFACE_SELECTOR,
     LEGACY_CANVAS_SELECTOR,
     '#Desktop_PanelContainer_Id',
@@ -26,6 +32,7 @@ export class Canvas {
 
   private static listeners = new Map<CanvasEvent, Set<CanvasListener>>();
   private static unsubscribeDomPulse: (() => void) | null = null;
+  private static unsubscribeMainViewPulse: (() => void) | null = null;
   private static checkFrame: number | null = null;
 
   private static currentVideo: HTMLVideoElement | null = null;
@@ -93,6 +100,16 @@ export class Canvas {
       filter: (records) =>
         mutationTouchesSelector(records, this.STRUCTURAL_SELECTOR),
     });
+    // Some Spotify layouts mount NPV inside #main-view. DomPulse excludes
+    // those records because the existing MainViewPulse owns that subtree.
+    this.unsubscribeMainViewPulse = MainViewPulse.subscribe(
+      () => this.scheduleCheck(),
+      {
+        immediate: false,
+        filter: (records) =>
+          mutationTouchesSelector(records, this.STRUCTURAL_SELECTOR),
+      },
+    );
     this.check();
   }
 
@@ -119,6 +136,8 @@ export class Canvas {
   static destroy(clearListeners = true): void {
     this.unsubscribeDomPulse?.();
     this.unsubscribeDomPulse = null;
+    this.unsubscribeMainViewPulse?.();
+    this.unsubscribeMainViewPulse = null;
 
     if (this.checkFrame !== null) {
       cancelAnimationFrame(this.checkFrame);
@@ -150,7 +169,9 @@ export class Canvas {
 
     if (npv) return this.createPayload(npv, 'npv');
 
-    const npvLongform = this.findVisibleVideo(NPV_VIDEO_SELECTOR, true);
+    const npvLongform =
+      this.findVisibleVideo(NPV_PLAYER_VIDEO_SELECTOR, true) ??
+      this.findVisibleVideo(NPV_VIDEO_SELECTOR, true);
     if (npvLongform) return this.createPayload(npvLongform, 'npv-video');
 
     // Promoted protected media lives in the shared background root. Keep its
