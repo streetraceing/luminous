@@ -1,4 +1,38 @@
-var e = class {
+var e = `[data-npv-root]`,
+  t = `[data-canvas-surface="true"]`,
+  n = `.canvasVideoContainerNPV`,
+  r = [
+    `${e} ${t} video`,
+    `#Desktop_PanelContainer_Id ${t} video`,
+    `${n} video`,
+  ].join(`,`),
+  i = `[data-testid="video-player-npv"]`,
+  a = `[data-video-container="true"]`,
+  o = [
+    `${i} video`,
+    `${e} ${a} video`,
+    `#Desktop_PanelContainer_Id ${a} video`,
+  ].join(`,`),
+  s = `${e} video, #Desktop_PanelContainer_Id video`,
+  c = [
+    `#main-view`,
+    `[data-testid="main-view"]`,
+    `#Desktop_PanelContainer_Id`,
+    e,
+    i,
+    t,
+    n,
+    `.main-nowPlayingBar-container`,
+    `#luminous-dynamic-background`,
+  ].join(`,`);
+function l(e) {
+  return (
+    e.closest(`#Desktop_PanelContainer_Id`) ??
+    e.closest(`[data-npv-root]`) ??
+    e.closest(`[data-testid="video-player-npv"]`)
+  );
+}
+var u = class {
     static TRANSITION_MS = 250;
     static MAX_PRELOADED_IMAGES = 24;
     static root = null;
@@ -7,6 +41,7 @@ var e = class {
     static imageLayers = null;
     static activeImage = 0;
     static imageRenderId = 0;
+    static cancelImageLoad = null;
     static preloadedImages = new Map();
     static videoLayers = null;
     static activeVideo = 0;
@@ -214,7 +249,7 @@ var e = class {
           this.clear());
         return;
       }
-      let t = ++this.imageRenderId,
+      let t = this.invalidateImageRender(),
         n = +(this.activeImage === 0),
         r = this.imageLayers[this.activeImage],
         i = this.imageLayers[n];
@@ -244,25 +279,37 @@ var e = class {
         o();
         return;
       }
-      (a.addEventListener(`load`, o, { once: !0 }),
-        a.addEventListener(
-          `error`,
-          () => {
-            if (t === this.imageRenderId) {
-              if (
-                (Luminous.Logger.warn(`Background`, `Failed to load image`, e),
-                this.currentType === `image` &&
-                  r.complete &&
-                  r.naturalWidth > 0)
-              ) {
-                this.transitionTo(`image`, r);
-                return;
-              }
-              this.clear();
+      let s = () => {
+          (a.removeEventListener(`load`, c),
+            a.removeEventListener(`error`, l),
+            this.cancelImageLoad === s && (this.cancelImageLoad = null));
+        },
+        c = () => {
+          (s(), o());
+        },
+        l = () => {
+          if ((s(), t === this.imageRenderId)) {
+            if (
+              (Luminous.Logger.warn(`Background`, `Failed to load image`, e),
+              this.currentType === `image` && r.complete && r.naturalWidth > 0)
+            ) {
+              this.transitionTo(`image`, r);
+              return;
             }
-          },
-          { once: !0 },
-        ));
+            this.clear();
+          }
+        };
+      ((this.cancelImageLoad = s),
+        a.addEventListener(`load`, c, { once: !0 }),
+        a.addEventListener(`error`, l, { once: !0 }));
+    }
+    static invalidateImageRender() {
+      return (
+        this.imageRenderId++,
+        this.cancelImageLoad?.(),
+        (this.cancelImageLoad = null),
+        this.imageRenderId
+      );
     }
     static async waitForImageReady(e) {
       if (
@@ -323,13 +370,17 @@ var e = class {
         this.currentCanvasKey === i &&
         this.isCanvasLayerUsable(this.get())
       )
-        return !0;
+        return (this.invalidateImageRender(), !0);
       if (
         this.pendingCanvasSource === e &&
         this.pendingCanvasKey === i &&
         this.pendingCanvasVideo?.isConnected
       )
-        return (t !== void 0 && (this.pendingCanvasFallback = t), !0);
+        return (
+          this.invalidateImageRender(),
+          t !== void 0 && (this.pendingCanvasFallback = t),
+          !0
+        );
       if (this.pendingCanvasVideo) {
         this.videoRenderId++;
         let e = this.pendingCanvasVideo;
@@ -357,7 +408,7 @@ var e = class {
       }
       if (o.getVideoTracks().length === 0)
         return (o.getTracks().forEach((e) => e.stop()), !1);
-      (this.cancelVideoCleanup(), this.imageRenderId++);
+      (this.cancelVideoCleanup(), this.invalidateImageRender());
       let s = +(this.activeVideo === 0),
         c = this.videoLayers[s],
         l = ++this.videoRenderId;
@@ -417,7 +468,9 @@ var e = class {
         !e.ended &&
         e.classList.contains(`luminous-direct-video-background--active`)
       ) {
-        ((this.directVideoKey = t), (this.currentCanvasKey = t));
+        (this.invalidateImageRender(),
+          (this.directVideoKey = t),
+          (this.currentCanvasKey = t));
         let r = this.directVideoSlots.get(e);
         return r?.isConnected
           ? (this.updateDirectVideoPlaceholder(r, n ?? e.poster), !0)
@@ -433,7 +486,7 @@ var e = class {
         return !1;
       if (
         (this.cancelVideoCleanup(),
-        this.imageRenderId++,
+        this.invalidateImageRender(),
         this.videoRenderId++,
         this.pendingCanvasVideo)
       ) {
@@ -444,10 +497,7 @@ var e = class {
         this.directVideoSource !== e &&
         this.deactivateDirectVideo(!0),
         this.cancelDirectVideoCleanup(e));
-      let r =
-        e.closest(`#Desktop_PanelContainer_Id`) ??
-        this.directVideoHosts.get(e) ??
-        null;
+      let r = l(e) ?? this.directVideoHosts.get(e) ?? null;
       if (!r)
         return (
           Luminous.Logger.warn(
@@ -460,7 +510,7 @@ var e = class {
       if (!this.mediaStage || !e.parentElement) return !1;
       let i =
         this.directVideoSlots.get(e) ??
-        this.createDirectVideoPlaceholder(e, n ?? e.poster);
+        this.createDirectVideoPlaceholder(e, r, n ?? e.poster);
       return !i.isConnected || !r.contains(i)
         ? !1
         : (this.updateDirectVideoPlaceholder(i, n ?? e.poster),
@@ -540,41 +590,55 @@ var e = class {
         ? r.moveBefore(e, n)
         : t.insertBefore(e, n);
     }
-    static createDirectVideoPlaceholder(e, t) {
-      let n = e.getBoundingClientRect(),
-        r = e.closest(`#Desktop_PanelContainer_Id`),
+    static createDirectVideoPlaceholder(e, t, n) {
+      let r = e.getBoundingClientRect(),
         i = e.parentElement,
-        a = i;
-      for (let e = i; e && e !== r; e = e.parentElement) {
+        o = e.closest(a),
+        s = o && t.contains(o) ? o : null,
+        c = s ?? i,
+        l = !1;
+      for (let e = s; e; e = e.parentElement) {
+        let n = e.getBoundingClientRect();
+        if (
+          getComputedStyle(e).aspectRatio !== `auto` &&
+          n.width > 0 &&
+          n.height > 0
+        ) {
+          ((c = e), (l = !0));
+          break;
+        }
+        if (e === t) break;
+      }
+      for (let e = i; !s && e && e !== t; e = e.parentElement) {
         let t = e.getBoundingClientRect(),
-          r =
-            Math.abs(t.width - n.width) <= 4 &&
-            (t.height === 0 || Math.abs(t.height - n.height) <= 4),
+          n =
+            Math.abs(t.width - r.width) <= 4 &&
+            (t.height === 0 || Math.abs(t.height - r.height) <= 4),
           i =
-            n.width > 0 &&
-            n.height > 0 &&
-            t.width >= n.width - 4 &&
-            t.width <= n.width * 1.5 &&
-            t.height <= n.height * 1.5 &&
-            Math.abs(t.left - n.left) <= 4 &&
-            Math.abs(t.top - n.top) <= 4;
-        if (t.width > 0 && (r || i)) {
-          a = e;
+            r.width > 0 &&
+            r.height > 0 &&
+            t.width >= r.width - 4 &&
+            t.width <= r.width * 1.5 &&
+            t.height <= r.height * 1.5 &&
+            Math.abs(t.left - r.left) <= 4 &&
+            Math.abs(t.top - r.top) <= 4;
+        if (t.width > 0 && (n || i)) {
+          c = e;
           break;
         }
       }
-      let o = document.createElement(`div`);
-      ((o.className = `luminous-direct-video-anchor`),
-        (o.hidden = !0),
-        e.before(o));
-      let s = document.createElement(`div`);
-      ((s.className = `luminous-direct-video-placeholder`),
-        s.setAttribute(`role`, `img`),
-        s.setAttribute(
+      let u = document.createElement(`div`);
+      ((u.className = `luminous-direct-video-anchor`),
+        (u.hidden = !0),
+        e.before(u));
+      let d = document.createElement(`div`);
+      ((d.className = `luminous-direct-video-placeholder`),
+        d.setAttribute(`role`, `img`),
+        d.setAttribute(
           `aria-label`,
           `Music video is playing in the background`,
         ),
-        Object.assign(s.style, {
+        Object.assign(d.style, {
           position: `fixed`,
           display: `block`,
           overflow: `hidden`,
@@ -584,11 +648,11 @@ var e = class {
           isolation: `isolate`,
           zIndex: `100`,
         }));
-      let c = document.createElement(`img`);
-      ((c.className = `luminous-direct-video-placeholder-artwork`),
-        (c.alt = ``),
-        (c.decoding = `async`),
-        Object.assign(c.style, {
+      let f = document.createElement(`img`);
+      ((f.className = `luminous-direct-video-placeholder-artwork`),
+        (f.alt = ``),
+        (f.decoding = `async`),
+        Object.assign(f.style, {
           position: `absolute`,
           inset: `0`,
           width: `100%`,
@@ -597,22 +661,22 @@ var e = class {
           maxWidth: `none`,
           maxHeight: `none`,
         }),
-        c.addEventListener(`error`, () => {
-          c.style.visibility = `hidden`;
+        f.addEventListener(`error`, () => {
+          f.style.visibility = `hidden`;
         }),
-        c.addEventListener(`load`, () => {
-          c.style.visibility = `visible`;
+        f.addEventListener(`load`, () => {
+          f.style.visibility = `visible`;
         }));
-      let l = document.createElement(`span`);
-      Object.assign(l.style, {
+      let p = document.createElement(`span`);
+      Object.assign(p.style, {
         position: `absolute`,
         inset: `0`,
         background: `linear-gradient(180deg, rgba(8,10,14,.08), rgba(8,10,14,.6))`,
       });
-      let u = document.createElement(`span`);
-      ((u.className = `luminous-direct-video-placeholder-label`),
-        (u.textContent = `Video in background`),
-        Object.assign(u.style, {
+      let m = document.createElement(`span`);
+      ((m.className = `luminous-direct-video-placeholder-label`),
+        (m.textContent = `Video in background`),
+        Object.assign(m.style, {
           position: `absolute`,
           left: `12px`,
           bottom: `12px`,
@@ -625,112 +689,134 @@ var e = class {
           fontSize: `12px`,
           lineHeight: `1.4`,
         }),
-        s.append(c, l, u));
-      let d = new Map(),
-        f = (e, t) => {
-          (d.has(e) ||
-            d.set(e, {
-              value: a.style.getPropertyValue(e),
-              priority: a.style.getPropertyPriority(e),
+        d.append(f, p, m));
+      let h = new Map(),
+        g = (e, t) => {
+          (h.has(e) ||
+            h.set(e, {
+              value: c.style.getPropertyValue(e),
+              priority: c.style.getPropertyPriority(e),
             }),
-            a.style.setProperty(e, t, `important`));
+            c.style.setProperty(e, t, `important`));
         },
-        p =
-          n.width > 0 && n.height > 0
-            ? n.width / n.height
-            : e.videoWidth / e.videoHeight || 16 / 9,
-        m = () => {
-          let e = a.getBoundingClientRect().width || n.width,
-            t = getComputedStyle(a),
-            r =
-              t.boxSizing === `border-box`
-                ? 0
-                : (parseFloat(t.paddingTop) || 0) +
-                  (parseFloat(t.paddingBottom) || 0) +
-                  (parseFloat(t.borderTopWidth) || 0) +
-                  (parseFloat(t.borderBottomWidth) || 0),
-            i = `${Math.max(0, e / p - r)}px`;
-          a.style.getPropertyValue(`min-height`) !== i && f(`min-height`, i);
-        };
-      m();
-      let h = a.getBoundingClientRect(),
-        g = r,
-        _ = g.getBoundingClientRect(),
-        v = h.width > 0 ? a : g,
-        y = v === a ? h : _,
-        b = n.width || y.width,
-        x = n.height || b / p,
-        S = n.width > 0 ? n.left - y.left : 0,
-        C = n.height > 0 ? n.top - y.top : 0,
-        w = null,
-        T = () => {
+        _ = c.getBoundingClientRect(),
+        v =
+          s && _.width > 0 && _.height > 0
+            ? _.width / _.height
+            : r.width > 0 && r.height > 0
+              ? r.width / r.height
+              : e.videoWidth / e.videoHeight || 16 / 9;
+      s &&
+        !l &&
+        (g(`width`, `100%`),
+        g(`max-width`, `100%`),
+        g(`box-sizing`, `border-box`));
+      let y = () => {
+        let e = c.offsetWidth || _.width || r.width,
+          t = getComputedStyle(c),
+          n =
+            t.boxSizing === `border-box`
+              ? 0
+              : (parseFloat(t.paddingTop) || 0) +
+                (parseFloat(t.paddingBottom) || 0) +
+                (parseFloat(t.borderTopWidth) || 0) +
+                (parseFloat(t.borderBottomWidth) || 0),
+          i = `${Math.max(0, e / v - n)}px`;
+        c.style.getPropertyValue(`min-height`) !== i && g(`min-height`, i);
+      };
+      y();
+      let b = t,
+        x = null,
+        S = () => {
           if (
-            ((w = null),
-            !o.isConnected ||
-              !g.contains(o) ||
-              g.getClientRects().length === 0 ||
-              g.getBoundingClientRect().width <= 0 ||
-              getComputedStyle(g).visibility === `hidden`)
+            ((x = null),
+            !u.isConnected ||
+              !b.contains(u) ||
+              b.getClientRects().length === 0 ||
+              b.getBoundingClientRect().width <= 0 ||
+              getComputedStyle(b).visibility === `hidden`)
           ) {
-            s.style.display = `none`;
+            d.style.display = `none`;
             return;
           }
-          m();
-          let e = v.getBoundingClientRect(),
-            t = e.width > 0 && y.width > 0 ? e.width / y.width : 1,
-            n = e.left + S * t,
-            r = e.top + C * t,
-            i = b * t,
-            c = x * t,
-            l = Math.max(0, n),
-            u = Math.max(0, r),
-            d = Math.min(window.innerWidth, n + i),
-            f = Math.min(window.innerHeight, r + c);
-          for (let e = a; e && e !== document.body; e = e.parentElement) {
+          y();
+          let {
+            left: e,
+            top: t,
+            width: n,
+            height: r,
+          } = c.getBoundingClientRect();
+          if (n <= 0 || r <= 0 || getComputedStyle(c).visibility === `hidden`) {
+            d.style.display = `none`;
+            return;
+          }
+          let i = Math.max(0, e),
+            a = Math.max(0, t),
+            o = Math.min(window.innerWidth, e + n),
+            s = Math.min(window.innerHeight, t + r);
+          for (let e = c; e && e !== document.body; e = e.parentElement) {
             let t = e.getBoundingClientRect();
             if (t.width <= 0 || t.height <= 0) continue;
             let n = getComputedStyle(e);
-            ((e === g || /(auto|scroll|hidden|clip)/.test(n.overflowX)) &&
-              ((l = Math.max(l, t.left)), (d = Math.min(d, t.right))),
-              (e === g || /(auto|scroll|hidden|clip)/.test(n.overflowY)) &&
-                ((u = Math.max(u, t.top)), (f = Math.min(f, t.bottom))));
+            ((e === b || /(auto|scroll|hidden|clip)/.test(n.overflowX)) &&
+              ((i = Math.max(i, t.left)), (o = Math.min(o, t.right))),
+              (e === b || /(auto|scroll|hidden|clip)/.test(n.overflowY)) &&
+                ((a = Math.max(a, t.top)), (s = Math.min(s, t.bottom))));
           }
-          let p = g.querySelector(`.main-nowPlayingView-headerWrapper`);
-          (p && (u = Math.max(u, p.getBoundingClientRect().bottom)),
-            (s.style.display = d > l && f > u ? `block` : `none`),
-            Object.assign(s.style, {
-              left: `${n}px`,
-              top: `${r}px`,
-              width: `${i}px`,
-              height: `${c}px`,
-              clipPath: `inset(${Math.max(0, u - r)}px ${Math.max(0, n + i - d)}px ${Math.max(0, r + c - f)}px ${Math.max(0, l - n)}px)`,
+          let l = b.querySelector(`.main-nowPlayingView-headerWrapper`);
+          (l &&
+            !l.contains(c) &&
+            !c.contains(l) &&
+            (a = Math.max(a, l.getBoundingClientRect().bottom)),
+            (d.style.display = o > i && s > a ? `block` : `none`),
+            Object.assign(d.style, {
+              left: `${e}px`,
+              top: `${t}px`,
+              width: `${n}px`,
+              height: `${r}px`,
+              clipPath: `inset(${Math.max(0, a - t)}px ${Math.max(0, e + n - o)}px ${Math.max(0, t + r - s)}px ${Math.max(0, i - e)}px)`,
             }));
         },
-        E = () => {
-          w === null && (w = requestAnimationFrame(T));
+        C = () => {
+          x === null && (x = requestAnimationFrame(S));
         },
-        D = new ResizeObserver(E);
+        w = new ResizeObserver(C);
+      (w.observe(c), b !== c && w.observe(b));
+      let T = new MutationObserver(C);
+      for (
+        let e = c;
+        e &&
+        (T.observe(e, {
+          attributes: !0,
+          attributeFilter: [`style`, `class`, `hidden`, `aria-hidden`],
+        }),
+        e !== b);
+        e = e.parentElement
+      );
+      window.addEventListener(`resize`, C, { passive: !0 });
+      let E = (e) => {
+        let t = e.target;
+        (t instanceof Element && !t.contains(c)) || C();
+      };
       return (
-        D.observe(a),
-        g !== a && D.observe(g),
-        window.addEventListener(`resize`, E, { passive: !0 }),
         document.addEventListener(`scroll`, E, { capture: !0, passive: !0 }),
-        document.body.append(s),
-        this.directVideoPlaceholders.set(o, {
-          element: s,
-          frame: a,
-          observer: D,
-          styles: d,
-          sync: E,
+        document.body.append(d),
+        this.directVideoPlaceholders.set(u, {
+          element: d,
+          frame: c,
+          observer: w,
+          styles: h,
+          sync: C,
           dispose: () => {
-            (w !== null && cancelAnimationFrame(w),
-              window.removeEventListener(`resize`, E),
+            (T.disconnect(),
+              x !== null && cancelAnimationFrame(x),
+              window.removeEventListener(`resize`, C),
               document.removeEventListener(`scroll`, E, !0));
           },
         }),
-        T(),
-        this.updateDirectVideoPlaceholder(o, t),
-        o
+        S(),
+        this.updateDirectVideoPlaceholder(u, n),
+        u
       );
     }
     static updateDirectVideoPlaceholder(e, t) {
@@ -767,7 +853,7 @@ var e = class {
         (this.directVideoKey = null));
     }
     static destroy() {
-      (this.imageRenderId++,
+      (this.invalidateImageRender(),
         this.videoRenderId++,
         (this.currentCanvasSource = null),
         (this.currentCanvasKey = null),
@@ -787,7 +873,7 @@ var e = class {
         this.emit(`change`));
     }
     static clear() {
-      (this.imageRenderId++,
+      (this.invalidateImageRender(),
         this.videoRenderId++,
         (this.currentCanvasSource = null),
         (this.currentCanvasKey = null),
@@ -882,19 +968,21 @@ var e = class {
       return t === `NotSupportedError` || t === `SecurityError`;
     }
     static resetVideo(e) {
-      ((e.onplaying = null), e.pause());
+      e.onplaying = null;
       let t = e.srcObject;
-      (t instanceof MediaStream && t.getTracks().forEach((e) => e.stop()),
+      (!t && !e.hasAttribute(`src`) && !e.currentSrc) ||
+        (e.pause(),
+        t instanceof MediaStream && t.getTracks().forEach((e) => e.stop()),
         (e.srcObject = null),
         e.removeAttribute(`src`),
         e.load());
     }
   },
-  t = 64,
-  n = 120,
-  r = 220,
-  i = 750,
-  a = class {
+  d = 64,
+  f = 120,
+  p = 220,
+  m = 750,
+  h = class {
     static subscriptions = new Set();
     static observer = null;
     static frameId = null;
@@ -963,10 +1051,10 @@ var e = class {
         this.subscriptions.size === 0
       )
         return;
-      let e = this.saturated ? r : n,
+      let e = this.saturated ? p : f,
         t = performance.now() - this.lastDispatchAt,
-        a = Math.max(0, e - t),
-        o = () => {
+        n = Math.max(0, e - t),
+        r = () => {
           ((this.timerId = null),
             (this.frameId = requestAnimationFrame(() => {
               this.frameId = null;
@@ -974,7 +1062,7 @@ var e = class {
               this.lastDispatchAt = e;
               let t = this.pendingRecords,
                 n = this.saturated,
-                r = this.forceDispatch || (n && e - this.lastFullSyncAt >= i);
+                r = this.forceDispatch || (n && e - this.lastFullSyncAt >= m);
               ((this.pendingRecords = []),
                 (this.saturated = !1),
                 (this.forceDispatch = !1),
@@ -987,7 +1075,7 @@ var e = class {
                 }));
             })));
         };
-      a <= 0 ? o() : (this.timerId = window.setTimeout(o, a));
+      n <= 0 ? r() : (this.timerId = window.setTimeout(r, n));
     }
     static ensureObserver() {
       this.observer ||
@@ -1004,25 +1092,25 @@ var e = class {
             ((this.pendingRecords = []), (this.saturated = !0));
             return;
           }
-          let n = this.cachedMainView?.isConnected ? this.cachedMainView : null;
-          n ||
-            ((n = document.getElementById(`main-view`)),
-            (this.cachedMainView = n));
-          let r = 0;
-          for (let i of e) {
-            if (n?.contains(i.target)) {
+          let t = this.cachedMainView?.isConnected ? this.cachedMainView : null;
+          t ||
+            ((t = document.getElementById(`main-view`)),
+            (this.cachedMainView = t));
+          let n = 0;
+          for (let r of e) {
+            if (t?.contains(r.target)) {
               this.stats.ignoredMainViewRecords++;
               continue;
             }
-            if ((r++, !this.saturated)) {
-              if (this.pendingRecords.length >= t) {
+            if ((n++, !this.saturated)) {
+              if (this.pendingRecords.length >= d) {
                 this.saturated = !0;
                 continue;
               }
-              this.pendingRecords.push(i);
+              this.pendingRecords.push(r);
             }
           }
-          r > 0 && this.schedule();
+          n > 0 && this.schedule();
         })),
         this.observeDocument());
     }
@@ -1063,365 +1151,32 @@ var e = class {
       }
     }
   };
-function o(e, t) {
+function g(e, t) {
   for (let n of e) {
     let e = n.target;
     if (
       (e instanceof Element && e.closest(t)) ||
-      c(n.addedNodes, t) ||
-      c(n.removedNodes, t)
+      v(n.addedNodes, t) ||
+      v(n.removedNodes, t)
     )
       return !0;
   }
   return !1;
 }
-function s(e, t) {
-  for (let n of e) if (c(n.addedNodes, t) || c(n.removedNodes, t)) return !0;
+function _(e, t) {
+  for (let n of e) if (v(n.addedNodes, t) || v(n.removedNodes, t)) return !0;
   return !1;
 }
-function c(e, t) {
+function v(e, t) {
   for (let n of e)
     if (n instanceof Element && (n.matches(t) || n.querySelector(t))) return !0;
   return !1;
 }
-var l = class {
-    static NPV_VIDEO_SELECTOR = `.canvasVideoContainerNPV video`;
-    static NPV_LONGFORM_VIDEO_SELECTOR = `#Desktop_PanelContainer_Id video`;
-    static STRUCTURAL_SELECTOR = [
-      `.canvasVideoContainerNPV`,
-      `#Desktop_PanelContainer_Id`,
-      `#lyrics-cinema`,
-      `video`,
-    ].join(`,`);
-    static CINEMA_VIDEO_SKIP_SELECTOR = `#main-view, #Desktop_PanelContainer_Id, .canvasVideoContainerNPV, .main-nowPlayingBar-container`;
-    static listeners = new Map();
-    static unsubscribeDomPulse = null;
-    static checkFrame = null;
-    static currentVideo = null;
-    static currentMode = null;
-    static currentSource = null;
-    static currentPlayable = !1;
-    static revision = 0;
-    static observedSourceVideo = null;
-    static uiSidebar = null;
-    static uiCanvasFrameParent = null;
-    static initialized = !1;
-    static enabled = !0;
-    static handleVideoSourceChange = () => {
-      this.scheduleCheck();
-    };
-    static createPayload(e, t) {
-      return {
-        video: e,
-        mode: t,
-        source: e?.currentSrc || e?.src || null,
-        revision: this.revision,
-      };
-    }
-    static addEventListener(e, t) {
-      (this.getListeners(e).add(t),
-        (e === `mount` || e === `change`) &&
-          this.currentVideo &&
-          this.currentMode &&
-          this.callListener(
-            t,
-            this.createPayload(this.currentVideo, this.currentMode),
-          ),
-        this.initialized || this.init());
-    }
-    static removeEventListener(e, t) {
-      this.listeners.get(e)?.delete(t);
-    }
-    static get() {
-      return this.createPayload(this.currentVideo, this.currentMode);
-    }
-    static getVideo() {
-      return this.currentVideo;
-    }
-    static init() {
-      this.initialized ||
-        !this.enabled ||
-        ((this.initialized = !0),
-        (this.unsubscribeDomPulse = a.subscribe(() => this.scheduleCheck(), {
-          immediate: !1,
-          filter: (e) => o(e, this.STRUCTURAL_SELECTOR),
-        })),
-        this.check());
-    }
-    static setEnabled(e) {
-      if (this.enabled !== e) {
-        if (((this.enabled = e), !e)) {
-          let e = this.currentVideo,
-            t = this.currentMode;
-          (this.destroy(!1),
-            e &&
-              (this.revision++,
-              this.emit(`unmount`, this.createPayload(null, t))));
-          return;
-        }
-        this.init();
-      }
-    }
-    static destroy(e = !0) {
-      (this.unsubscribeDomPulse?.(),
-        (this.unsubscribeDomPulse = null),
-        this.checkFrame !== null &&
-          (cancelAnimationFrame(this.checkFrame), (this.checkFrame = null)),
-        this.observeVideoSource(null),
-        this.syncUiState(null, null),
-        (this.currentVideo = null),
-        (this.currentMode = null),
-        (this.currentSource = null),
-        (this.currentPlayable = !1),
-        (this.initialized = !1),
-        e && this.listeners.clear());
-    }
-    static scheduleCheck() {
-      this.checkFrame === null &&
-        (this.checkFrame = requestAnimationFrame(() => {
-          ((this.checkFrame = null), this.check());
-        }));
-    }
-    static detect() {
-      let e = document.querySelector(this.NPV_VIDEO_SELECTOR);
-      if (e) return this.createPayload(e, `npv`);
-      let t = this.findVisibleVideo(this.NPV_LONGFORM_VIDEO_SELECTOR);
-      if (t) return this.createPayload(t, `npv-video`);
-      let n = Luminous.Background.getDirectVideoSource();
-      if (n && !n.ended) return this.createPayload(n, `npv-video`);
-      let r = this.findCinemaVideo();
-      return r
-        ? this.createPayload(r, `cinema`)
-        : this.createPayload(null, null);
-    }
-    static findCinemaVideo() {
-      for (let e of document.querySelectorAll(`video`)) {
-        if (
-          !e.closest(`.Root__top-container`) ||
-          e.closest(this.CINEMA_VIDEO_SKIP_SELECTOR) ||
-          !e.isConnected ||
-          e.ended ||
-          e.getClientRects().length === 0
-        )
-          continue;
-        let t = getComputedStyle(e);
-        if (t.display !== `none` && t.visibility !== `hidden`) return e;
-      }
-      return null;
-    }
-    static findVisibleVideo(e) {
-      let t = document.querySelectorAll(e);
-      for (let e of t) {
-        if (!e.isConnected || e.ended || e.getClientRects().length === 0)
-          continue;
-        let t = getComputedStyle(e);
-        if (t.display !== `none` && t.visibility !== `hidden`) return e;
-      }
-      return null;
-    }
-    static isPlayable(e) {
-      return !!(
-        e &&
-        e.isConnected &&
-        !e.ended &&
-        e.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA &&
-        e.videoWidth > 0 &&
-        e.videoHeight > 0
-      );
-    }
-    static check() {
-      let { video: e, mode: t, source: n } = this.detect(),
-        r = this.isPlayable(e),
-        i = this.currentVideo,
-        a = this.currentMode;
-      if (
-        i === e &&
-        a === t &&
-        this.currentSource === n &&
-        this.currentPlayable === r
-      )
-        return;
-      if (
-        ((this.currentVideo = e),
-        (this.currentMode = t),
-        (this.currentSource = n),
-        (this.currentPlayable = r),
-        this.revision++,
-        this.observeVideoSource(e),
-        this.syncUiState(e, t),
-        i && !e)
-      ) {
-        let e = this.createPayload(null, a);
-        (Luminous.Logger.info(`Canvas`, `Unmounted`, e),
-          this.emit(`unmount`, e));
-        return;
-      }
-      if (!i && e) {
-        let n = this.createPayload(e, t);
-        (Luminous.Logger.info(`Canvas`, `Mounted`, n), this.emit(`mount`, n));
-        return;
-      }
-      let o = this.createPayload(e, t);
-      (Luminous.Logger.info(`Canvas`, `Changed`, o), this.emit(`change`, o));
-    }
-    static emit(e, t) {
-      this.getListeners(e).forEach((e) => {
-        this.callListener(e, t);
-      });
-    }
-    static observeVideoSource(e) {
-      if (e === this.observedSourceVideo) return;
-      let t = [
-        `loadedmetadata`,
-        `loadeddata`,
-        `canplay`,
-        `playing`,
-        `emptied`,
-        `ended`,
-      ];
-      (t.forEach((e) => {
-        this.observedSourceVideo?.removeEventListener(
-          e,
-          this.handleVideoSourceChange,
-        );
-      }),
-        (this.observedSourceVideo = e),
-        t.forEach((t) => {
-          e?.addEventListener(t, this.handleVideoSourceChange, { passive: !0 });
-        }));
-    }
-    static syncUiState(e, t) {
-      let n = e && t === `npv` ? e.closest(`.canvasVideoContainerNPV`) : null,
-        r = n?.closest(`#Desktop_PanelContainer_Id`),
-        i = n?.parentElement?.parentElement ?? null;
-      (r !== this.uiSidebar &&
-        (this.uiSidebar?.classList.remove(`luminous-has-canvas`),
-        (this.uiSidebar = r),
-        this.uiSidebar?.classList.add(`luminous-has-canvas`)),
-        i !== this.uiCanvasFrameParent &&
-          (this.uiCanvasFrameParent?.classList.remove(
-            `luminous-canvas-frame-parent`,
-          ),
-          (this.uiCanvasFrameParent = i),
-          this.uiCanvasFrameParent?.classList.add(
-            `luminous-canvas-frame-parent`,
-          )));
-    }
-    static callListener(e, t) {
-      try {
-        e(t);
-      } catch (e) {
-        Luminous.Logger.error(`Canvas`, `Listener failed`, e);
-      }
-    }
-    static getListeners(e) {
-      let t = this.listeners.get(e);
-      return (t || ((t = new Set()), this.listeners.set(e, t)), t);
-    }
-  },
-  u = class {
-    static disabledLevels = new Set([`INFO`]);
-    static disabledChannels = new Set();
-    static levelStyles = {
-      INFO: `color:#ccc`,
-      WARN: `color:#facc15`,
-      ERROR: `color:#ef4444`,
-    };
-    static channelStyles = {
-      Runtime: `color:#38bdf8`,
-      Main: `color:#68c4e8`,
-      Background: `color:#60a5fa`,
-      Canvas: `color:#a78bfa`,
-      Palette: `color:#f472b6`,
-      Song: `color:#34d399`,
-      Settings: `color:#fbbf24`,
-      Motion: `color:#22d3ee`,
-      UI: `color:#c084fc`,
-    };
-    static baseStyle = `color:#888`;
-    static getTime() {
-      return new Date().toLocaleTimeString(`en-GB`, { hour12: !1 });
-    }
-    static shouldLog(e, t) {
-      return !this.disabledLevels.has(e) && !this.disabledChannels.has(t);
-    }
-    static format(e) {
-      return `Luminous/${e}`;
-    }
-    static log(e, t, ...n) {
-      this.shouldLog(e, t) &&
-        console.log(
-          `%c[${this.getTime()}] %c[${e}] %c[${this.format(t)}]`,
-          this.baseStyle,
-          this.levelStyles[e],
-          this.channelStyles[t],
-          ...n,
-        );
-    }
-    static info(e, ...t) {
-      this.log(`INFO`, e, ...t);
-    }
-    static warn(e, ...t) {
-      this.log(`WARN`, e, ...t);
-    }
-    static error(e, ...t) {
-      this.log(`ERROR`, e, ...t);
-    }
-    static enableLevel(e) {
-      this.disabledLevels.delete(e);
-    }
-    static disableLevel(e) {
-      this.disabledLevels.add(e);
-    }
-    static enableChannel(e) {
-      this.disabledChannels.delete(e);
-    }
-    static disableChannel(e) {
-      this.disabledChannels.add(e);
-    }
-    static printBanner() {
-      (console.log(
-        `%c Luminous v2.4.5 %c by streetraceing `,
-        `background:#1DB954;color:#000;padding:6px 12px;border-radius:8px 0 0 8px;font-weight:600;`,
-        `background:#181818;color:#1DB954;padding:6px 12px;border-radius:0 8px 8px 0;font-weight:500;`,
-      ),
-        console.log(
-          `%c build: 23/10/2026 00:38:51 UTC+03:00 `,
-          `color:#888;font-size:12px;`,
-        ));
-    }
-  },
-  d = { status: `booting`, brokenSince: null },
-  f = new Set();
-function p() {
-  return d;
-}
-function m(e) {
-  let t = { ...d, ...e };
-  (t.status === d.status && t.brokenSince === d.brokenSince) ||
-    ((d = t), f.forEach((e) => g(e)));
-}
-function h(e) {
-  return (
-    f.add(e),
-    g(e),
-    () => {
-      f.delete(e);
-    }
-  );
-}
-function g(e) {
-  try {
-    e(d);
-  } catch (e) {
-    u.error(`Main`, `UI health listener failed`, e);
-  }
-}
-var _ = 64,
-  v = 120,
-  y = 220,
-  b = 750,
-  x = class {
+var y = 64,
+  b = 120,
+  x = 220,
+  S = 750,
+  C = class {
     static subscriptions = new Set();
     static root = null;
     static observer = null;
@@ -1490,11 +1245,11 @@ var _ = 64,
           `visibilitychange`,
           this.handleVisibilityChange,
         ),
-        a.subscribe(
+        h.subscribe(
           () => {
             (this.attachRoot(), (this.forceDispatch = !0), this.schedule());
           },
-          { immediate: !1, filter: (e) => s(e, `#main-view`) },
+          { immediate: !1, filter: (e) => _(e, `#main-view`) },
         ))),
         this.attachRoot());
     }
@@ -1518,7 +1273,7 @@ var _ = 64,
             }
             for (let t of e)
               if (!this.saturated) {
-                if (this.pendingRecords.length >= _) {
+                if (this.pendingRecords.length >= y) {
                   this.saturated = !0;
                   continue;
                 }
@@ -1542,7 +1297,7 @@ var _ = 64,
         this.timerId !== null
       )
         return;
-      let e = this.saturated ? y : v,
+      let e = this.saturated ? x : b,
         t = performance.now() - this.lastDispatchAt,
         n = Math.max(0, e - t),
         r = () => {
@@ -1553,7 +1308,7 @@ var _ = 64,
               ((this.lastDispatchAt = e), this.attachRoot());
               let t = this.pendingRecords,
                 n = this.saturated,
-                r = this.forceDispatch || (n && e - this.lastFullSyncAt >= b);
+                r = this.forceDispatch || (n && e - this.lastFullSyncAt >= S);
               ((this.pendingRecords = []),
                 (this.saturated = !1),
                 (this.forceDispatch = !1),
@@ -1599,16 +1354,370 @@ var _ = 64,
       }
     }
   },
-  S = `luminous-playlist-background`,
-  C = `--luminous-playlist-background-image`,
-  w = [
+  w = class {
+    static STRUCTURAL_SELECTOR = [
+      e,
+      i,
+      a,
+      t,
+      n,
+      `#Desktop_PanelContainer_Id`,
+      `#lyrics-cinema`,
+      `video`,
+    ].join(`,`);
+    static listeners = new Map();
+    static unsubscribeDomPulse = null;
+    static unsubscribeMainViewPulse = null;
+    static checkFrame = null;
+    static currentVideo = null;
+    static currentMode = null;
+    static currentSource = null;
+    static currentPlayable = !1;
+    static revision = 0;
+    static observedSourceVideo = null;
+    static uiSidebar = null;
+    static uiCanvasFrameParent = null;
+    static initialized = !1;
+    static enabled = !0;
+    static handleVideoSourceChange = () => {
+      this.scheduleCheck();
+    };
+    static createPayload(e, t) {
+      return {
+        video: e,
+        mode: t,
+        source: e?.currentSrc || e?.src || null,
+        revision: this.revision,
+      };
+    }
+    static addEventListener(e, t) {
+      (this.getListeners(e).add(t),
+        (e === `mount` || e === `change`) &&
+          this.currentVideo &&
+          this.currentMode &&
+          this.callListener(
+            t,
+            this.createPayload(this.currentVideo, this.currentMode),
+          ),
+        this.initialized || this.init());
+    }
+    static removeEventListener(e, t) {
+      this.listeners.get(e)?.delete(t);
+    }
+    static get() {
+      return this.createPayload(this.currentVideo, this.currentMode);
+    }
+    static getVideo() {
+      return this.currentVideo;
+    }
+    static init() {
+      this.initialized ||
+        !this.enabled ||
+        ((this.initialized = !0),
+        (this.unsubscribeDomPulse = h.subscribe(() => this.scheduleCheck(), {
+          immediate: !1,
+          filter: (e) => g(e, this.STRUCTURAL_SELECTOR),
+        })),
+        (this.unsubscribeMainViewPulse = C.subscribe(
+          () => this.scheduleCheck(),
+          { immediate: !1, filter: (e) => g(e, this.STRUCTURAL_SELECTOR) },
+        )),
+        this.check());
+    }
+    static setEnabled(e) {
+      if (this.enabled !== e) {
+        if (((this.enabled = e), !e)) {
+          let e = this.currentVideo,
+            t = this.currentMode;
+          (this.destroy(!1),
+            e &&
+              (this.revision++,
+              this.emit(`unmount`, this.createPayload(null, t))));
+          return;
+        }
+        this.init();
+      }
+    }
+    static destroy(e = !0) {
+      (this.unsubscribeDomPulse?.(),
+        (this.unsubscribeDomPulse = null),
+        this.unsubscribeMainViewPulse?.(),
+        (this.unsubscribeMainViewPulse = null),
+        this.checkFrame !== null &&
+          (cancelAnimationFrame(this.checkFrame), (this.checkFrame = null)),
+        this.observeVideoSource(null),
+        this.syncUiState(null, null),
+        (this.currentVideo = null),
+        (this.currentMode = null),
+        (this.currentSource = null),
+        (this.currentPlayable = !1),
+        (this.initialized = !1),
+        e && this.listeners.clear());
+    }
+    static scheduleCheck() {
+      this.checkFrame === null &&
+        (this.checkFrame = requestAnimationFrame(() => {
+          ((this.checkFrame = null), this.check());
+        }));
+    }
+    static detect() {
+      let e = this.findVisibleVideo(r);
+      if (e) return this.createPayload(e, `npv`);
+      let t = this.findVisibleVideo(o, !0) ?? this.findVisibleVideo(s, !0);
+      if (t) return this.createPayload(t, `npv-video`);
+      let n = Luminous.Background.getDirectVideoSource();
+      if (n && !n.ended) return this.createPayload(n, `npv-video`);
+      let i = this.findCinemaVideo();
+      return i
+        ? this.createPayload(i, `cinema`)
+        : this.createPayload(null, null);
+    }
+    static findCinemaVideo() {
+      for (let e of document.querySelectorAll(`video`)) {
+        if (
+          !e.closest(`.Root__top-container`) ||
+          e.closest(c) ||
+          !e.isConnected ||
+          e.ended ||
+          e.getClientRects().length === 0
+        )
+          continue;
+        let t = getComputedStyle(e);
+        if (t.display !== `none` && t.visibility !== `hidden`) return e;
+      }
+      return null;
+    }
+    static findVisibleVideo(e, t = !1) {
+      let n = document.querySelectorAll(e);
+      for (let e of n) {
+        if (
+          (t &&
+            e.closest(
+              `[data-canvas-surface="true"],.canvasVideoContainerNPV`,
+            )) ||
+          !e.isConnected ||
+          e.ended ||
+          e.getClientRects().length === 0
+        )
+          continue;
+        let n = getComputedStyle(e);
+        if (n.display !== `none` && n.visibility !== `hidden`) return e;
+      }
+      return null;
+    }
+    static isPlayable(e) {
+      return !!(
+        e &&
+        e.isConnected &&
+        !e.ended &&
+        e.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA &&
+        e.videoWidth > 0 &&
+        e.videoHeight > 0
+      );
+    }
+    static check() {
+      let { video: e, mode: t, source: n } = this.detect(),
+        r = this.isPlayable(e),
+        i = this.currentVideo,
+        a = this.currentMode;
+      if (
+        (this.syncUiState(e, t),
+        i === e &&
+          a === t &&
+          this.currentSource === n &&
+          this.currentPlayable === r)
+      )
+        return;
+      if (
+        ((this.currentVideo = e),
+        (this.currentMode = t),
+        (this.currentSource = n),
+        (this.currentPlayable = r),
+        this.revision++,
+        this.observeVideoSource(e),
+        i && !e)
+      ) {
+        let e = this.createPayload(null, a);
+        (Luminous.Logger.info(`Canvas`, `Unmounted`, e),
+          this.emit(`unmount`, e));
+        return;
+      }
+      if (!i && e) {
+        let n = this.createPayload(e, t);
+        (Luminous.Logger.info(`Canvas`, `Mounted`, n), this.emit(`mount`, n));
+        return;
+      }
+      let o = this.createPayload(e, t);
+      (Luminous.Logger.info(`Canvas`, `Changed`, o), this.emit(`change`, o));
+    }
+    static emit(e, t) {
+      this.getListeners(e).forEach((e) => {
+        this.callListener(e, t);
+      });
+    }
+    static observeVideoSource(e) {
+      if (e === this.observedSourceVideo) return;
+      let t = [
+        `loadedmetadata`,
+        `loadeddata`,
+        `canplay`,
+        `playing`,
+        `emptied`,
+        `ended`,
+      ];
+      (t.forEach((e) => {
+        this.observedSourceVideo?.removeEventListener(
+          e,
+          this.handleVideoSourceChange,
+        );
+      }),
+        (this.observedSourceVideo = e),
+        t.forEach((t) => {
+          e?.addEventListener(t, this.handleVideoSourceChange, { passive: !0 });
+        }));
+    }
+    static syncUiState(e, r) {
+      let i = e && r === `npv` ? e.closest(t) : null,
+        a = e && r === `npv` && !i ? e.closest(n) : null,
+        o = i ?? a,
+        s =
+          o?.closest(`#Desktop_PanelContainer_Id`) ??
+          o?.closest(`[data-npv-root]`) ??
+          null,
+        c = i ? i.parentElement : (a?.parentElement?.parentElement ?? null);
+      (s !== this.uiSidebar &&
+        (this.uiSidebar?.classList.remove(`luminous-has-canvas`),
+        (this.uiSidebar = s),
+        this.uiSidebar?.classList.add(`luminous-has-canvas`)),
+        c !== this.uiCanvasFrameParent &&
+          (this.uiCanvasFrameParent?.classList.remove(
+            `luminous-canvas-frame-parent`,
+          ),
+          (this.uiCanvasFrameParent = c),
+          this.uiCanvasFrameParent?.classList.add(
+            `luminous-canvas-frame-parent`,
+          )));
+    }
+    static callListener(e, t) {
+      try {
+        e(t);
+      } catch (e) {
+        Luminous.Logger.error(`Canvas`, `Listener failed`, e);
+      }
+    }
+    static getListeners(e) {
+      let t = this.listeners.get(e);
+      return (t || ((t = new Set()), this.listeners.set(e, t)), t);
+    }
+  },
+  T = class {
+    static disabledLevels = new Set([`INFO`]);
+    static disabledChannels = new Set();
+    static levelStyles = {
+      INFO: `color:#ccc`,
+      WARN: `color:#facc15`,
+      ERROR: `color:#ef4444`,
+    };
+    static channelStyles = {
+      Runtime: `color:#38bdf8`,
+      Main: `color:#68c4e8`,
+      Background: `color:#60a5fa`,
+      Canvas: `color:#a78bfa`,
+      Palette: `color:#f472b6`,
+      Song: `color:#34d399`,
+      Settings: `color:#fbbf24`,
+      Motion: `color:#22d3ee`,
+      UI: `color:#c084fc`,
+    };
+    static baseStyle = `color:#888`;
+    static getTime() {
+      return new Date().toLocaleTimeString(`en-GB`, { hour12: !1 });
+    }
+    static shouldLog(e, t) {
+      return !this.disabledLevels.has(e) && !this.disabledChannels.has(t);
+    }
+    static format(e) {
+      return `Luminous/${e}`;
+    }
+    static log(e, t, ...n) {
+      this.shouldLog(e, t) &&
+        console.log(
+          `%c[${this.getTime()}] %c[${e}] %c[${this.format(t)}]`,
+          this.baseStyle,
+          this.levelStyles[e],
+          this.channelStyles[t],
+          ...n,
+        );
+    }
+    static info(e, ...t) {
+      this.log(`INFO`, e, ...t);
+    }
+    static warn(e, ...t) {
+      this.log(`WARN`, e, ...t);
+    }
+    static error(e, ...t) {
+      this.log(`ERROR`, e, ...t);
+    }
+    static enableLevel(e) {
+      this.disabledLevels.delete(e);
+    }
+    static disableLevel(e) {
+      this.disabledLevels.add(e);
+    }
+    static enableChannel(e) {
+      this.disabledChannels.delete(e);
+    }
+    static disableChannel(e) {
+      this.disabledChannels.add(e);
+    }
+    static printBanner() {
+      (console.log(
+        `%c Luminous v2.4.6 %c by streetraceing `,
+        `background:#1DB954;color:#000;padding:6px 12px;border-radius:8px 0 0 8px;font-weight:600;`,
+        `background:#181818;color:#1DB954;padding:6px 12px;border-radius:0 8px 8px 0;font-weight:500;`,
+      ),
+        console.log(
+          `%c build: 27/10/2026 19:01:15 UTC+03:00 `,
+          `color:#888;font-size:12px;`,
+        ));
+    }
+  },
+  E = { status: `booting`, brokenSince: null },
+  D = new Set();
+function O() {
+  return E;
+}
+function k(e) {
+  let t = { ...E, ...e };
+  (t.status === E.status && t.brokenSince === E.brokenSince) ||
+    ((E = t), D.forEach((e) => te(e)));
+}
+function ee(e) {
+  return (
+    D.add(e),
+    te(e),
+    () => {
+      D.delete(e);
+    }
+  );
+}
+function te(e) {
+  try {
+    e(E);
+  } catch (e) {
+    T.error(`Main`, `UI health listener failed`, e);
+  }
+}
+var ne = `luminous-playlist-background`,
+  A = `--luminous-playlist-background-image`,
+  re = [
     `.main-view-container`,
     `.before-scroll-node`,
     `[data-testid="playlist-page"]`,
     `[data-testid="playlist-tracklist"]`,
     `[data-testid="entity-header"]`,
   ].join(`,`),
-  T = [
+  ie = [
     `[data-testid="playlist-page"]`,
     `[data-testid="playlist-tracklist"]`,
     `.marketplace-content`,
@@ -1619,8 +1728,7 @@ var _ = 64,
     `div[data-testid="test-ref-div"]`,
     `[data-testid="entity-header"]`,
   ].join(`,`),
-  E = `#main-view, #Desktop_PanelContainer_Id, .canvasVideoContainerNPV, .main-nowPlayingBar-container`,
-  D = [
+  ae = [
     `.Root__top-container #main-view`,
     `.Root__top-container [data-testid="main-view"]`,
     `#main-view`,
@@ -1628,86 +1736,88 @@ var _ = 64,
     `.Root__top-container .main-view-container`,
     `.main-view-container`,
   ],
-  O = null;
-function ee() {
-  for (let e of D) if (document.querySelector(e)) return ((O = e), e);
+  oe = null;
+function se() {
+  for (let e of ae) if (document.querySelector(e)) return ((oe = e), e);
   return null;
 }
-function te() {
-  return O;
+function ce() {
+  return oe;
 }
-var k = class {
+var j = class {
     static playlistBackground(e) {
       let t = null,
         n = null,
         r = null,
         i = null,
         a = !1,
-        s = null,
-        c = null;
-      function l() {
-        c &&
-          (c.classList.remove(S),
-          c.style.removeProperty(C),
-          (c = null),
-          (s = null));
+        o = null,
+        s = null;
+      function c() {
+        s &&
+          (s.classList.remove(ne),
+          s.style.removeProperty(A),
+          (s = null),
+          (o = null));
       }
-      function u(e) {
+      function l(e) {
         e !== r &&
           (n?.disconnect(),
           (n = null),
           (r = e),
           e &&
-            ((n = new MutationObserver(f)),
+            ((n = new MutationObserver(d)),
             n.observe(e, {
               attributes: !0,
               attributeFilter: [`style`, `class`],
             })));
       }
-      function d() {
+      function u() {
         if (a) return;
         let e =
-          x.getRoot()?.querySelector(`.main-view-container`) ??
+          C.getRoot()?.querySelector(`.main-view-container`) ??
           document.querySelector(`.main-view-container`);
-        (e === t && t?.isConnected) || (u(null), l(), (t = e));
+        (e === t && t?.isConnected) || (l(null), c(), (t = e));
       }
-      function f() {
+      function d() {
         a ||
           i !== null ||
           (i = requestAnimationFrame(() => {
-            ((i = null), d(), p());
+            ((i = null), u(), f());
           }));
       }
-      function p() {
+      function f() {
         if (!t) return;
         let n = t.querySelector(`.before-scroll-node > div > :first-child`),
           r = t.querySelector(`[data-testid="entity-header"]`);
-        if ((u(n), !n || !r)) {
-          l();
+        if ((l(n), !n || !r)) {
+          c();
           return;
         }
         let i = getComputedStyle(n).backgroundImage;
         if (!i || i === `none`) {
-          l();
+          c();
           return;
         }
-        (r !== c && (l(), (c = r)),
-          i !== s &&
-            ((s = i),
-            r.classList.add(S),
-            r.style.setProperty(C, i),
+        (r !== s && (c(), (s = r)),
+          i !== o &&
+            ((o = i),
+            r.classList.add(ne),
+            r.style.setProperty(A, i),
             e?.onBackgroundChange?.(i, n, r)));
       }
-      let m = x.subscribe(f, { filter: (e) => o(e, w) });
+      let p = C.subscribe(d, {
+        filter: (e) => _(e, re) || g(e, `.before-scroll-node`),
+      });
       return {
         disconnect() {
           ((a = !0),
-            m(),
+            p(),
             n?.disconnect(),
             (n = null),
             (r = null),
             i !== null && (cancelAnimationFrame(i), (i = null)),
-            l(),
+            c(),
             (t = null));
         },
       };
@@ -1728,40 +1838,40 @@ var k = class {
       function a(e, t) {
         return (e.forEach((e) => e.classList.remove(t)), new Set());
       }
-      function s() {
+      function o() {
         (t?.classList.remove(...e),
           (r = a(r, `luminous-hidden-test-ref-container`)),
           (i = a(i, `luminous-artist-image-ancestor`)));
       }
-      function c() {
-        let e = x.getRoot();
-        (e === t && t?.isConnected) || (s(), (t = e));
+      function s() {
+        let e = C.getRoot();
+        (e === t && t?.isConnected) || (o(), (t = e));
       }
-      function l(e, n) {
+      function c(e, n) {
         t?.classList.toggle(e, n);
       }
-      function u() {
-        if (n || (c(), !t)) return;
-        (l(
+      function l() {
+        if (n || (s(), !t)) return;
+        (c(
           `luminous-page-playlist`,
           !!t.querySelector(
             `[data-testid="playlist-page"], [data-testid="playlist-tracklist"]`,
           ),
         ),
-          l(
+          c(
             `luminous-page-marketplace`,
             !!t.querySelector(`.marketplace-content`),
           ),
-          l(`luminous-page-search`, !!t.querySelector(`#searchPage`)),
-          l(
+          c(`luminous-page-search`, !!t.querySelector(`#searchPage`)),
+          c(
             `luminous-page-episode`,
             !!t.querySelector(`section[data-testid="episode"]`),
           ),
-          l(
+          c(
             `luminous-page-artist`,
             !!t.querySelector(`section[data-test-uri^="spotify:artist:"]`),
           ),
-          l(
+          c(
             `luminous-page-home`,
             !!t.querySelector(`section[data-testid="home-page"]`),
           ));
@@ -1771,7 +1881,9 @@ var k = class {
           for (; r?.parentElement && r.parentElement !== t;)
             r = r.parentElement;
           r?.parentElement === t &&
-            (r.classList.add(`luminous-hidden-test-ref-container`), e.add(r));
+            (r.classList.contains(`luminous-hidden-test-ref-container`) ||
+              r.classList.add(`luminous-hidden-test-ref-container`),
+            e.add(r));
         }),
           r.forEach((t) => {
             e.has(t) ||
@@ -1785,17 +1897,33 @@ var k = class {
             )?.parentElement ?? null;
         for (; o && o !== t;)
           (o.tagName === `DIV` &&
-            (o.classList.add(`luminous-artist-image-ancestor`), a.add(o)),
+            (o.classList.contains(`luminous-artist-image-ancestor`) ||
+              o.classList.add(`luminous-artist-image-ancestor`),
+            a.add(o)),
             (o = o.parentElement));
         (i.forEach((e) => {
           a.has(e) || e.classList.remove(`luminous-artist-image-ancestor`);
         }),
           (i = a));
       }
-      let d = x.subscribe(u, { filter: (e) => o(e, T) });
+      let u = C.subscribe(l, {
+        filter: (e) =>
+          _(e, ie) ||
+          e.some((e) => {
+            let t = e.target;
+            return t instanceof Element
+              ? t.matches(
+                  `[data-testid="playlist-page"],.marketplace-content,#searchPage,section[data-testid="episode"],section[data-test-uri^="spotify:artist:"],section[data-testid="home-page"]`,
+                ) ||
+                  (t.closest(`section[data-test-uri^="spotify:artist:"]`) !==
+                    null &&
+                    _([e], `img`))
+              : !1;
+          }),
+      });
       return {
         disconnect() {
-          ((n = !0), d(), s(), (t = null));
+          ((n = !0), u(), o(), (t = null));
         },
       };
     }
@@ -1826,12 +1954,12 @@ var k = class {
           a,
         );
       }
-      let o = a.subscribe(i, {
-        filter: (e) => s(e, `#Desktop_LeftSidebar_Id`),
+      let a = h.subscribe(i, {
+        filter: (e) => _(e, `#Desktop_LeftSidebar_Id`),
       });
       return {
         disconnect() {
-          ((n = !0), o(), r(), (e = null));
+          ((n = !0), a(), r(), (e = null));
         },
       };
     }
@@ -1840,7 +1968,7 @@ var k = class {
         t = null,
         n = null;
       function r() {
-        return ee() !== null;
+        return se() !== null;
       }
       function i() {
         return !!(
@@ -1849,64 +1977,64 @@ var k = class {
           document.querySelector(`#main-view`)
         );
       }
-      function o() {
+      function a() {
         try {
           return !!Spicetify?.Player?.data?.item;
         } catch {
           return !1;
         }
       }
-      function c() {
+      function o() {
         if (!e) {
           if (!r()) {
-            (o()
+            (a()
               ? n === null &&
                 (n = window.setTimeout(() => {
                   ((n = null),
                     !e &&
-                      p().status === `booting` &&
-                      (u.warn(
+                      O().status === `booting` &&
+                      (T.warn(
                         `Main`,
                         `Spotify shell selector not found; promoting to ready because Player has a track. Spicetify ≥ 2.45.2 is required for Spotify 1.3.3+.`,
                       ),
                       (t = null),
-                      m({ status: `ready`, brokenSince: null })));
+                      k({ status: `ready`, brokenSince: null })));
                 }, 4e3))
               : n !== null && (window.clearTimeout(n), (n = null)),
               (t = null),
-              m({ status: `booting`, brokenSince: null }));
+              k({ status: `booting`, brokenSince: null }));
             return;
           }
           if ((n !== null && (window.clearTimeout(n), (n = null)), i())) {
-            ((t = null), m({ status: `ready`, brokenSince: null }));
+            ((t = null), k({ status: `ready`, brokenSince: null }));
             return;
           }
           (t === null &&
             ((t = Date.now()),
-            u.info(`Main`, `Waiting for Spotify UI mount...`)),
-            m({ status: `waiting`, brokenSince: t }));
+            T.info(`Main`, `Waiting for Spotify UI mount...`)),
+            k({ status: `waiting`, brokenSince: t }));
         }
       }
-      let l = a.subscribe(c, {
+      let s = h.subscribe(o, {
           filter: (e) =>
-            s(
+            _(
               e,
               `.Root__top-container,#main-view,[data-testid="main-view"],.main-view-container`,
             ),
         }),
-        d = x.subscribe(c, {
+        c = C.subscribe(o, {
           immediate: !1,
           filter: (e) =>
-            s(e, `.main-view-container,[data-testid="main-view"],#main-view`),
+            _(e, `.main-view-container,[data-testid="main-view"],#main-view`),
         });
       return {
         disconnect() {
           ((e = !0),
             n !== null && (window.clearTimeout(n), (n = null)),
-            l(),
-            d(),
+            s(),
+            c(),
             (t = null),
-            m({ status: `booting`, brokenSince: null }));
+            k({ status: `booting`, brokenSince: null }));
         },
       };
     }
@@ -1921,19 +2049,19 @@ var k = class {
         if (n?.querySelector(`video`)) return !0;
         for (let e of document.querySelectorAll(`video`))
           if (
-            !(!e.closest(`.Root__top-container`) || e.closest(E)) &&
+            !(!e.closest(`.Root__top-container`) || e.closest(c)) &&
             e.getClientRects().length > 0
           )
             return !0;
         return !1;
       }
-      function s() {
+      function a() {
         let e = document.querySelector(`#lyrics-cinema`);
         (e !== n && r(),
           (n = e),
           n && n.classList.toggle(`luminous-cinema-has-video`, i()));
       }
-      function c() {
+      function o() {
         t = !1;
         let e = document.documentElement;
         (e.hasAttribute(`data-transition`) &&
@@ -1947,10 +2075,10 @@ var k = class {
             e.hasAttribute(t) && e.removeAttribute(t);
           }));
       }
-      function l() {
-        t || ((t = !0), queueMicrotask(c));
+      function s() {
+        t || ((t = !0), queueMicrotask(o));
       }
-      ((e = new MutationObserver(l)),
+      ((e = new MutationObserver(s)),
         e.observe(document.documentElement, {
           attributes: !0,
           attributeFilter: [
@@ -1963,38 +2091,42 @@ var k = class {
             `data-right-sidebar-open-postexit`,
           ],
         }),
-        c(),
-        s());
-      let u = a.subscribe(s, {
-        immediate: !1,
-        filter: (e) => o(e, `#lyrics-cinema,video`),
-      });
+        o(),
+        a());
+      let l = h.subscribe(a, {
+          immediate: !1,
+          filter: (e) => g(e, `#lyrics-cinema,video`),
+        }),
+        u = C.subscribe(a, {
+          immediate: !1,
+          filter: (e) => g(e, `#lyrics-cinema,video`),
+        });
       return {
         disconnect() {
-          (e?.disconnect(), (e = null), u(), r(), (t = !1));
+          (e?.disconnect(), (e = null), l(), u(), r(), (t = !1));
         },
       };
     }
   },
-  ne = class {
+  le = class {
     static get() {
       let e = Luminous.Canvas.get(),
         t = Luminous.Song.getSync();
       return {
         luminous: {
-          version: `2.4.5`,
-          buildTime: `23/10/2026 00:38:51 UTC+03:00`,
+          version: `2.4.6`,
+          buildTime: `27/10/2026 19:01:15 UTC+03:00`,
         },
         runtime: {
           background: Luminous.Background.getType(),
           canvasMode: e.mode,
           canvasSource: e.source,
           track: t?.title ?? null,
-          uiHealth: p().status,
+          uiHealth: O().status,
           documentHidden: document.hidden,
-          shellSelector: te(),
+          shellSelector: ce(),
         },
-        performance: { domPulse: a.getStats(), mainViewPulse: x.getStats() },
+        performance: { domPulse: h.getStats(), mainViewPulse: C.getStats() },
         settings: Luminous.Settings.snapshot(),
         environment: {
           platform: navigator.platform,
@@ -2016,7 +2148,7 @@ var k = class {
       }
     }
   },
-  re = class {
+  ue = class {
     static isDesktop() {
       return !!Spicetify.Platform?.NativeAPI;
     }
@@ -2139,8 +2271,8 @@ var k = class {
       }
     }
   },
-  A = `luminous-dynamic-palette`,
-  ie = [
+  M = `luminous-dynamic-palette`,
+  de = [
     `--luminous-palette-primary`,
     `--luminous-palette-secondary`,
     `--luminous-palette-accent`,
@@ -2155,7 +2287,7 @@ var k = class {
     `--luminous-blob-3-duration`,
     `--luminous-blob-4-duration`,
   ],
-  ae = [
+  fe = [
     `luminous-effect-aurora`,
     `luminous-effect-ember`,
     `luminous-effect-bloom`,
@@ -2168,10 +2300,10 @@ var k = class {
     `luminous-effect-tone-balanced`,
     `luminous-effect-tone-light`,
   ],
-  j = 48,
-  oe = 24,
-  se = 20,
-  ce = class {
+  N = 48,
+  pe = 24,
+  me = 20,
+  he = class {
     static requestId = 0;
     static source = null;
     static cache = new Map();
@@ -2187,8 +2319,8 @@ var k = class {
         this.clearAppliedPalette());
     }
     static setMotionDuration(e) {
-      let t = Number.isFinite(e) ? Math.min(60, Math.max(8, e)) : se;
-      ((this.motionScale = t / se),
+      let t = Number.isFinite(e) ? Math.min(60, Math.max(8, e)) : me;
+      ((this.motionScale = t / me),
         this.currentProfile &&
           this.applyDurations(this.currentProfile.baseDurations));
     }
@@ -2222,13 +2354,13 @@ var k = class {
     static async extractProfile(e) {
       let t = await this.loadImage(e),
         n = document.createElement(`canvas`);
-      ((n.width = j), (n.height = j));
+      ((n.width = N), (n.height = N));
       let r = n.getContext(`2d`, { willReadFrequently: !0 });
       if (!r) throw Error(`Canvas context unavailable`);
       ((r.imageSmoothingEnabled = !0),
         (r.imageSmoothingQuality = `high`),
-        r.drawImage(t, 0, 0, j, j));
-      let i = r.getImageData(0, 0, j, j).data;
+        r.drawImage(t, 0, 0, N, N));
+      let i = r.getImageData(0, 0, N, N).data;
       return this.analyzePixels(i);
     }
     static loadImage(e) {
@@ -2333,7 +2465,7 @@ var k = class {
         O = [T, E, D].reduce((e, t) =>
           this.relativeLuminance(t) > this.relativeLuminance(e) ? t : e,
         ),
-        ee = [T, E, D].reduce((e, t) =>
+        k = [T, E, D].reduce((e, t) =>
           this.relativeLuminance(t) < this.relativeLuminance(e) ? t : e,
         );
       return {
@@ -2343,7 +2475,7 @@ var k = class {
         light: this.toHex(
           this.mix(O, { red: 255, green: 255, blue: 255 }, 0.34),
         ),
-        dark: this.toHex(this.mix(ee, { red: 0, green: 0, blue: 0 }, 0.62)),
+        dark: this.toHex(this.mix(k, { red: 0, green: 0, blue: 0 }, 0.62)),
         scene: S,
         energy: C,
         tone: w,
@@ -2524,7 +2656,7 @@ var k = class {
       return t ? (this.cache.delete(e), this.cache.set(e, t), t) : null;
     }
     static cachePalette(e, t) {
-      for (this.cache.set(e, t); this.cache.size > oe;) {
+      for (this.cache.set(e, t); this.cache.size > pe;) {
         let e = this.cache.keys().next().value;
         if (!e) return;
         this.cache.delete(e);
@@ -2549,12 +2681,12 @@ var k = class {
           String(e.brightness),
         ),
         t.style.setProperty(`--luminous-effect-contrast`, String(e.contrast)),
-        t.classList.remove(...ae),
+        t.classList.remove(...fe),
         t.classList.add(
           `luminous-effect-${e.scene}`,
           `luminous-effect-energy-${e.energy}`,
           `luminous-effect-tone-${e.tone}`,
-          A,
+          M,
         ),
         this.applyDurations(e.baseDurations));
     }
@@ -2572,19 +2704,19 @@ var k = class {
     static clearAppliedPalette() {
       let e = this.getTarget();
       e &&
-        (ie.forEach((t) => {
+        (de.forEach((t) => {
           e.style.removeProperty(t);
         }),
-        e.classList.remove(...ae, A));
+        e.classList.remove(...fe, M));
     }
     static getTarget() {
       return document.querySelector(`.luminous-background-effects`);
     }
     static hasAppliedPalette() {
-      return this.getTarget()?.classList.contains(A) === !0;
+      return this.getTarget()?.classList.contains(M) === !0;
     }
   },
-  le = class {
+  ge = class {
     static STORAGE_KEY = `luminous-settings`;
     static PERSIST_DELAY_MS = 180;
     static registry = new Map();
@@ -2818,7 +2950,7 @@ var k = class {
       return (t || ((t = new Set()), this.listeners.set(e, t)), t);
     }
   },
-  ue = class {
+  _e = class {
     static PLAYER_TIMEOUT_MESSAGE = `Spicetify Player not available`;
     static INITIAL_TRACK_SYNC_INTERVAL = 100;
     static current = null;
@@ -2990,12 +3122,12 @@ var k = class {
     }
     static createTrackSignature(e) {
       let t = e.artists?.map((e) => e.name).join(`|`) ?? ``,
-        n = M(e);
+        n = P(e);
       return `${e.uri}\u0000${e.name}\u0000${t}\u0000${n ?? ``}`;
     }
     static createPayload(e) {
       let t = e.artists?.map((e) => e.name) ?? [],
-        n = M(e);
+        n = P(e);
       return {
         track: e,
         name: e.name,
@@ -3029,7 +3161,7 @@ var k = class {
       });
     }
   };
-function de(e) {
+function ve(e) {
   if (!e) return null;
   if (e.startsWith(`spotify:image:`)) {
     let t = e.slice(14);
@@ -3037,7 +3169,7 @@ function de(e) {
   }
   return e;
 }
-function M(e) {
+function P(e) {
   let t = [
     ...(e.images ?? []).map((e) => e.url),
     ...(e.album?.images ?? []).map((e) => e.url),
@@ -3047,12 +3179,12 @@ function M(e) {
     e.metadata?.image_small_url,
   ];
   for (let e of t) {
-    let t = de(e?.trim());
+    let t = ve(e?.trim());
     if (t) return t;
   }
   return null;
 }
-function fe() {
+function ye() {
   let e = window.Luminous;
   if (typeof e?.destroy == `function`)
     try {
@@ -3061,61 +3193,61 @@ function fe() {
       console.warn(`[Luminous] Failed to clean previous runtime`, e);
     }
 }
-function pe(t) {
+function be(e) {
   Object.defineProperty(window, 'Luminous', {
     value: {
-      Background: e,
-      Canvas: l,
-      Diagnostics: ne,
-      Song: ue,
-      Native: re,
-      Palette: ce,
-      Settings: le,
-      Logger: u,
-      destroy: t,
-      version: `2.4.5`,
+      Background: u,
+      Canvas: w,
+      Diagnostics: le,
+      Song: _e,
+      Native: ue,
+      Palette: he,
+      Settings: ge,
+      Logger: T,
+      destroy: e,
+      version: `2.4.6`,
     },
     configurable: !0,
   });
 }
-function N() {
+function F() {
   return Spicetify.React;
 }
-function P() {
-  return N().useEffect;
-}
-function F() {
-  return N().useMemo;
-}
 function I() {
-  return N().useRef;
+  return F().useEffect;
 }
 function L() {
-  return N().useState;
+  return F().useMemo;
 }
-function me() {
-  let e = P(),
-    t = F(),
-    n = L(),
+function R() {
+  return F().useRef;
+}
+function z() {
+  return F().useState;
+}
+function xe() {
+  let e = I(),
+    t = L(),
+    n = z(),
     [r, i] = n(() => Luminous.Song.getSync()),
     [a, o] = n(() => Luminous.Canvas.get()),
     [s, c] = n(() => Luminous.Settings.get(`dynamicBackground`) !== !1),
     [l, u] = n(() => Luminous.Settings.get(`musicVideoBackground`)),
     [d, f] = n(() => Luminous.Settings.get(`dynamicPalette`) !== !1),
-    [m, g] = n(() => p().status !== `booting`),
-    _ = !!a.video && (a.mode !== `npv-video` || l !== `artwork`),
-    v = t(
+    [p, m] = n(() => O().status !== `booting`),
+    h = !!a.video && (a.mode !== `npv-video` || l !== `artwork`),
+    g = t(
       () =>
-        m
+        p
           ? s
-            ? _
+            ? h
               ? `canvas:${a.mode}:${a.source ?? ``}:${a.revision}:${r?.image ?? ``}`
               : r?.image
                 ? `image:${l}:${r.image}`
                 : `empty:${l}`
             : `disabled`
           : `inactive`,
-      [m, a, s, r?.image, _, l],
+      [p, a, s, r?.image, h, l],
     );
   return (
     e(() => {
@@ -3127,7 +3259,8 @@ function me() {
           e !== n &&
             ((e = n),
             Luminous.Palette.cancel(),
-            Luminous.Background.preloadImage(t.image),
+            Luminous.Settings.get(`dynamicBackground`) !== !1 &&
+              Luminous.Background.preloadImage(t.image),
             i(t));
         },
         l = (e) => {
@@ -3139,26 +3272,29 @@ function me() {
         Luminous.Canvas.addEventListener(`mount`, l),
         Luminous.Canvas.addEventListener(`change`, l),
         Luminous.Canvas.addEventListener(`unmount`, l));
-      let d = h((e) => {
-          g(e.status !== `booting`);
+      let d = ee((e) => {
+          m(e.status !== `booting`);
         }),
         p = Luminous.Settings.subscribe(
           `dynamicBackground`,
           (e) => c(e !== !1),
           { immediate: !0 },
         ),
-        m = Luminous.Settings.subscribe(
+        h = Luminous.Settings.subscribe(
           `musicVideoBackground`,
           (e) => {
             if (e === `artwork`) {
               let e = Luminous.Song.refresh();
-              e && (Luminous.Background.preloadImage(e.image), s(e));
+              e &&
+                (Luminous.Settings.get(`dynamicBackground`) !== !1 &&
+                  Luminous.Background.preloadImage(e.image),
+                s(e));
             }
             u(e);
           },
           { immediate: !0 },
         ),
-        _ = Luminous.Settings.subscribe(`dynamicPalette`, (e) => f(e !== !1), {
+        g = Luminous.Settings.subscribe(`dynamicPalette`, (e) => f(e !== !1), {
           immediate: !0,
         });
       return () => {
@@ -3169,14 +3305,14 @@ function me() {
           Luminous.Canvas.removeEventListener(`unmount`, l),
           d(),
           p(),
-          _(),
-          m(),
+          g(),
+          h(),
           Luminous.Background.destroy(),
           Luminous.Palette.clear());
       };
     }, []),
     e(() => {
-      if (!m) {
+      if (!p) {
         Luminous.Background.destroy();
         return;
       }
@@ -3184,7 +3320,7 @@ function me() {
         Luminous.Background.clear();
         return;
       }
-      if (_) {
+      if (h) {
         Luminous.Background.render({
           canvas: a.video,
           canvasSource: a.source,
@@ -3198,72 +3334,72 @@ function me() {
         return;
       }
       Luminous.Background.render();
-    }, [v]),
+    }, [g]),
     e(() => {
-      if (!m || !s || !d) {
+      if (!p || !s || !d) {
         Luminous.Palette.clear();
         return;
       }
       Luminous.Palette.applyFromImage(r?.image);
-    }, [m, d, s, r?.image]),
+    }, [p, d, s, r?.image]),
     null
   );
 }
-var he = 600,
-  ge = 2600,
-  _e = 1500,
-  ve = Date.now();
-function ye() {
-  let e = N(),
-    t = P(),
-    n = F(),
-    r = I(),
-    i = L(),
+var Se = 600,
+  Ce = 2600,
+  we = 1500,
+  Te = Date.now();
+function Ee() {
+  let e = F(),
+    t = I(),
+    n = L(),
+    r = R(),
+    i = z(),
     [a, o] = i(!0),
-    [s, c] = i(() => p()),
+    [s, c] = i(() => O()),
     [l, u] = i(() => Date.now()),
     d = r(null),
     f = r(!1),
-    m = s.status !== `booting`;
+    p = s.status !== `booting`;
   (t(() => {
-    m &&
+    p &&
       document.documentElement.classList.remove(`luminous-bootstrap-pending`);
-  }, [m]),
+  }, [p]),
     t(() => {
-      if (a) return h(c);
+      if (a) return ee(c);
     }, [a]),
     t(() => {
-      if (!m || f.current) return;
-      d.current === null && (d.current = ve);
+      if (!p || f.current) return;
+      d.current === null && (d.current = Te);
       let e = Date.now() - d.current,
-        t = s.status === `ready` ? he : ge,
+        t = s.status === `ready` ? Se : Ce,
         n = Math.max(0, t - e),
         r = window.setTimeout(() => {
           ((f.current = !0), o(!1));
         }, n);
       return () => window.clearTimeout(r);
-    }, [s.status, m]),
+    }, [s.status, p]),
     t(() => {
-      if (!m || !a || s.status !== `waiting`) return;
+      if (!p || !a || s.status !== `waiting`) return;
       let e = window.setInterval(() => {
         u(Date.now());
       }, 500);
       return () => window.clearInterval(e);
-    }, [s.status, m, a]));
-  let g = n(
+    }, [s.status, p, a]));
+  let m = n(
       () =>
         s.status === `waiting` && s.brokenSince
-          ? `Waiting for Spotify UI... (${be(l - s.brokenSince)})`
+          ? `Waiting for Spotify UI... (${De(l - s.brokenSince)})`
           : s.status === `ready`
             ? `Welcome back. Lighting up Spotify...`
             : `Starting Luminous...`,
       [s.brokenSince, s.status, l],
     ),
-    _ =
+    h =
       s.status === `waiting` &&
       s.brokenSince !== null &&
-      l - s.brokenSince >= _e;
-  return m
+      l - s.brokenSince >= we;
+  return p
     ? e.createElement(
         `div`,
         {
@@ -3290,14 +3426,14 @@ function ye() {
             `div`,
             { className: `luminous-splash__copy` },
             e.createElement(`span`, null, `Luminous`),
-            e.createElement(`small`, null, g),
+            e.createElement(`small`, null, m),
           ),
           e.createElement(
             `div`,
             { className: `luminous-splash__loader` },
             e.createElement(`span`),
           ),
-          _ &&
+          h &&
             e.createElement(
               `div`,
               { className: `luminous-splash__hint` },
@@ -3307,11 +3443,11 @@ function ye() {
       )
     : null;
 }
-function be(e) {
+function De(e) {
   return `${Math.max(0, Math.floor(e / 1e3))}s`;
 }
-var R = [`still`, `drift`, `float`],
-  z = [`auto`, `artwork`],
+var Oe = [`still`, `drift`, `float`],
+  ke = [`auto`, `artwork`],
   B = (e, t, n) => (r) => {
     if (
       (typeof r != `number` && typeof r != `string`) ||
@@ -3323,17 +3459,17 @@ var R = [`still`, `drift`, `float`],
   },
   V = (e) => (t) => (typeof t == `boolean` ? t : e),
   H = (e, t) => (n) => (typeof n == `string` && e.includes(n) ? n : t),
-  U = (e, t, n) => {
+  Ae = (e, t, n) => {
     t.forEach((t) => {
       Luminous.Settings.toggleClass(`${e}${t}`, t === n);
     });
   },
-  W = () => {
+  je = () => {
     let e = Luminous.Settings.get(`dynamicBackground`) !== !1,
       t = Luminous.Settings.get(`backgroundSource`);
     Luminous.Canvas.setEnabled(e && t === `auto`);
   },
-  xe = {
+  Me = {
     backgroundBlur: {
       default: 24,
       normalize: B(24, 0, 48),
@@ -3379,7 +3515,7 @@ var R = [`still`, `drift`, `float`],
       normalize: V(!0),
       apply: (e) => {
         if (
-          (Luminous.Settings.toggleClass(`hideDynamicBackground`, !e), W(), e)
+          (Luminous.Settings.toggleClass(`hideDynamicBackground`, !e), je(), e)
         ) {
           (Luminous.Settings.setVar(`--luminous-background`, `transparent`),
             Luminous.Settings.setVar(
@@ -3399,9 +3535,9 @@ var R = [`still`, `drift`, `float`],
     },
     backgroundSource: {
       default: `auto`,
-      normalize: H(z, `auto`),
+      normalize: H(ke, `auto`),
       apply: (e) => {
-        (U(`luminous-source-`, z, e), W());
+        (Ae(`luminous-source-`, ke, e), je());
       },
     },
     musicVideoBackground: {
@@ -3417,8 +3553,8 @@ var R = [`still`, `drift`, `float`],
     },
     backgroundMotion: {
       default: `drift`,
-      normalize: H(R, `drift`),
-      apply: (e) => U(`luminous-motion-`, R, e),
+      normalize: H(Oe, `drift`),
+      apply: (e) => Ae(`luminous-motion-`, Oe, e),
     },
     motionDuration: {
       default: 20,
@@ -3434,7 +3570,7 @@ var R = [`still`, `drift`, `float`],
       apply: (e) => Luminous.Settings.toggleClass(`luminous-reduce-motion`, e),
     },
   },
-  Se = [
+  U = [
     {
       key: `dynamicBackground`,
       label: `Dynamic background`,
@@ -3557,7 +3693,7 @@ var R = [`still`, `drift`, `float`],
       control: `toggle`,
     },
   ],
-  Ce = [
+  Ne = [
     {
       id: `balanced`,
       label: `Balanced`,
@@ -3625,35 +3761,35 @@ var R = [`still`, `drift`, `float`],
       },
     },
   ];
-function we() {
-  Object.entries(xe).forEach(([e, t]) => {
+function Pe() {
+  Object.entries(Me).forEach(([e, t]) => {
     Luminous.Settings.register(e, t);
   });
 }
-var Te = `Luminous Settings`,
-  Ee = `brightness`,
-  G = `luminous-theme-modal`,
-  De = `luminous-theme-modal-title`,
-  Oe = `luminous-theme-modal-description`,
-  ke = [
+var Fe = `Luminous Settings`,
+  Ie = `brightness`,
+  W = `luminous-theme-modal`,
+  Le = `luminous-theme-modal-title`,
+  Re = `luminous-theme-modal-description`,
+  ze = [
     `button:not([disabled])`,
     `input:not([disabled])`,
     `[href]`,
     `[tabindex]:not([tabindex="-1"])`,
   ].join(`,`),
-  K = [
+  G = [
     { id: `presets`, label: `Presets` },
     { id: `appearance`, label: `Appearance` },
     { id: `motion`, label: `Motion` },
     { id: `advanced`, label: `Advanced` },
   ],
-  Ae = 32,
-  je = Se.map((e) => e.key);
-function Me() {
-  let e = N(),
-    t = P(),
-    n = I(),
-    r = L(),
+  Be = 32,
+  Ve = U.map((e) => e.key);
+function He() {
+  let e = F(),
+    t = I(),
+    n = R(),
+    r = z(),
     i = n(null),
     [a, o] = r(!1);
   return (
@@ -3666,7 +3802,7 @@ function Me() {
             t = window.setTimeout(n, 250);
             return;
           }
-          let r = new Spicetify.Menu.Item(Te, !1, () => o(!0), Ee);
+          let r = new Spicetify.Menu.Item(Fe, !1, () => o(!0), Ie);
           (r.register(), (i.current = r));
         };
       return (
@@ -3679,14 +3815,14 @@ function Me() {
         }
       );
     }, []),
-    a ? e.createElement(Ne, { onClose: () => o(!1) }) : null
+    a ? e.createElement(Ue, { onClose: () => o(!1) }) : null
   );
 }
-function Ne({ onClose: e }) {
-  let t = N(),
-    n = P(),
-    r = I(),
-    i = L(),
+function Ue({ onClose: e }) {
+  let t = F(),
+    n = I(),
+    r = R(),
+    i = z(),
     a = r(null),
     o = r(null),
     s = r({ presets: null, appearance: null, motion: null, advanced: null }),
@@ -3718,7 +3854,7 @@ function Ne({ onClose: e }) {
           return;
         }
         if (t.key !== `Tab`) return;
-        let n = Array.from(a.current?.querySelectorAll(ke) ?? []).filter(
+        let n = Array.from(a.current?.querySelectorAll(ze) ?? []).filter(
           (e) => e.offsetParent !== null,
         );
         if (!n.length) {
@@ -3739,13 +3875,13 @@ function Ne({ onClose: e }) {
       );
     }, [e]));
   let d = (e, t) => {
-    let n = K.findIndex((e) => e.id === t),
+    let n = G.findIndex((e) => e.id === t),
       r = null;
-    (e.key === `ArrowRight` && (r = (n + 1) % K.length),
-      e.key === `ArrowLeft` && (r = (n - 1 + K.length) % K.length),
+    (e.key === `ArrowRight` && (r = (n + 1) % G.length),
+      e.key === `ArrowLeft` && (r = (n - 1 + G.length) % G.length),
       e.key === `Home` && (r = 0),
-      e.key === `End` && (r = K.length - 1),
-      r !== null && (e.preventDefault(), u(K[r].id, !0)));
+      e.key === `End` && (r = G.length - 1),
+      r !== null && (e.preventDefault(), u(G[r].id, !0)));
   };
   return t.createElement(
     `div`,
@@ -3759,12 +3895,12 @@ function Ne({ onClose: e }) {
       `div`,
       {
         ref: a,
-        id: G,
+        id: W,
         className: `luminous-theme-menu`,
         role: `dialog`,
         'aria-modal': `true`,
-        'aria-labelledby': De,
-        'aria-describedby': Oe,
+        'aria-labelledby': Le,
+        'aria-describedby': Re,
       },
       t.createElement(
         `div`,
@@ -3785,10 +3921,10 @@ function Ne({ onClose: e }) {
         t.createElement(
           `div`,
           { className: `luminous-theme-menu__title` },
-          t.createElement(`span`, { id: De }, `Luminous`),
+          t.createElement(`span`, { id: Le }, `Luminous`),
           t.createElement(
             `small`,
-            { id: Oe },
+            { id: Re },
             `Theme preferences · v${Luminous.version}`,
           ),
         ),
@@ -3798,7 +3934,7 @@ function Ne({ onClose: e }) {
             className: `luminous-theme-menu__reset-button`,
             type: `button`,
             onClick: () => {
-              (Luminous.Settings.resetMany(je),
+              (Luminous.Settings.resetMany(Ve),
                 Spicetify.showNotification(`Luminous settings reset`));
             },
           },
@@ -3827,7 +3963,7 @@ function Ne({ onClose: e }) {
           role: `tablist`,
           'aria-label': `Luminous settings sections`,
         },
-        K.map((e) =>
+        G.map((e) =>
           t.createElement(
             `button`,
             {
@@ -3835,13 +3971,13 @@ function Ne({ onClose: e }) {
               ref: (t) => {
                 s.current[e.id] = t;
               },
-              id: `${G}-${e.id}-tab`,
+              id: `${W}-${e.id}-tab`,
               className: `luminous-theme-menu__tab${c === e.id ? ` luminous-theme-menu__tab--active` : ``}`,
               type: `button`,
               role: `tab`,
               tabIndex: c === e.id ? 0 : -1,
               'aria-selected': String(c === e.id),
-              'aria-controls': `${G}-${e.id}-panel`,
+              'aria-controls': `${W}-${e.id}-panel`,
               onClick: () => u(e.id),
               onKeyDown: (t) => d(t, e.id),
             },
@@ -3852,15 +3988,15 @@ function Ne({ onClose: e }) {
       t.createElement(
         `div`,
         {
-          id: `${G}-${c}-panel`,
+          id: `${W}-${c}-panel`,
           className: `luminous-theme-menu__panel`,
           role: `tabpanel`,
-          'aria-labelledby': `${G}-${c}-tab`,
+          'aria-labelledby': `${W}-${c}-tab`,
         },
         t.createElement(
           `div`,
           { key: c, className: `luminous-theme-menu__panel-content` },
-          t.createElement(Fe, { section: c }),
+          t.createElement(Ge, { section: c }),
         ),
       ),
       t.createElement(
@@ -3871,8 +4007,8 @@ function Ne({ onClose: e }) {
     ),
   );
 }
-function Pe() {
-  let e = N();
+function We() {
+  let e = F();
   return e.createElement(
     e.Fragment,
     null,
@@ -3889,7 +4025,7 @@ function Pe() {
     e.createElement(
       `div`,
       { className: `luminous-theme-menu__preset-grid` },
-      Ce.map((t) =>
+      Ne.map((t) =>
         e.createElement(
           `button`,
           {
@@ -3909,9 +4045,9 @@ function Pe() {
     ),
   );
 }
-function Fe({ section: e }) {
-  let t = N();
-  if (e === `presets`) return t.createElement(Pe);
+function Ge({ section: e }) {
+  let t = F();
+  if (e === `presets`) return t.createElement(We);
   let n = {
       appearance: {
         title: `Appearance`,
@@ -3926,7 +4062,7 @@ function Fe({ section: e }) {
         description: `Inspect the current runtime and copy diagnostics for troubleshooting.`,
       },
     }[e],
-    r = Se.filter((t) => t.section === e);
+    r = U.filter((t) => t.section === e);
   return t.createElement(
     t.Fragment,
     null,
@@ -3936,21 +4072,21 @@ function Fe({ section: e }) {
       t.createElement(`h2`, null, n.title),
       t.createElement(`p`, null, n.description),
     ),
-    r.map((e) => t.createElement(Ie, { key: e.key, setting: e })),
-    e === `advanced` && t.createElement(Be),
+    r.map((e) => t.createElement(Ke, { key: e.key, setting: e })),
+    e === `advanced` && t.createElement(Xe),
   );
 }
-function Ie({ setting: e }) {
+function Ke({ setting: e }) {
   return e.control === `toggle`
-    ? N().createElement(Le, { setting: e })
+    ? F().createElement(qe, { setting: e })
     : e.control === `range`
-      ? N().createElement(Re, { setting: e })
-      : N().createElement(ze, { setting: e });
+      ? F().createElement(Je, { setting: e })
+      : F().createElement(Ye, { setting: e });
 }
-function Le({ setting: e }) {
-  let t = N(),
-    n = P(),
-    [r, i] = L()(() => Luminous.Settings.get(e.key) === !0);
+function qe({ setting: e }) {
+  let t = F(),
+    n = I(),
+    [r, i] = z()(() => Luminous.Settings.get(e.key) === !0);
   return (
     n(
       () =>
@@ -3962,7 +4098,7 @@ function Le({ setting: e }) {
     t.createElement(
       `label`,
       { className: `luminous-theme-menu__row luminous-theme-menu__toggle` },
-      t.createElement(q, { setting: e }),
+      t.createElement(K, { setting: e }),
       t.createElement(
         `span`,
         { className: `luminous-theme-menu__switch` },
@@ -3977,11 +4113,11 @@ function Le({ setting: e }) {
     )
   );
 }
-function Re({ setting: e }) {
-  let t = N(),
-    n = P(),
-    r = I(),
-    [i, a] = L()(() => Number(Luminous.Settings.get(e.key))),
+function Je({ setting: e }) {
+  let t = F(),
+    n = I(),
+    r = R(),
+    [i, a] = z()(() => Number(Luminous.Settings.get(e.key))),
     o = r(i),
     s = r(null),
     c = () => {
@@ -3995,7 +4131,7 @@ function Re({ setting: e }) {
         s.current === null &&
           (s.current = window.setTimeout(() => {
             ((s.current = null), Luminous.Settings.set(e.key, o.current));
-          }, Ae)));
+          }, Be)));
     };
   return (
     n(
@@ -4024,7 +4160,7 @@ function Re({ setting: e }) {
       t.createElement(
         `span`,
         { className: `luminous-theme-menu__range-header` },
-        t.createElement(q, { setting: e }),
+        t.createElement(K, { setting: e }),
         t.createElement(`strong`, null, `${i}${e.unit ?? ``}`),
       ),
       t.createElement(
@@ -4045,10 +4181,10 @@ function Re({ setting: e }) {
     )
   );
 }
-function ze({ setting: e }) {
-  let t = N(),
-    n = P(),
-    [r, i] = L()(() => String(Luminous.Settings.get(e.key)));
+function Ye({ setting: e }) {
+  let t = F(),
+    n = I(),
+    [r, i] = z()(() => String(Luminous.Settings.get(e.key)));
   return (
     n(
       () =>
@@ -4060,7 +4196,7 @@ function ze({ setting: e }) {
     t.createElement(
       `div`,
       { className: `luminous-theme-menu__row luminous-theme-menu__choice` },
-      t.createElement(q, { setting: e }),
+      t.createElement(K, { setting: e }),
       t.createElement(
         `div`,
         {
@@ -4085,8 +4221,8 @@ function ze({ setting: e }) {
     )
   );
 }
-function q({ setting: e }) {
-  let t = N();
+function K({ setting: e }) {
+  let t = F();
   return t.createElement(
     `span`,
     { className: `luminous-theme-menu__copy` },
@@ -4094,13 +4230,13 @@ function q({ setting: e }) {
     t.createElement(`small`, null, e.description),
   );
 }
-function Be() {
-  let e = N(),
-    t = P(),
-    [n, r] = L()(() => Ve());
+function Xe() {
+  let e = F(),
+    t = I(),
+    [n, r] = z()(() => Ze());
   return (
     t(() => {
-      let e = () => r(Ve());
+      let e = () => r(Ze());
       return (
         Luminous.Background.addEventListener(`change`, e),
         Luminous.Canvas.addEventListener(`mount`, e),
@@ -4143,20 +4279,20 @@ function Be() {
     )
   );
 }
-function Ve() {
+function Ze() {
   let e = Luminous.Diagnostics.get(),
     t = e.runtime.canvasMode ?? `none`;
   return `Background: ${e.runtime.background} · Canvas: ${t} · UI: ${e.runtime.uiHealth}`;
 }
-function He() {
+function Qe() {
   return (
-    P()(() => {
+    I()(() => {
       let e = [
-        k.uiMountWatcher(),
-        k.observeCinema(),
-        k.mainViewState(),
-        k.leftSidebarState(),
-        k.playlistBackground(),
+        j.uiMountWatcher(),
+        j.observeCinema(),
+        j.mainViewState(),
+        j.leftSidebarState(),
+        j.playlistBackground(),
       ];
       return () => {
         e.forEach((e) => e.disconnect());
@@ -4165,10 +4301,10 @@ function He() {
     null
   );
 }
-var J = `luminous-visibility-hold`;
-function Ue() {
+var q = `luminous-visibility-hold`;
+function $e() {
   return (
-    P()(() => {
+    I()(() => {
       let e = document.documentElement,
         t = null,
         n = () => {
@@ -4178,13 +4314,13 @@ function Ue() {
           (n(),
             (t = requestAnimationFrame(() => {
               t = requestAnimationFrame(() => {
-                ((t = null), e.classList.remove(J));
+                ((t = null), e.classList.remove(q));
               });
             })));
         },
         i = () => {
           if (document.visibilityState === `hidden`) {
-            (n(), e.classList.add(J));
+            (n(), e.classList.add(q));
             return;
           }
           r();
@@ -4195,69 +4331,69 @@ function Ue() {
         () => {
           (document.removeEventListener(`visibilitychange`, i),
             n(),
-            e.classList.remove(J));
+            e.classList.remove(q));
         }
       );
     }, []),
     null
   );
 }
-function We() {
-  let e = N();
+function et() {
+  let e = F();
   return e.createElement(
     e.Fragment,
     null,
-    e.createElement(ye),
+    e.createElement(Ee),
+    e.createElement(Qe),
+    e.createElement($e),
+    e.createElement(xe),
     e.createElement(He),
-    e.createElement(Ue),
-    e.createElement(me),
-    e.createElement(Me),
   );
 }
-var Y = `luminous-react-root`,
-  Ge = 15e3,
-  X = null,
-  Z = 0,
-  Q = null;
-function Ke() {
-  let e = ++Z;
-  (Xe(),
-    Ye(e)
+var J = `luminous-react-root`,
+  tt = 15e3,
+  Y = null,
+  X = 0,
+  Z = null;
+function nt() {
+  let e = ++X;
+  (Q(),
+    at(e)
       .then(() => {
-        e === Z && Je();
+        e === X && it();
       })
       .catch((t) => {
-        e === Z &&
+        e === X &&
           Luminous.Logger.error(`Runtime`, `Failed to mount application`, t);
       }));
 }
-function qe() {
-  if ((Z++, Xe(), X?.unmount)) (X.unmount(), (X = null));
+function rt() {
+  if ((X++, Q(), Y?.unmount)) (Y.unmount(), (Y = null));
   else if (typeof Spicetify < `u` && Spicetify.ReactDOM) {
-    let e = document.getElementById(Y);
+    let e = document.getElementById(J);
     e &&
       Spicetify.ReactDOM.unmountComponentAtNode &&
       Spicetify.ReactDOM.unmountComponentAtNode(e);
   }
-  document.getElementById(Y)?.remove();
+  document.getElementById(J)?.remove();
 }
-function Je() {
-  let e = N(),
+function it() {
+  let e = F(),
     { ReactDOM: t } = Spicetify,
-    n = Ze(),
-    r = e.createElement(We);
+    n = ot(),
+    r = e.createElement(et);
   if (t.createRoot) {
-    let e = X ?? t.createRoot(n);
-    ((X = e), e.render(r));
+    let e = Y ?? t.createRoot(n);
+    ((Y = e), e.render(r));
     return;
   }
   t.render(r, n);
 }
-function Ye(e) {
+function at(e) {
   return new Promise((t, n) => {
     let r = performance.now(),
       i = () => {
-        if (((Q = null), e !== Z)) {
+        if (((Z = null), e !== X)) {
           n(Error(`Luminous mount superseded`));
           return;
         }
@@ -4270,34 +4406,34 @@ function Ye(e) {
           t();
           return;
         }
-        if (performance.now() - r > Ge) {
+        if (performance.now() - r > tt) {
           n(Error(`Spicetify React runtime not available`));
           return;
         }
-        Q = requestAnimationFrame(i);
+        Z = requestAnimationFrame(i);
       };
     i();
   });
 }
-function Xe() {
-  Q !== null && (cancelAnimationFrame(Q), (Q = null));
+function Q() {
+  Z !== null && (cancelAnimationFrame(Z), (Z = null));
 }
-function Ze() {
-  let e = document.getElementById(Y);
+function ot() {
+  let e = document.getElementById(J);
   return (
     e ||
       ((e = document.createElement(`div`)),
-      (e.id = Y),
+      (e.id = J),
       (e.style.display = `contents`),
       document.body.appendChild(e)),
     e
   );
 }
-var Qe =
+var st =
     `luminous-runtime-active.luminous-bootstrap-pending.hideDynamicBackground.luminous-dynamic-palette.luminous-palette-transitioning.luminous-track-changing.luminous-glass-highlights.luminous-reduce-motion.luminous-runtime-suspended.luminous-settings-open.luminous-document-hidden.luminous-visibility-hold.luminous-parallax-enabled.luminous-source-auto.luminous-source-artwork.luminous-motion-still.luminous-motion-drift.luminous-motion-float.luminous-motion-orbit.luminous-quality-full.luminous-quality-balanced.luminous-quality-lite.luminous-effect-aurora.luminous-effect-ember.luminous-effect-bloom.luminous-effect-prism.luminous-effect-halo.luminous-effect-nebula.luminous-effect-energy-soft.luminous-effect-energy-flow.luminous-effect-energy-vivid.luminous-effect-tone-dark.luminous-effect-tone-balanced.luminous-effect-tone-light`.split(
       `.`,
     ),
-  $e = [
+  ct = [
     `--luminous-background`,
     `--luminous-background-blur`,
     `--luminous-background-brightness`,
@@ -4314,36 +4450,36 @@ var Qe =
     `--luminous-parallax-y`,
   ],
   $ = !1;
-function et() {
+function lt() {
   if ($) return;
   (($ = !0),
-    qe(),
+    rt(),
     Luminous.Background.destroy(),
     Luminous.Palette.clear(),
     Luminous.Canvas.destroy(),
     Luminous.Song.destroy(),
     Luminous.Settings.destroy(),
-    x.destroy(),
-    a.destroy());
+    C.destroy(),
+    h.destroy());
   let e = document.documentElement;
-  (Qe.forEach((t) => e.classList.remove(t)),
-    $e.forEach((t) => e.style.removeProperty(t)),
+  (st.forEach((t) => e.classList.remove(t)),
+    ct.forEach((t) => e.style.removeProperty(t)),
     Luminous.Logger.info(`Runtime`, `Destroyed`));
 }
-function tt() {
+function ut() {
   (($ = !1),
     document.documentElement.classList.add(
       `luminous-runtime-active`,
       `luminous-bootstrap-pending`,
     ));
 }
-(fe(),
-  pe(et),
-  tt(),
+(ye(),
+  be(lt),
+  ut(),
   Luminous.Logger.printBanner(),
-  we(),
+  Pe(),
   Luminous.Settings.init(),
   Luminous.Song.init().catch((e) => {
     Luminous.Logger.error(`Song`, `Initialization failed`, e);
   }),
-  Ke());
+  nt());
