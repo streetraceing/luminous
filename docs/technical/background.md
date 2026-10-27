@@ -22,6 +22,10 @@ The active buffer index is committed inside `transitionTo()` after the renderer 
 
 Normal Spotify Canvas is mirrored through `HTMLVideoElement.captureStream()` into one of the two Luminous-owned video buffers. A source must be connected, not ended, and have current frame data. Streams with no video track are discarded. Pending video work is protected by `videoRenderId`; stale asynchronous `play()` continuations cannot win.
 
+Discovery prefers Spotify's `[data-npv-root] [data-canvas-surface="true"] video` hook (also accepted under `#Desktop_PanelContainer_Id`) and retains `.canvasVideoContainerNPV video` as a legacy fallback. It does not depend on hashed CSS classes. Canvas is selected before full-length NPV video, and Canvas surfaces are explicitly excluded from the long-form fallback even when their video is hidden or ended. Full-length discovery supports both the data root and the legacy panel ID.
+
+Canvas and UI Cinema detection share media exclusion selectors: NPV roots, Canvas surfaces, the main view, player bar, and Luminous-owned background buffers cannot be mistaken for a Cinema overlay. The sidebar marker uses the legacy panel when present, otherwise the NPV data root. The visual frame is the immediate parent of the new Canvas surface; only the legacy container uses a two-level ancestor. Frame styling follows the runtime marker rather than fixed wrapper-depth selectors. The existing 9:14 ratio also has a direct data-surface CSS selector and retains the old legacy selector, so sizing stays active when background settings disable Canvas discovery. Markers are refreshed on structural checks even if React moves the same video without replacing its source, and removed on unmount/disable/destroy.
+
 Canvas discovery is disabled entirely when the dynamic background is off or the source setting is `artwork`. This removes observer/media-event work that cannot produce a visible result.
 
 ## Protected long-form NPV video

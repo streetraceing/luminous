@@ -5,22 +5,24 @@ import {
   CanvasPayload,
 } from '../types/runtime/canvas.types';
 import { DomPulse, mutationTouchesSelector } from '../ui/domPulse';
+import {
+  CANVAS_SURFACE_SELECTOR,
+  CINEMA_VIDEO_SKIP_SELECTOR,
+  LEGACY_CANVAS_SELECTOR,
+  NPV_CANVAS_VIDEO_SELECTOR,
+  NPV_ROOT_SELECTOR,
+  NPV_VIDEO_SELECTOR,
+} from '../ui/mediaSelectors';
 
 export class Canvas {
-  private static readonly NPV_VIDEO_SELECTOR = '.canvasVideoContainerNPV video';
-  private static readonly NPV_LONGFORM_VIDEO_SELECTOR =
-    '#Desktop_PanelContainer_Id video';
   private static readonly STRUCTURAL_SELECTOR = [
-    '.canvasVideoContainerNPV',
+    NPV_ROOT_SELECTOR,
+    CANVAS_SURFACE_SELECTOR,
+    LEGACY_CANVAS_SELECTOR,
     '#Desktop_PanelContainer_Id',
     '#lyrics-cinema',
     'video',
   ].join(',');
-  // Cinema videos live in a hashed overlay that is a direct child of the top
-  // container, outside the main view, NPV panel, and bottom bar. A single
-  // multi-selector `closest()` is one tree walk instead of five.
-  private static readonly CINEMA_VIDEO_SKIP_SELECTOR =
-    '#main-view, #Desktop_PanelContainer_Id, .canvasVideoContainerNPV, .main-nowPlayingBar-container';
 
   private static listeners = new Map<CanvasEvent, Set<CanvasListener>>();
   private static unsubscribeDomPulse: (() => void) | null = null;
@@ -144,13 +146,11 @@ export class Canvas {
   }
 
   private static detect(): CanvasPayload {
-    const npv = document.querySelector(
-      this.NPV_VIDEO_SELECTOR,
-    ) as HTMLVideoElement | null;
+    const npv = this.findVisibleVideo(NPV_CANVAS_VIDEO_SELECTOR);
 
     if (npv) return this.createPayload(npv, 'npv');
 
-    const npvLongform = this.findVisibleVideo(this.NPV_LONGFORM_VIDEO_SELECTOR);
+    const npvLongform = this.findVisibleVideo(NPV_VIDEO_SELECTOR, true);
     if (npvLongform) return this.createPayload(npvLongform, 'npv-video');
 
     // Promoted protected media lives in the shared background root. Keep its
@@ -170,7 +170,7 @@ export class Canvas {
     for (const video of document.querySelectorAll('video')) {
       if (
         !video.closest('.Root__top-container') ||
-        video.closest(this.CINEMA_VIDEO_SKIP_SELECTOR)
+        video.closest(CINEMA_VIDEO_SKIP_SELECTOR)
       ) {
         continue;
       }
@@ -192,10 +192,22 @@ export class Canvas {
     return null;
   }
 
-  private static findVisibleVideo(selector: string): HTMLVideoElement | null {
+  private static findVisibleVideo(
+    selector: string,
+    excludeCanvas = false,
+  ): HTMLVideoElement | null {
     const videos = document.querySelectorAll<HTMLVideoElement>(selector);
 
     for (const video of videos) {
+      // A hidden or ended Canvas must not fall through to protected-video
+      // handling, which reparents the original Spotify player.
+      if (
+        excludeCanvas &&
+        video.closest(`${CANVAS_SURFACE_SELECTOR},${LEGACY_CANVAS_SELECTOR}`)
+      ) {
+        continue;
+      }
+
       if (
         !video.isConnected ||
         video.ended ||
@@ -230,6 +242,10 @@ export class Canvas {
     const previousVideo = this.currentVideo;
     const previousMode = this.currentMode;
 
+    // React can move the same video into a replacement frame/sidebar without
+    // changing its source. Refresh reversible UI markers even in that case.
+    this.syncUiState(video, mode);
+
     if (
       previousVideo === video &&
       previousMode === mode &&
@@ -245,7 +261,6 @@ export class Canvas {
     this.currentPlayable = playable;
     this.revision++;
     this.observeVideoSource(video);
-    this.syncUiState(video, mode);
 
     if (previousVideo && !video) {
       const payload = this.createPayload(null, previousMode);
@@ -303,14 +318,24 @@ export class Canvas {
     video: HTMLVideoElement | null,
     mode: CanvasMode,
   ): void {
-    const container =
+    const surface =
       video && mode === 'npv'
-        ? (video.closest('.canvasVideoContainerNPV') as HTMLElement | null)
+        ? video.closest<HTMLElement>(CANVAS_SURFACE_SELECTOR)
         : null;
-    const nextSidebar = container?.closest(
-      '#Desktop_PanelContainer_Id',
-    ) as HTMLElement | null;
-    const nextFrameParent = container?.parentElement?.parentElement ?? null;
+    const legacyContainer =
+      video && mode === 'npv' && !surface
+        ? video.closest<HTMLElement>(LEGACY_CANVAS_SELECTOR)
+        : null;
+    const container = surface ?? legacyContainer;
+    const nextSidebar =
+      container?.closest<HTMLElement>('#Desktop_PanelContainer_Id') ??
+      container?.closest<HTMLElement>(NPV_ROOT_SELECTOR) ??
+      null;
+    // The new surface owns the draggable/video wrappers; its immediate parent
+    // is the visual frame. Only the legacy tree uses the old two-level offset.
+    const nextFrameParent = surface
+      ? surface.parentElement
+      : (legacyContainer?.parentElement?.parentElement ?? null);
 
     if (nextSidebar !== this.uiSidebar) {
       this.uiSidebar?.classList.remove('luminous-has-canvas');

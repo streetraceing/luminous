@@ -18,12 +18,12 @@
   background-color: transparent !important;
 }
 
-#Desktop_PanelContainer_Id.luminous-has-canvas
+:is(#Desktop_PanelContainer_Id, [data-npv-root]).luminous-has-canvas
   .main-nowPlayingView-headerWrapper {
   box-shadow: none;
 }
 
-#Desktop_PanelContainer_Id .luminous-canvas-frame-parent::after {
+.luminous-canvas-frame-parent::after {
   display: none;
 }
 
@@ -92,6 +92,11 @@ div[data-testid='NPV_Panel_OpenDiv']
   background: transparent !important;
 }
 
+/* Keep frame sizing active even when Canvas discovery is disabled by the
+   background settings. The data hook needs no hashed classes or wrapper depth. */
+.luminous-canvas-frame-parent,
+:is([data-npv-root], #Desktop_PanelContainer_Id)
+  div:has(> [data-canvas-surface='true']),
 div[data-testid='NPV_Panel_OpenDiv']
   > div:has(.canvasVideoContainerNPV)
   > div

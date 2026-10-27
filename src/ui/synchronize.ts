@@ -10,6 +10,7 @@ import {
   mutationTouchesSelector,
 } from './domPulse';
 import { MainViewPulse } from './mainViewPulse';
+import { CINEMA_VIDEO_SKIP_SELECTOR } from './mediaSelectors';
 
 const PLAYLIST_BACKGROUND_CLASS = 'luminous-playlist-background';
 const PLAYLIST_BACKGROUND_VAR = '--luminous-playlist-background-image';
@@ -33,11 +34,6 @@ const MAIN_VIEW_STATE_SELECTOR = [
   'div[data-testid="test-ref-div"]',
   '[data-testid="entity-header"]',
 ].join(',');
-
-// Cinema videos live in a hashed overlay that is a direct child of the top
-// container, outside the main view, NPV panel, and bottom bar.
-const CINEMA_VIDEO_SKIP_SELECTOR =
-  '#main-view, #Desktop_PanelContainer_Id, .canvasVideoContainerNPV, .main-nowPlayingBar-container';
 
 // `Root__top-container` is a Spicetify-aliased class; Spotify rotates the
 // underlying hash per build (1.3.3 in Oct 2026) and Spicetify ships the
