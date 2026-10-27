@@ -33,6 +33,8 @@ Canvas discovery is structural-event driven and media-event driven. The global o
 
 The right-sidebar Canvas class is tracked directly on `aside#Desktop_PanelContainer_Id` instead of scanning every right sidebar on each update. Long-form protected video remains handled by the direct-video background path documented in `background.md`, hosted by the same panel container because the old `#VideoPlayerNpv_ReactPortal` host no longer exists in Spotify 1.3.x.
 
+The dynamic NPV artist card and its direct artist-details footer use structural CSS scoped to `[data-npv-root] [data-overlayscrollbars-viewport]`. The footer is identified by its direct `/artist/` or `spotify:artist:` link; its direct parent is the card. Both backgrounds are transparent, while the nested artwork/gradient is preserved. The selectors contain no rotating Spotify class names and automatically apply to asynchronously mounted/replaced cards without a JavaScript observer.
+
 ## Visibility performance
 
 `VisibilityHoldFeature` toggles `luminous-visibility-hold` from `visibilitychange`. While Spotify is hidden or fully occluded, ambient CSS animation is frozen; the hold is released two rendered frames after the document becomes visible again. Revealing a window first re-presents its last committed frame, and resampling the animations at wall-clock time inside that moment made the ambient scene visibly jump once by the whole hidden duration. Resuming from the frozen pose keeps the reveal seamless. Video playback is likewise untouched; force-pausing captured media can produce a black first frame after Alt+Tab in Chromium/Electron.

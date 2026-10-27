@@ -799,6 +799,26 @@ export class Background {
     const playerFrame =
       container && host.contains(container) ? container : null;
     let frame = playerFrame ?? parent;
+    let aspectFrame = false;
+    // The semantic player is sometimes only a shrink-to-fit control/video
+    // wrapper. Spotify's enclosing aspect-ratio box is the full visual stage.
+    for (
+      let candidate: HTMLElement | null = playerFrame;
+      candidate;
+      candidate = candidate.parentElement
+    ) {
+      const bounds = candidate.getBoundingClientRect();
+      if (
+        getComputedStyle(candidate).aspectRatio !== 'auto' &&
+        bounds.width > 0 &&
+        bounds.height > 0
+      ) {
+        frame = candidate;
+        aspectFrame = true;
+        break;
+      }
+      if (candidate === host) break;
+    }
 
     // A player can nest an absolutely positioned video in a zero-size wrapper.
     // A normal-flow sibling in that wrapper is clipped or has no usable width.
@@ -917,6 +937,14 @@ export class Background {
         : rect.width > 0 && rect.height > 0
           ? rect.width / rect.height
           : video.videoWidth / video.videoHeight || 16 / 9;
+    // Without an aspect-ratio stage, keep the player wrapper from losing its
+    // intrinsic width when its only media child is promoted out of the panel.
+    // These local overrides are restored with min-height on cleanup.
+    if (playerFrame && !aspectFrame) {
+      override('width', '100%');
+      override('max-width', '100%');
+      override('box-sizing', 'border-box');
+    }
     const reserveHeight = () => {
       // Use layout pixels for CSS sizing, not transformed viewport pixels.
       // Otherwise a scaled ancestor applies its scale a second time here.
@@ -992,8 +1020,11 @@ export class Background {
         }
       }
       const header = panel.querySelector('.main-nowPlayingView-headerWrapper');
-      if (header)
+      // A stale Spicetify alias can resolve to a wrapper containing the stage,
+      // not just its title. Such a box must not clip the whole placeholder.
+      if (header && !header.contains(frame) && !frame.contains(header)) {
         clipTop = Math.max(clipTop, header.getBoundingClientRect().bottom);
+      }
       placeholder.style.display =
         clipRight > clipLeft && clipBottom > clipTop ? 'block' : 'none';
       Object.assign(placeholder.style, {
@@ -1010,6 +1041,20 @@ export class Background {
     const observer = new ResizeObserver(sync);
     observer.observe(frame);
     if (panel !== frame) observer.observe(panel);
+    // Visibility/transform changes do not necessarily resize the frame. Watch
+    // only this frame-to-panel chain, never attributes across the document.
+    const geometryObserver = new MutationObserver(sync);
+    for (
+      let ancestor: HTMLElement | null = frame;
+      ancestor;
+      ancestor = ancestor.parentElement
+    ) {
+      geometryObserver.observe(ancestor, {
+        attributes: true,
+        attributeFilter: ['style', 'class', 'hidden', 'aria-hidden'],
+      });
+      if (ancestor === panel) break;
+    }
     window.addEventListener('resize', sync, { passive: true });
     document.addEventListener('scroll', sync, { capture: true, passive: true });
     // A body-level overlay cannot be hidden underneath Spotify's opaque
@@ -1022,6 +1067,7 @@ export class Background {
       styles,
       sync,
       dispose: () => {
+        geometryObserver.disconnect();
         if (scheduled !== null) cancelAnimationFrame(scheduled);
         window.removeEventListener('resize', sync);
         document.removeEventListener('scroll', sync, true);

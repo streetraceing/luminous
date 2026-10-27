@@ -148,3 +148,15 @@ div[data-testid='NPV_Panel_OpenDiv']
   > div:has(#Desktop_PanelContainer_Id) {
   background: var(--luminous-ui-background) !important;
 }
+
+/* Dynamic NPV artist cards: target the card/footer relationship, never the
+   rotating CSS-module names. The nested artwork/gradient stays untouched. */
+[data-npv-root]
+  [data-overlayscrollbars-viewport]
+  div:has(> div > a:is([href^='/artist/'], [href^='spotify:artist:'])),
+[data-npv-root]
+  [data-overlayscrollbars-viewport]
+  div:has(> div > a:is([href^='/artist/'], [href^='spotify:artist:']))
+  > div:has(> a:is([href^='/artist/'], [href^='spotify:artist:'])) {
+  background: transparent !important;
+}
