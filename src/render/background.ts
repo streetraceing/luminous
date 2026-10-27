@@ -908,12 +908,19 @@ export class Background {
       }
       frame.style.setProperty(property, value, 'important');
     };
+    // The player frame is the placeholder surface. The video itself can be
+    // translated, letterboxed, or temporarily narrower than that frame.
+    const initialFrame = frame.getBoundingClientRect();
     const ratio =
-      rect.width > 0 && rect.height > 0
-        ? rect.width / rect.height
-        : video.videoWidth / video.videoHeight || 16 / 9;
+      playerFrame && initialFrame.width > 0 && initialFrame.height > 0
+        ? initialFrame.width / initialFrame.height
+        : rect.width > 0 && rect.height > 0
+          ? rect.width / rect.height
+          : video.videoWidth / video.videoHeight || 16 / 9;
     const reserveHeight = () => {
-      const width = frame.getBoundingClientRect().width || rect.width;
+      // Use layout pixels for CSS sizing, not transformed viewport pixels.
+      // Otherwise a scaled ancestor applies its scale a second time here.
+      const width = frame.offsetWidth || initialFrame.width || rect.width;
       const computed = getComputedStyle(frame);
       const verticalInsets =
         computed.boxSizing === 'border-box'
@@ -928,15 +935,7 @@ export class Background {
       }
     };
     reserveHeight();
-    const initialFrame = frame.getBoundingClientRect();
-    const panel = host as HTMLElement;
-    const initialPanel = panel.getBoundingClientRect();
-    const origin = initialFrame.width > 0 ? frame : panel;
-    const initialOrigin = origin === frame ? initialFrame : initialPanel;
-    const mediaWidth = rect.width || initialOrigin.width;
-    const mediaHeight = rect.height || mediaWidth / ratio;
-    const offsetX = rect.width > 0 ? rect.left - initialOrigin.left : 0;
-    const offsetY = rect.height > 0 ? rect.top - initialOrigin.top : 0;
+    const panel = host;
     let scheduled: number | null = null;
     const place = () => {
       scheduled = null;
@@ -951,15 +950,18 @@ export class Background {
         return;
       }
       reserveHeight();
-      const bounds = origin.getBoundingClientRect();
-      const scale =
-        bounds.width > 0 && initialOrigin.width > 0
-          ? bounds.width / initialOrigin.width
-          : 1;
-      const left = bounds.left + offsetX * scale;
-      const top = bounds.top + offsetY * scale;
-      const width = mediaWidth * scale;
-      const height = mediaHeight * scale;
+      // Always fill the current frame. Do not carry the source video's old
+      // offset/size into a different container after promoting it to the stage.
+      const bounds = frame.getBoundingClientRect();
+      const { left, top, width, height } = bounds;
+      if (
+        width <= 0 ||
+        height <= 0 ||
+        getComputedStyle(frame).visibility === 'hidden'
+      ) {
+        placeholder.style.display = 'none';
+        return;
+      }
       let clipLeft = Math.max(0, left);
       let clipTop = Math.max(0, top);
       let clipRight = Math.min(window.innerWidth, left + width);
