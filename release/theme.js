@@ -34,7 +34,8 @@ function l(e) {
 }
 var u = class {
     static TRANSITION_MS = 250;
-    static MAX_PRELOADED_IMAGES = 24;
+    static MAX_PRELOADED_IMAGES = 4;
+    static MAX_PRELOADED_PIXELS = 8 * 1024 * 1024;
     static root = null;
     static base = null;
     static mediaStage = null;
@@ -130,7 +131,7 @@ var u = class {
     }
     static createEffectsLayer() {
       let e = document.createElement(`div`);
-      e.className = `luminous-background-effects`;
+      ((e.className = `luminous-background-effects`), (e.hidden = !0));
       let t = (e) => {
           let t = document.createElement(`span`);
           t.className = e;
@@ -189,9 +190,10 @@ var u = class {
         t = this.createImageLayer(),
         n = this.createVideoLayer(),
         r = this.createVideoLayer(),
-        i = this.createEffectsLayer();
+        i = this.createEffectsLayer(),
+        a = this.createEffectsLayer();
       (this.mediaStage.append(e, t, n, r),
-        this.root.append(this.base, this.mediaStage, i),
+        this.root.append(this.base, this.mediaStage, i, a),
         (this.imageLayers = [e, t]),
         (this.videoLayers = [n, r]),
         (this.activeImage = 0),
@@ -225,12 +227,7 @@ var u = class {
       }
     }
     static preloadImage(e) {
-      if (!e || this.preloadedImages.has(e)) return;
-      let t = new Image();
-      ((t.decoding = `async`),
-        (t.src = e),
-        this.preloadedImages.set(e, t),
-        this.trimPreloadedImages());
+      e && this.getPreloadedImage(e);
     }
     static renderImage(e) {
       if (
@@ -258,50 +255,44 @@ var u = class {
         return;
       }
       let a = this.getPreloadedImage(e),
-        o = () => {
-          t === this.imageRenderId &&
-            ((i.src = e),
-            this.waitForImageReady(i).then((n) => {
-              !n ||
-                t !== this.imageRenderId ||
-                requestAnimationFrame(() => {
-                  t === this.imageRenderId &&
-                    (this.transitionTo(`image`, i),
-                    Luminous.Logger.info(
-                      `Background`,
-                      `Rendering image layer`,
-                      e,
-                    ));
-                });
-            }));
-        };
-      if (a.complete && a.naturalWidth > 0) {
-        o();
-        return;
-      }
-      let s = () => {
-          (a.removeEventListener(`load`, c),
-            a.removeEventListener(`error`, l),
-            this.cancelImageLoad === s && (this.cancelImageLoad = null));
-        },
-        c = () => {
-          (s(), o());
-        },
-        l = () => {
-          if ((s(), t === this.imageRenderId)) {
-            if (
-              (Luminous.Logger.warn(`Background`, `Failed to load image`, e),
-              this.currentType === `image` && r.complete && r.naturalWidth > 0)
-            ) {
-              this.transitionTo(`image`, r);
+        o = new AbortController(),
+        s = null;
+      ((this.cancelImageLoad = () => {
+        (o.abort(),
+          s !== null && cancelAnimationFrame(s),
+          this.get() !== i && i.removeAttribute(`src`));
+      }),
+        (async () => {
+          let n = await this.waitForImageReady(a, o.signal);
+          if (o.signal.aborted || t !== this.imageRenderId) return;
+          if (!n) {
+            ((this.cancelImageLoad = null),
+              Luminous.Logger.warn(`Background`, `Failed to load image`, e),
+              this.currentType === `image` && r.complete && r.naturalWidth > 0
+                ? this.transitionTo(`image`, r)
+                : this.clear());
+            return;
+          }
+          i.src = e;
+          let c = await this.waitForImageReady(i, o.signal);
+          if (!(o.signal.aborted || t !== this.imageRenderId)) {
+            if (!c) {
+              this.cancelImageLoad = null;
               return;
             }
-            this.clear();
+            s = requestAnimationFrame(() => {
+              ((s = null),
+                !(o.signal.aborted || t !== this.imageRenderId) &&
+                  ((this.cancelImageLoad = null),
+                  this.transitionTo(`image`, i),
+                  Luminous.Logger.info(
+                    `Background`,
+                    `Rendering image layer`,
+                    e,
+                  )));
+            });
           }
-        };
-      ((this.cancelImageLoad = s),
-        a.addEventListener(`load`, c, { once: !0 }),
-        a.addEventListener(`error`, l, { once: !0 }));
+        })());
     }
     static invalidateImageRender() {
       return (
@@ -311,28 +302,36 @@ var u = class {
         this.imageRenderId
       );
     }
-    static async waitForImageReady(e) {
+    static async waitForImageReady(e, t) {
       if (
+        t.aborted ||
         (!e.complete &&
-          !(await new Promise((t) => {
-            let n = (n) => {
-                (e.removeEventListener(`load`, r),
-                  e.removeEventListener(`error`, i),
-                  t(n));
+          !(await new Promise((n) => {
+            let r = !1,
+              i = (i) => {
+                r ||
+                  ((r = !0),
+                  e.removeEventListener(`load`, a),
+                  e.removeEventListener(`error`, o),
+                  t.removeEventListener(`abort`, s),
+                  n(i));
               },
-              r = () => n(!0),
-              i = () => n(!1);
-            (e.addEventListener(`load`, r, { once: !0 }),
-              e.addEventListener(`error`, i, { once: !0 }),
-              e.complete && n(e.naturalWidth > 0));
+              a = () => i(!0),
+              o = () => i(!1),
+              s = () => i(!1);
+            (e.addEventListener(`load`, a, { once: !0 }),
+              e.addEventListener(`error`, o, { once: !0 }),
+              t.addEventListener(`abort`, s, { once: !0 }),
+              t.aborted ? i(!1) : e.complete && i(e.naturalWidth > 0));
           }))) ||
+        t.aborted ||
         e.naturalWidth <= 0
       )
         return !1;
       try {
         await e.decode();
       } catch {}
-      return e.complete && e.naturalWidth > 0;
+      return !t.aborted && e.complete && e.naturalWidth > 0;
     }
     static getPreloadedImage(e) {
       let t = this.preloadedImages.get(e);
@@ -343,17 +342,33 @@ var u = class {
         t ||
           ((t = new Image()),
           (t.decoding = `async`),
-          (t.src = e),
-          this.preloadedImages.set(e, t),
-          this.trimPreloadedImages()),
+          t.addEventListener(`load`, () => this.trimPreloadedImages(), {
+            once: !0,
+          }),
+          (t.src = e)),
+        this.preloadedImages.delete(e),
+        this.preloadedImages.set(e, t),
+        this.trimPreloadedImages(),
         t
       );
     }
     static trimPreloadedImages() {
-      for (; this.preloadedImages.size > this.MAX_PRELOADED_IMAGES;) {
-        let e = this.preloadedImages.keys().next().value;
-        if (!e) return;
-        this.preloadedImages.delete(e);
+      let e = 0;
+      for (
+        this.preloadedImages.forEach((t, n) => {
+          let r = t.naturalWidth * t.naturalHeight;
+          r > this.MAX_PRELOADED_PIXELS
+            ? this.preloadedImages.delete(n)
+            : (e += r);
+        });
+        this.preloadedImages.size > this.MAX_PRELOADED_IMAGES ||
+        e > this.MAX_PRELOADED_PIXELS;
+      ) {
+        let t = this.preloadedImages.keys().next().value;
+        if (!t) return;
+        let n = this.preloadedImages.get(t);
+        ((e -= n.naturalWidth * n.naturalHeight),
+          this.preloadedImages.delete(t));
       }
     }
     static renderCanvas(e, t, n, r = null) {
@@ -854,6 +869,8 @@ var u = class {
     }
     static destroy() {
       (this.invalidateImageRender(),
+        this.preloadedImages.forEach((e) => e.removeAttribute(`src`)),
+        this.preloadedImages.clear(),
         this.videoRenderId++,
         (this.currentCanvasSource = null),
         (this.currentCanvasKey = null),
@@ -982,201 +999,210 @@ var u = class {
   f = 120,
   p = 220,
   m = 750,
-  h = class {
-    static subscriptions = new Set();
-    static observer = null;
-    static frameId = null;
-    static timerId = null;
-    static lastDispatchAt = 0;
-    static lastFullSyncAt = 0;
-    static pendingRecords = [];
-    static saturated = !1;
-    static forceDispatch = !1;
-    static cachedMainView = null;
-    static stats = {
-      mutationBatches: 0,
-      observedRecords: 0,
-      ignoredMainViewRecords: 0,
-      frames: 0,
-      dispatchedListeners: 0,
-      saturatedFrames: 0,
-      fullSyncFrames: 0,
-    };
-    static handleVisibilityChange = () => {
-      if (document.hidden) {
-        (this.observer?.disconnect(),
-          (this.pendingRecords = []),
-          (this.saturated = !1),
-          this.cancelScheduledDispatch());
-        return;
-      }
-      (this.observeDocument(),
-        (this.lastDispatchAt = 0),
-        (this.forceDispatch = !0),
-        this.schedule());
-    };
-    static subscribe(e, t = {}) {
-      let n = { listener: e, filter: t.filter };
-      return (
-        this.subscriptions.add(n),
-        this.ensureObserver(),
-        t.immediate !== !1 && this.callListener(e),
-        () => {
-          (this.subscriptions.delete(n),
-            this.subscriptions.size === 0 && this.stopObserver());
-        }
-      );
-    }
-    static getStats() {
-      return { ...this.stats };
-    }
-    static destroy() {
-      (this.subscriptions.clear(),
-        this.stopObserver(),
-        (this.stats = {
-          mutationBatches: 0,
-          observedRecords: 0,
-          ignoredMainViewRecords: 0,
-          frames: 0,
-          dispatchedListeners: 0,
-          saturatedFrames: 0,
-          fullSyncFrames: 0,
-        }));
-    }
-    static schedule() {
-      if (
-        document.hidden ||
-        this.frameId !== null ||
-        this.timerId !== null ||
-        this.subscriptions.size === 0
-      )
-        return;
-      let e = this.saturated ? p : f,
-        t = performance.now() - this.lastDispatchAt,
-        n = Math.max(0, e - t),
-        r = () => {
-          ((this.timerId = null),
-            (this.frameId = requestAnimationFrame(() => {
-              this.frameId = null;
-              let e = performance.now();
-              this.lastDispatchAt = e;
-              let t = this.pendingRecords,
-                n = this.saturated,
-                r = this.forceDispatch || (n && e - this.lastFullSyncAt >= m);
-              ((this.pendingRecords = []),
-                (this.saturated = !1),
-                (this.forceDispatch = !1),
-                this.stats.frames++,
-                n && this.stats.saturatedFrames++,
-                r && (this.stats.fullSyncFrames++, (this.lastFullSyncAt = e)),
-                this.subscriptions.forEach(({ listener: e, filter: n }) => {
-                  (!r && n && !n(t)) ||
-                    (this.stats.dispatchedListeners++, this.callListener(e));
-                }));
-            })));
-        };
-      n <= 0 ? r() : (this.timerId = window.setTimeout(r, n));
-    }
-    static ensureObserver() {
-      this.observer ||
-        (document.addEventListener(
-          `visibilitychange`,
-          this.handleVisibilityChange,
-        ),
-        (this.observer = new MutationObserver((e) => {
-          if (
-            (this.stats.mutationBatches++,
-            (this.stats.observedRecords += e.length),
-            document.hidden)
-          ) {
-            ((this.pendingRecords = []), (this.saturated = !0));
-            return;
-          }
-          let t = this.cachedMainView?.isConnected ? this.cachedMainView : null;
-          t ||
-            ((t = document.getElementById(`main-view`)),
-            (this.cachedMainView = t));
-          let n = 0;
-          for (let r of e) {
-            if (t?.contains(r.target)) {
-              this.stats.ignoredMainViewRecords++;
-              continue;
-            }
-            if ((n++, !this.saturated)) {
-              if (this.pendingRecords.length >= d) {
-                this.saturated = !0;
-                continue;
-              }
-              this.pendingRecords.push(r);
-            }
-          }
-          n > 0 && this.schedule();
-        })),
-        this.observeDocument());
-    }
-    static observeDocument() {
-      !this.observer ||
-        document.hidden ||
-        this.observer.observe(document.documentElement, {
-          childList: !0,
-          subtree: !0,
-        });
-    }
-    static stopObserver() {
+  h = `#main-view,[data-testid="main-view"]`;
+function g() {
+  return (
+    document.getElementById(`main-view`) ??
+    document.querySelector(`[data-testid="main-view"]`)
+  );
+}
+var _ = class {
+  static subscriptions = new Set();
+  static observer = null;
+  static frameId = null;
+  static timerId = null;
+  static lastDispatchAt = 0;
+  static lastFullSyncAt = 0;
+  static pendingRecords = [];
+  static saturated = !1;
+  static forceDispatch = !1;
+  static cachedMainView = null;
+  static stats = {
+    mutationBatches: 0,
+    observedRecords: 0,
+    ignoredMainViewRecords: 0,
+    frames: 0,
+    dispatchedListeners: 0,
+    saturatedFrames: 0,
+    fullSyncFrames: 0,
+  };
+  static handleVisibilityChange = () => {
+    if (document.hidden) {
       (this.observer?.disconnect(),
-        (this.observer = null),
-        document.removeEventListener(
-          `visibilitychange`,
-          this.handleVisibilityChange,
-        ),
         (this.pendingRecords = []),
         (this.saturated = !1),
-        (this.forceDispatch = !1),
-        (this.cachedMainView = null),
-        this.cancelScheduledDispatch(),
-        (this.lastDispatchAt = 0),
-        (this.lastFullSyncAt = 0));
+        this.cancelScheduledDispatch());
+      return;
     }
-    static cancelScheduledDispatch() {
-      (this.frameId !== null &&
-        (cancelAnimationFrame(this.frameId), (this.frameId = null)),
-        this.timerId !== null &&
-          (window.clearTimeout(this.timerId), (this.timerId = null)));
-    }
-    static callListener(e) {
-      try {
-        e();
-      } catch (e) {
-        Luminous.Logger.error(`UI`, `DOM pulse listener failed`, e);
-      }
-    }
+    (this.observeDocument(),
+      (this.lastDispatchAt = 0),
+      (this.forceDispatch = !0),
+      this.schedule());
   };
-function g(e, t) {
+  static subscribe(e, t = {}) {
+    let n = { listener: e, filter: t.filter };
+    return (
+      this.subscriptions.add(n),
+      this.ensureObserver(),
+      t.immediate !== !1 && this.callListener(e),
+      () => {
+        (this.subscriptions.delete(n),
+          this.subscriptions.size === 0 && this.stopObserver());
+      }
+    );
+  }
+  static getStats() {
+    return { ...this.stats };
+  }
+  static destroy() {
+    (this.subscriptions.clear(),
+      this.stopObserver(),
+      (this.stats = {
+        mutationBatches: 0,
+        observedRecords: 0,
+        ignoredMainViewRecords: 0,
+        frames: 0,
+        dispatchedListeners: 0,
+        saturatedFrames: 0,
+        fullSyncFrames: 0,
+      }));
+  }
+  static schedule() {
+    if (
+      document.hidden ||
+      this.frameId !== null ||
+      this.timerId !== null ||
+      this.subscriptions.size === 0
+    )
+      return;
+    let e = this.saturated ? p : f,
+      t = performance.now() - this.lastDispatchAt,
+      n = Math.max(0, e - t),
+      r = () => {
+        ((this.timerId = null),
+          (this.frameId = requestAnimationFrame(() => {
+            this.frameId = null;
+            let e = performance.now();
+            this.lastDispatchAt = e;
+            let t = this.pendingRecords,
+              n = this.saturated,
+              r = this.forceDispatch || (n && e - this.lastFullSyncAt >= m);
+            ((this.pendingRecords = []),
+              (this.saturated = !1),
+              (this.forceDispatch = !1),
+              this.stats.frames++,
+              n && this.stats.saturatedFrames++,
+              r && (this.stats.fullSyncFrames++, (this.lastFullSyncAt = e)),
+              this.subscriptions.forEach(({ listener: e, filter: n }) => {
+                (!r && n && !n(t)) ||
+                  (this.stats.dispatchedListeners++, this.callListener(e));
+              }));
+          })));
+      };
+    n <= 0 ? r() : (this.timerId = window.setTimeout(r, n));
+  }
+  static ensureObserver() {
+    this.observer ||
+      (document.addEventListener(
+        `visibilitychange`,
+        this.handleVisibilityChange,
+      ),
+      (this.observer = new MutationObserver((e) => {
+        if (
+          (this.stats.mutationBatches++,
+          (this.stats.observedRecords += e.length),
+          document.hidden)
+        ) {
+          ((this.pendingRecords = []), (this.saturated = !0));
+          return;
+        }
+        let t =
+          this.cachedMainView?.isConnected &&
+          this.cachedMainView.matches(`#main-view,[data-testid="main-view"]`)
+            ? this.cachedMainView
+            : null;
+        t || ((t = g()), (this.cachedMainView = t));
+        let n = 0;
+        for (let r of e) {
+          if (t?.contains(r.target)) {
+            this.stats.ignoredMainViewRecords++;
+            continue;
+          }
+          if ((n++, !this.saturated)) {
+            if (this.pendingRecords.length >= d) {
+              this.saturated = !0;
+              continue;
+            }
+            this.pendingRecords.push(r);
+          }
+        }
+        n > 0 && this.schedule();
+      })),
+      this.observeDocument());
+  }
+  static observeDocument() {
+    !this.observer ||
+      document.hidden ||
+      this.observer.observe(document.documentElement, {
+        childList: !0,
+        subtree: !0,
+      });
+  }
+  static stopObserver() {
+    (this.observer?.disconnect(),
+      (this.observer = null),
+      document.removeEventListener(
+        `visibilitychange`,
+        this.handleVisibilityChange,
+      ),
+      (this.pendingRecords = []),
+      (this.saturated = !1),
+      (this.forceDispatch = !1),
+      (this.cachedMainView = null),
+      this.cancelScheduledDispatch(),
+      (this.lastDispatchAt = 0),
+      (this.lastFullSyncAt = 0));
+  }
+  static cancelScheduledDispatch() {
+    (this.frameId !== null &&
+      (cancelAnimationFrame(this.frameId), (this.frameId = null)),
+      this.timerId !== null &&
+        (window.clearTimeout(this.timerId), (this.timerId = null)));
+  }
+  static callListener(e) {
+    try {
+      e();
+    } catch (e) {
+      Luminous.Logger.error(`UI`, `DOM pulse listener failed`, e);
+    }
+  }
+};
+function v(e, t) {
   for (let n of e) {
     let e = n.target;
     if (
       (e instanceof Element && e.closest(t)) ||
-      v(n.addedNodes, t) ||
-      v(n.removedNodes, t)
+      b(n.addedNodes, t) ||
+      b(n.removedNodes, t)
     )
       return !0;
   }
   return !1;
 }
-function _(e, t) {
-  for (let n of e) if (v(n.addedNodes, t) || v(n.removedNodes, t)) return !0;
+function y(e, t) {
+  for (let n of e) if (b(n.addedNodes, t) || b(n.removedNodes, t)) return !0;
   return !1;
 }
-function v(e, t) {
+function b(e, t) {
   for (let n of e)
     if (n instanceof Element && (n.matches(t) || n.querySelector(t))) return !0;
   return !1;
 }
-var y = 64,
-  b = 120,
-  x = 220,
-  S = 750,
-  C = class {
+var x = 64,
+  S = 120,
+  C = 220,
+  w = 750,
+  T = class {
     static subscriptions = new Set();
     static root = null;
     static observer = null;
@@ -1245,16 +1271,22 @@ var y = 64,
           `visibilitychange`,
           this.handleVisibilityChange,
         ),
-        h.subscribe(
+        _.subscribe(
           () => {
-            (this.attachRoot(), (this.forceDispatch = !0), this.schedule());
+            let e = this.root;
+            (this.attachRoot(),
+              this.root !== e && ((this.forceDispatch = !0), this.schedule()));
           },
-          { immediate: !1, filter: (e) => _(e, `#main-view`) },
+          { immediate: !1, filter: (e) => y(e, h) },
         ))),
         this.attachRoot());
     }
     static attachRoot() {
-      let e = document.querySelector(`#main-view`);
+      let e =
+        this.root?.isConnected &&
+        this.root.matches(`#main-view,[data-testid="main-view"]`)
+          ? this.root
+          : g();
       (e === this.root && this.root?.isConnected) ||
         (this.observer?.disconnect(),
         (this.observer = null),
@@ -1273,7 +1305,7 @@ var y = 64,
             }
             for (let t of e)
               if (!this.saturated) {
-                if (this.pendingRecords.length >= y) {
+                if (this.pendingRecords.length >= x) {
                   this.saturated = !0;
                   continue;
                 }
@@ -1297,7 +1329,7 @@ var y = 64,
         this.timerId !== null
       )
         return;
-      let e = this.saturated ? x : b,
+      let e = this.saturated ? C : S,
         t = performance.now() - this.lastDispatchAt,
         n = Math.max(0, e - t),
         r = () => {
@@ -1308,7 +1340,7 @@ var y = 64,
               ((this.lastDispatchAt = e), this.attachRoot());
               let t = this.pendingRecords,
                 n = this.saturated,
-                r = this.forceDispatch || (n && e - this.lastFullSyncAt >= S);
+                r = this.forceDispatch || (n && e - this.lastFullSyncAt >= w);
               ((this.pendingRecords = []),
                 (this.saturated = !1),
                 (this.forceDispatch = !1),
@@ -1354,7 +1386,7 @@ var y = 64,
       }
     }
   },
-  w = class {
+  E = class {
     static STRUCTURAL_SELECTOR = [
       e,
       i,
@@ -1414,13 +1446,13 @@ var y = 64,
       this.initialized ||
         !this.enabled ||
         ((this.initialized = !0),
-        (this.unsubscribeDomPulse = h.subscribe(() => this.scheduleCheck(), {
+        (this.unsubscribeDomPulse = _.subscribe(() => this.scheduleCheck(), {
           immediate: !1,
-          filter: (e) => g(e, this.STRUCTURAL_SELECTOR),
+          filter: (e) => y(e, this.STRUCTURAL_SELECTOR),
         })),
-        (this.unsubscribeMainViewPulse = C.subscribe(
+        (this.unsubscribeMainViewPulse = T.subscribe(
           () => this.scheduleCheck(),
-          { immediate: !1, filter: (e) => g(e, this.STRUCTURAL_SELECTOR) },
+          { immediate: !1, filter: (e) => y(e, this.STRUCTURAL_SELECTOR) },
         )),
         this.check());
     }
@@ -1610,7 +1642,7 @@ var y = 64,
       return (t || ((t = new Set()), this.listeners.set(e, t)), t);
     }
   },
-  T = class {
+  D = class {
     static disabledLevels = new Set([`INFO`]);
     static disabledChannels = new Set();
     static levelStyles = {
@@ -1672,52 +1704,52 @@ var y = 64,
     }
     static printBanner() {
       (console.log(
-        `%c Luminous v2.4.6 %c by streetraceing `,
+        `%c Luminous v2.4.7 %c by streetraceing `,
         `background:#1DB954;color:#000;padding:6px 12px;border-radius:8px 0 0 8px;font-weight:600;`,
         `background:#181818;color:#1DB954;padding:6px 12px;border-radius:0 8px 8px 0;font-weight:500;`,
       ),
         console.log(
-          `%c build: 27/10/2026 19:01:15 UTC+03:00 `,
+          `%c build: 03/11/2026 22:51:52 UTC+03:00 `,
           `color:#888;font-size:12px;`,
         ));
     }
   },
-  E = { status: `booting`, brokenSince: null },
-  D = new Set();
-function O() {
-  return E;
+  O = { status: `booting`, brokenSince: null },
+  k = new Set();
+function A() {
+  return O;
 }
-function k(e) {
-  let t = { ...E, ...e };
-  (t.status === E.status && t.brokenSince === E.brokenSince) ||
-    ((E = t), D.forEach((e) => te(e)));
+function j(e) {
+  let t = { ...O, ...e };
+  (t.status === O.status && t.brokenSince === O.brokenSince) ||
+    ((O = t), k.forEach((e) => te(e)));
 }
 function ee(e) {
   return (
-    D.add(e),
+    k.add(e),
     te(e),
     () => {
-      D.delete(e);
+      k.delete(e);
     }
   );
 }
 function te(e) {
   try {
-    e(E);
+    e(O);
   } catch (e) {
-    T.error(`Main`, `UI health listener failed`, e);
+    D.error(`Main`, `UI health listener failed`, e);
   }
 }
-var ne = `luminous-playlist-background`,
-  A = `--luminous-playlist-background-image`,
-  re = [
+var M = `luminous-playlist-background`,
+  N = `--luminous-playlist-background-image`,
+  ne = [
     `.main-view-container`,
     `.before-scroll-node`,
     `[data-testid="playlist-page"]`,
     `[data-testid="playlist-tracklist"]`,
     `[data-testid="entity-header"]`,
   ].join(`,`),
-  ie = [
+  re = [
     `[data-testid="playlist-page"]`,
     `[data-testid="playlist-tracklist"]`,
     `.marketplace-content`,
@@ -1728,7 +1760,7 @@ var ne = `luminous-playlist-background`,
     `div[data-testid="test-ref-div"]`,
     `[data-testid="entity-header"]`,
   ].join(`,`),
-  ae = [
+  ie = [
     `.Root__top-container #main-view`,
     `.Root__top-container [data-testid="main-view"]`,
     `#main-view`,
@@ -1736,15 +1768,15 @@ var ne = `luminous-playlist-background`,
     `.Root__top-container .main-view-container`,
     `.main-view-container`,
   ],
-  oe = null;
-function se() {
-  for (let e of ae) if (document.querySelector(e)) return ((oe = e), e);
+  ae = null;
+function oe() {
+  for (let e of ie) if (document.querySelector(e)) return ((ae = e), e);
   return null;
 }
-function ce() {
-  return oe;
+function se() {
+  return ae;
 }
-var j = class {
+var P = class {
     static playlistBackground(e) {
       let t = null,
         n = null,
@@ -1755,8 +1787,8 @@ var j = class {
         s = null;
       function c() {
         s &&
-          (s.classList.remove(ne),
-          s.style.removeProperty(A),
+          (s.classList.remove(M),
+          s.style.removeProperty(N),
           (s = null),
           (o = null));
       }
@@ -1775,7 +1807,7 @@ var j = class {
       function u() {
         if (a) return;
         let e =
-          C.getRoot()?.querySelector(`.main-view-container`) ??
+          T.getRoot()?.querySelector(`.main-view-container`) ??
           document.querySelector(`.main-view-container`);
         (e === t && t?.isConnected) || (l(null), c(), (t = e));
       }
@@ -1790,7 +1822,7 @@ var j = class {
         if (!t) return;
         let n = t.querySelector(`.before-scroll-node > div > :first-child`),
           r = t.querySelector(`[data-testid="entity-header"]`);
-        if ((l(n), !n || !r)) {
+        if ((l(n === r ? null : n), !n || !r || n === r)) {
           c();
           return;
         }
@@ -1802,12 +1834,12 @@ var j = class {
         (r !== s && (c(), (s = r)),
           i !== o &&
             ((o = i),
-            r.classList.add(ne),
-            r.style.setProperty(A, i),
+            r.classList.add(M),
+            r.style.setProperty(N, i),
             e?.onBackgroundChange?.(i, n, r)));
       }
-      let p = C.subscribe(d, {
-        filter: (e) => _(e, re) || g(e, `.before-scroll-node`),
+      let p = T.subscribe(d, {
+        filter: (e) => y(e, ne) || v(e, `.before-scroll-node`),
       });
       return {
         disconnect() {
@@ -1844,7 +1876,7 @@ var j = class {
           (i = a(i, `luminous-artist-image-ancestor`)));
       }
       function s() {
-        let e = C.getRoot();
+        let e = T.getRoot();
         (e === t && t?.isConnected) || (o(), (t = e));
       }
       function c(e, n) {
@@ -1906,9 +1938,9 @@ var j = class {
         }),
           (i = a));
       }
-      let u = C.subscribe(l, {
+      let u = T.subscribe(l, {
         filter: (e) =>
-          _(e, ie) ||
+          y(e, re) ||
           e.some((e) => {
             let t = e.target;
             return t instanceof Element
@@ -1917,7 +1949,7 @@ var j = class {
                 ) ||
                   (t.closest(`section[data-test-uri^="spotify:artist:"]`) !==
                     null &&
-                    _([e], `img`))
+                    y([e], `img`))
               : !1;
           }),
       });
@@ -1954,8 +1986,8 @@ var j = class {
           a,
         );
       }
-      let a = h.subscribe(i, {
-        filter: (e) => _(e, `#Desktop_LeftSidebar_Id`),
+      let a = _.subscribe(i, {
+        filter: (e) => y(e, `#Desktop_LeftSidebar_Id`),
       });
       return {
         disconnect() {
@@ -1968,7 +2000,7 @@ var j = class {
         t = null,
         n = null;
       function r() {
-        return se() !== null;
+        return oe() !== null;
       }
       function i() {
         return !!(
@@ -1992,40 +2024,40 @@ var j = class {
                 (n = window.setTimeout(() => {
                   ((n = null),
                     !e &&
-                      O().status === `booting` &&
-                      (T.warn(
+                      A().status === `booting` &&
+                      (D.warn(
                         `Main`,
                         `Spotify shell selector not found; promoting to ready because Player has a track. Spicetify ≥ 2.45.2 is required for Spotify 1.3.3+.`,
                       ),
                       (t = null),
-                      k({ status: `ready`, brokenSince: null })));
+                      j({ status: `ready`, brokenSince: null })));
                 }, 4e3))
               : n !== null && (window.clearTimeout(n), (n = null)),
               (t = null),
-              k({ status: `booting`, brokenSince: null }));
+              j({ status: `booting`, brokenSince: null }));
             return;
           }
           if ((n !== null && (window.clearTimeout(n), (n = null)), i())) {
-            ((t = null), k({ status: `ready`, brokenSince: null }));
+            ((t = null), j({ status: `ready`, brokenSince: null }));
             return;
           }
           (t === null &&
             ((t = Date.now()),
-            T.info(`Main`, `Waiting for Spotify UI mount...`)),
-            k({ status: `waiting`, brokenSince: t }));
+            D.info(`Main`, `Waiting for Spotify UI mount...`)),
+            j({ status: `waiting`, brokenSince: t }));
         }
       }
-      let s = h.subscribe(o, {
+      let s = _.subscribe(o, {
           filter: (e) =>
-            _(
+            y(
               e,
               `.Root__top-container,#main-view,[data-testid="main-view"],.main-view-container`,
             ),
         }),
-        c = C.subscribe(o, {
+        c = T.subscribe(o, {
           immediate: !1,
           filter: (e) =>
-            _(e, `.main-view-container,[data-testid="main-view"],#main-view`),
+            y(e, `.main-view-container,[data-testid="main-view"],#main-view`),
         });
       return {
         disconnect() {
@@ -2034,7 +2066,7 @@ var j = class {
             s(),
             c(),
             (t = null),
-            k({ status: `booting`, brokenSince: null }));
+            j({ status: `booting`, brokenSince: null }));
         },
       };
     }
@@ -2093,13 +2125,13 @@ var j = class {
         }),
         o(),
         a());
-      let l = h.subscribe(a, {
+      let l = _.subscribe(a, {
           immediate: !1,
-          filter: (e) => g(e, `#lyrics-cinema,video`),
+          filter: (e) => y(e, `#lyrics-cinema,video`),
         }),
-        u = C.subscribe(a, {
+        u = T.subscribe(a, {
           immediate: !1,
-          filter: (e) => g(e, `#lyrics-cinema,video`),
+          filter: (e) => y(e, `#lyrics-cinema,video`),
         });
       return {
         disconnect() {
@@ -2108,25 +2140,25 @@ var j = class {
       };
     }
   },
-  le = class {
+  ce = class {
     static get() {
       let e = Luminous.Canvas.get(),
         t = Luminous.Song.getSync();
       return {
         luminous: {
-          version: `2.4.6`,
-          buildTime: `27/10/2026 19:01:15 UTC+03:00`,
+          version: `2.4.7`,
+          buildTime: `03/11/2026 22:51:52 UTC+03:00`,
         },
         runtime: {
           background: Luminous.Background.getType(),
           canvasMode: e.mode,
           canvasSource: e.source,
           track: t?.title ?? null,
-          uiHealth: O().status,
+          uiHealth: A().status,
           documentHidden: document.hidden,
-          shellSelector: ce(),
+          shellSelector: se(),
         },
-        performance: { domPulse: h.getStats(), mainViewPulse: C.getStats() },
+        performance: { domPulse: _.getStats(), mainViewPulse: T.getStats() },
         settings: Luminous.Settings.snapshot(),
         environment: {
           platform: navigator.platform,
@@ -2148,7 +2180,7 @@ var j = class {
       }
     }
   },
-  ue = class {
+  le = class {
     static isDesktop() {
       return !!Spicetify.Platform?.NativeAPI;
     }
@@ -2271,7 +2303,9 @@ var j = class {
       }
     }
   },
-  M = `luminous-dynamic-palette`,
+  F = `luminous-dynamic-palette`,
+  I = `luminous-palette-visible`,
+  ue = 700,
   de = [
     `--luminous-palette-primary`,
     `--luminous-palette-secondary`,
@@ -2300,7 +2334,7 @@ var j = class {
     `luminous-effect-tone-balanced`,
     `luminous-effect-tone-light`,
   ],
-  N = 48,
+  L = 48,
   pe = 24,
   me = 20,
   he = class {
@@ -2309,8 +2343,15 @@ var j = class {
     static cache = new Map();
     static currentProfile = null;
     static motionScale = 1;
+    static imageLoadController = null;
+    static activeTarget = null;
+    static targetProfiles = new WeakMap();
+    static transitionFrame = null;
+    static transitionTimer = null;
     static cancel() {
-      this.requestId++;
+      (this.requestId++,
+        this.imageLoadController?.abort(),
+        (this.imageLoadController = null));
     }
     static clear() {
       (this.cancel(),
@@ -2321,26 +2362,31 @@ var j = class {
     static setMotionDuration(e) {
       let t = Number.isFinite(e) ? Math.min(60, Math.max(8, e)) : me;
       ((this.motionScale = t / me),
-        this.currentProfile &&
-          this.applyDurations(this.currentProfile.baseDurations));
+        this.getTargets().forEach((e) => {
+          let t = this.targetProfiles.get(e);
+          t && this.applyDurations(t.baseDurations, e);
+        }));
     }
     static async applyFromImage(e) {
       if (!e) {
         this.clear();
         return;
       }
-      if (e === this.source && this.currentProfile) {
+      if ((this.cancel(), e === this.source && this.currentProfile)) {
         if (this.hasAppliedPalette()) return;
         this.applyProfile(this.currentProfile);
         return;
       }
-      let t = ++this.requestId;
+      let t = this.requestId,
+        n = new AbortController();
+      this.imageLoadController = n;
       try {
-        let n = this.getCachedPalette(e) ?? (await this.extractProfile(e));
-        if (t !== this.requestId) return;
-        (this.cachePalette(e, n), this.applyProfile(n), (this.source = e));
+        let r =
+          this.getCachedPalette(e) ?? (await this.extractProfile(e, n.signal));
+        if (n.signal.aborted || t !== this.requestId) return;
+        (this.cachePalette(e, r), this.applyProfile(r), (this.source = e));
       } catch (e) {
-        if (t !== this.requestId) return;
+        if (n.signal.aborted || t !== this.requestId) return;
         ((this.source = null),
           (this.currentProfile = null),
           this.clearAppliedPalette(),
@@ -2349,28 +2395,62 @@ var j = class {
             `Failed to create adaptive background effects`,
             e,
           ));
+      } finally {
+        this.imageLoadController === n && (this.imageLoadController = null);
       }
     }
-    static async extractProfile(e) {
-      let t = await this.loadImage(e),
-        n = document.createElement(`canvas`);
-      ((n.width = N), (n.height = N));
-      let r = n.getContext(`2d`, { willReadFrequently: !0 });
-      if (!r) throw Error(`Canvas context unavailable`);
-      ((r.imageSmoothingEnabled = !0),
-        (r.imageSmoothingQuality = `high`),
-        r.drawImage(t, 0, 0, N, N));
-      let i = r.getImageData(0, 0, N, N).data;
-      return this.analyzePixels(i);
+    static async extractProfile(e, t) {
+      let n = await this.loadImage(e, t);
+      if (t.aborted) throw new DOMException(`Aborted`, `AbortError`);
+      let r = document.createElement(`canvas`);
+      ((r.width = L), (r.height = L));
+      let i = r.getContext(`2d`, { willReadFrequently: !0 });
+      if (!i) throw Error(`Canvas context unavailable`);
+      ((i.imageSmoothingEnabled = !0),
+        (i.imageSmoothingQuality = `high`),
+        i.drawImage(n, 0, 0, L, L));
+      let a = i.getImageData(0, 0, L, L).data;
+      return this.analyzePixels(a);
     }
-    static loadImage(e) {
-      return new Promise((t, n) => {
-        let r = new Image();
-        ((r.crossOrigin = `anonymous`),
-          (r.decoding = `async`),
-          (r.onload = () => t(r)),
-          (r.onerror = () => n(Error(`Failed to load cover image`))),
-          (r.src = e));
+    static loadImage(e, t) {
+      return new Promise((n, r) => {
+        let i = new Image(),
+          a = !1,
+          o = () => {
+            ((i.onload = null),
+              (i.onerror = null),
+              t.removeEventListener(`abort`, c));
+          },
+          s = (e) => {
+            a || ((a = !0), o(), r(e));
+          },
+          c = () => {
+            (s(new DOMException(`Aborted`, `AbortError`)),
+              i.removeAttribute(`src`));
+          };
+        if (
+          ((i.crossOrigin = `anonymous`),
+          (i.decoding = `async`),
+          (i.onload = async () => {
+            try {
+              await i.decode();
+            } catch {}
+            if (!(a || t.aborted)) {
+              if (i.naturalWidth === 0) {
+                s(Error(`Failed to decode cover image`));
+                return;
+              }
+              ((a = !0), o(), n(i));
+            }
+          }),
+          (i.onerror = () => s(Error(`Failed to load cover image`))),
+          t.addEventListener(`abort`, c, { once: !0 }),
+          t.aborted)
+        ) {
+          c();
+          return;
+        }
+        i.src = e;
       });
     }
     static analyzePixels(e) {
@@ -2664,56 +2744,103 @@ var j = class {
     }
     static applyProfile(e) {
       this.currentProfile = e;
-      let t = this.getTarget();
-      t &&
-        (t.style.setProperty(`--luminous-palette-primary`, e.primary),
-        t.style.setProperty(`--luminous-palette-secondary`, e.secondary),
-        t.style.setProperty(`--luminous-palette-accent`, e.accent),
-        t.style.setProperty(`--luminous-palette-light`, e.light),
-        t.style.setProperty(`--luminous-palette-dark`, e.dark),
-        t.style.setProperty(`--luminous-effect-angle`, `${e.angle}deg`),
-        t.style.setProperty(
+      let t = this.getTargets(),
+        n =
+          (this.activeTarget?.isConnected ? this.activeTarget : null) ??
+          t.find((e) => e.classList.contains(I)) ??
+          t[0];
+      if (!n) return;
+      this.cancelTransition();
+      let r = n.classList.contains(F) ? (t.find((e) => e !== n) ?? n) : n;
+      ((r.style.transition = `none`),
+        r.classList.remove(I),
+        (r.hidden = !1),
+        r.style.setProperty(`--luminous-palette-primary`, e.primary),
+        r.style.setProperty(`--luminous-palette-secondary`, e.secondary),
+        r.style.setProperty(`--luminous-palette-accent`, e.accent),
+        r.style.setProperty(`--luminous-palette-light`, e.light),
+        r.style.setProperty(`--luminous-palette-dark`, e.dark),
+        r.style.setProperty(`--luminous-effect-angle`, `${e.angle}deg`),
+        r.style.setProperty(
           `--luminous-effect-saturation`,
           String(e.saturation),
         ),
-        t.style.setProperty(
+        r.style.setProperty(
           `--luminous-effect-brightness`,
           String(e.brightness),
         ),
-        t.style.setProperty(`--luminous-effect-contrast`, String(e.contrast)),
-        t.classList.remove(...fe),
-        t.classList.add(
+        r.style.setProperty(`--luminous-effect-contrast`, String(e.contrast)),
+        r.classList.remove(...fe),
+        r.classList.add(
           `luminous-effect-${e.scene}`,
           `luminous-effect-energy-${e.energy}`,
           `luminous-effect-tone-${e.tone}`,
-          M,
+          F,
         ),
-        this.applyDurations(e.baseDurations));
+        this.targetProfiles.set(r, e),
+        this.applyDurations(e.baseDurations, r),
+        (this.transitionFrame = requestAnimationFrame(() => {
+          this.transitionFrame = requestAnimationFrame(() => {
+            ((this.transitionFrame = null),
+              r.isConnected &&
+                (r.style.removeProperty(`transition`),
+                r.classList.add(I),
+                n !== r && n.classList.remove(I),
+                (this.activeTarget = r),
+                (this.transitionTimer = window.setTimeout(() => {
+                  ((this.transitionTimer = null),
+                    t.forEach((e) => {
+                      e !== r && this.clearTarget(e);
+                    }));
+                }, ue))));
+          });
+        })));
     }
-    static applyDurations(e) {
-      let t = this.getTarget();
-      t &&
-        e.forEach((e, n) => {
-          let r = Math.max(7, e * this.motionScale);
-          t.style.setProperty(
-            `--luminous-blob-${n + 1}-duration`,
-            `${Number(r.toFixed(1))}s`,
-          );
-        });
+    static applyDurations(e, t) {
+      e.forEach((e, n) => {
+        let r = Math.max(7, e * this.motionScale);
+        t.style.setProperty(
+          `--luminous-blob-${n + 1}-duration`,
+          `${Number(r.toFixed(1))}s`,
+        );
+      });
     }
     static clearAppliedPalette() {
-      let e = this.getTarget();
-      e &&
-        (de.forEach((t) => {
+      (this.cancelTransition(), (this.activeTarget = null));
+      let e = this.getTargets();
+      e.length !== 0 &&
+        (e.forEach((e) => e.classList.remove(I)),
+        (this.transitionTimer = window.setTimeout(() => {
+          ((this.transitionTimer = null),
+            e.forEach((e) => this.clearTarget(e)));
+        }, ue)));
+    }
+    static clearTarget(e) {
+      ((e.hidden = !0),
+        de.forEach((t) => {
           e.style.removeProperty(t);
         }),
-        e.classList.remove(...fe, M));
+        e.style.removeProperty(`transition`),
+        e.classList.remove(...fe, F, I),
+        this.targetProfiles.delete(e));
     }
-    static getTarget() {
-      return document.querySelector(`.luminous-background-effects`);
+    static cancelTransition() {
+      (this.transitionFrame !== null &&
+        (cancelAnimationFrame(this.transitionFrame),
+        (this.transitionFrame = null)),
+        this.transitionTimer !== null &&
+          (window.clearTimeout(this.transitionTimer),
+          (this.transitionTimer = null)));
+    }
+    static getTargets() {
+      return Array.from(
+        document.querySelectorAll(
+          `#luminous-dynamic-background > .luminous-background-effects`,
+        ),
+      );
     }
     static hasAppliedPalette() {
-      return this.getTarget()?.classList.contains(M) === !0;
+      return this.getTargets().some((e) => e.classList.contains(F));
     }
   },
   ge = class {
@@ -3122,12 +3249,12 @@ var j = class {
     }
     static createTrackSignature(e) {
       let t = e.artists?.map((e) => e.name).join(`|`) ?? ``,
-        n = P(e);
+        n = ye(e);
       return `${e.uri}\u0000${e.name}\u0000${t}\u0000${n ?? ``}`;
     }
     static createPayload(e) {
       let t = e.artists?.map((e) => e.name) ?? [],
-        n = P(e);
+        n = ye(e);
       return {
         track: e,
         name: e.name,
@@ -3169,7 +3296,7 @@ function ve(e) {
   }
   return e;
 }
-function P(e) {
+function ye(e) {
   let t = [
     ...(e.images ?? []).map((e) => e.url),
     ...(e.album?.images ?? []).map((e) => e.url),
@@ -3184,7 +3311,7 @@ function P(e) {
   }
   return null;
 }
-function ye() {
+function be() {
   let e = window.Luminous;
   if (typeof e?.destroy == `function`)
     try {
@@ -3193,48 +3320,48 @@ function ye() {
       console.warn(`[Luminous] Failed to clean previous runtime`, e);
     }
 }
-function be(e) {
+function xe(e) {
   Object.defineProperty(window, 'Luminous', {
     value: {
       Background: u,
-      Canvas: w,
-      Diagnostics: le,
+      Canvas: E,
+      Diagnostics: ce,
       Song: _e,
-      Native: ue,
+      Native: le,
       Palette: he,
       Settings: ge,
-      Logger: T,
+      Logger: D,
       destroy: e,
-      version: `2.4.6`,
+      version: `2.4.7`,
     },
     configurable: !0,
   });
 }
-function F() {
+function R() {
   return Spicetify.React;
 }
-function I() {
-  return F().useEffect;
-}
-function L() {
-  return F().useMemo;
-}
-function R() {
-  return F().useRef;
-}
 function z() {
-  return F().useState;
+  return R().useEffect;
 }
-function xe() {
-  let e = I(),
-    t = L(),
-    n = z(),
+function Se() {
+  return R().useMemo;
+}
+function B() {
+  return R().useRef;
+}
+function V() {
+  return R().useState;
+}
+function Ce() {
+  let e = z(),
+    t = Se(),
+    n = V(),
     [r, i] = n(() => Luminous.Song.getSync()),
     [a, o] = n(() => Luminous.Canvas.get()),
     [s, c] = n(() => Luminous.Settings.get(`dynamicBackground`) !== !1),
     [l, u] = n(() => Luminous.Settings.get(`musicVideoBackground`)),
     [d, f] = n(() => Luminous.Settings.get(`dynamicPalette`) !== !1),
-    [p, m] = n(() => O().status !== `booting`),
+    [p, m] = n(() => A().status !== `booting`),
     h = !!a.video && (a.mode !== `npv-video` || l !== `artwork`),
     g = t(
       () =>
@@ -3252,35 +3379,37 @@ function xe() {
   return (
     e(() => {
       let e = r ? `${r.uri}\u0000${r.image ?? ``}` : null,
-        t = `${a.mode ?? ``}\u0000${a.source ?? ``}\u0000${a.revision}`,
-        n = a.video,
-        s = (t) => {
-          let n = `${t.uri}\u0000${t.image ?? ``}`;
-          e !== n &&
-            ((e = n),
-            Luminous.Palette.cancel(),
+        t = r?.image ?? null,
+        n = `${a.mode ?? ``}\u0000${a.source ?? ``}\u0000${a.revision}`,
+        s = a.video,
+        l = (n) => {
+          let r = `${n.uri}\u0000${n.image ?? ``}`;
+          e !== r &&
+            ((e = r),
+            t !== n.image && Luminous.Palette.cancel(),
+            (t = n.image),
             Luminous.Settings.get(`dynamicBackground`) !== !1 &&
-              Luminous.Background.preloadImage(t.image),
-            i(t));
+              Luminous.Background.preloadImage(n.image),
+            i(n));
         },
-        l = (e) => {
-          let r = `${e.mode ?? ``}\u0000${e.source ?? ``}\u0000${e.revision}`;
-          (t === r && n === e.video) || ((t = r), (n = e.video), o(e));
+        d = (e) => {
+          let t = `${e.mode ?? ``}\u0000${e.source ?? ``}\u0000${e.revision}`;
+          (n === t && s === e.video) || ((n = t), (s = e.video), o(e));
         };
-      (Luminous.Song.addEventListener(`ready`, s),
-        Luminous.Song.addEventListener(`change`, s),
-        Luminous.Canvas.addEventListener(`mount`, l),
-        Luminous.Canvas.addEventListener(`change`, l),
-        Luminous.Canvas.addEventListener(`unmount`, l));
-      let d = ee((e) => {
+      (Luminous.Song.addEventListener(`ready`, l),
+        Luminous.Song.addEventListener(`change`, l),
+        Luminous.Canvas.addEventListener(`mount`, d),
+        Luminous.Canvas.addEventListener(`change`, d),
+        Luminous.Canvas.addEventListener(`unmount`, d));
+      let p = ee((e) => {
           m(e.status !== `booting`);
         }),
-        p = Luminous.Settings.subscribe(
+        h = Luminous.Settings.subscribe(
           `dynamicBackground`,
           (e) => c(e !== !1),
           { immediate: !0 },
         ),
-        h = Luminous.Settings.subscribe(
+        g = Luminous.Settings.subscribe(
           `musicVideoBackground`,
           (e) => {
             if (e === `artwork`) {
@@ -3288,25 +3417,25 @@ function xe() {
               e &&
                 (Luminous.Settings.get(`dynamicBackground`) !== !1 &&
                   Luminous.Background.preloadImage(e.image),
-                s(e));
+                l(e));
             }
             u(e);
           },
           { immediate: !0 },
         ),
-        g = Luminous.Settings.subscribe(`dynamicPalette`, (e) => f(e !== !1), {
+        _ = Luminous.Settings.subscribe(`dynamicPalette`, (e) => f(e !== !1), {
           immediate: !0,
         });
       return () => {
-        (Luminous.Song.removeEventListener(`ready`, s),
-          Luminous.Song.removeEventListener(`change`, s),
-          Luminous.Canvas.removeEventListener(`mount`, l),
-          Luminous.Canvas.removeEventListener(`change`, l),
-          Luminous.Canvas.removeEventListener(`unmount`, l),
-          d(),
+        (Luminous.Song.removeEventListener(`ready`, l),
+          Luminous.Song.removeEventListener(`change`, l),
+          Luminous.Canvas.removeEventListener(`mount`, d),
+          Luminous.Canvas.removeEventListener(`change`, d),
+          Luminous.Canvas.removeEventListener(`unmount`, d),
           p(),
-          g(),
           h(),
+          _(),
+          g(),
           Luminous.Background.destroy(),
           Luminous.Palette.clear());
       };
@@ -3345,18 +3474,18 @@ function xe() {
     null
   );
 }
-var Se = 600,
-  Ce = 2600,
-  we = 1500,
-  Te = Date.now();
-function Ee() {
-  let e = F(),
-    t = I(),
-    n = L(),
-    r = R(),
-    i = z(),
+var we = 600,
+  Te = 2600,
+  Ee = 1500,
+  De = Date.now();
+function Oe() {
+  let e = R(),
+    t = z(),
+    n = Se(),
+    r = B(),
+    i = V(),
     [a, o] = i(!0),
-    [s, c] = i(() => O()),
+    [s, c] = i(() => A()),
     [l, u] = i(() => Date.now()),
     d = r(null),
     f = r(!1),
@@ -3370,9 +3499,9 @@ function Ee() {
     }, [a]),
     t(() => {
       if (!p || f.current) return;
-      d.current === null && (d.current = Te);
+      d.current === null && (d.current = De);
       let e = Date.now() - d.current,
-        t = s.status === `ready` ? Se : Ce,
+        t = s.status === `ready` ? we : Te,
         n = Math.max(0, t - e),
         r = window.setTimeout(() => {
           ((f.current = !0), o(!1));
@@ -3389,7 +3518,7 @@ function Ee() {
   let m = n(
       () =>
         s.status === `waiting` && s.brokenSince
-          ? `Waiting for Spotify UI... (${De(l - s.brokenSince)})`
+          ? `Waiting for Spotify UI... (${ke(l - s.brokenSince)})`
           : s.status === `ready`
             ? `Welcome back. Lighting up Spotify...`
             : `Starting Luminous...`,
@@ -3398,7 +3527,7 @@ function Ee() {
     h =
       s.status === `waiting` &&
       s.brokenSince !== null &&
-      l - s.brokenSince >= we;
+      l - s.brokenSince >= Ee;
   return p
     ? e.createElement(
         `div`,
@@ -3443,12 +3572,12 @@ function Ee() {
       )
     : null;
 }
-function De(e) {
+function ke(e) {
   return `${Math.max(0, Math.floor(e / 1e3))}s`;
 }
-var Oe = [`still`, `drift`, `float`],
-  ke = [`auto`, `artwork`],
-  B = (e, t, n) => (r) => {
+var Ae = [`still`, `drift`, `float`],
+  je = [`auto`, `artwork`],
+  H = (e, t, n) => (r) => {
     if (
       (typeof r != `number` && typeof r != `string`) ||
       (typeof r == `string` && r.trim() === ``)
@@ -3457,28 +3586,28 @@ var Oe = [`still`, `drift`, `float`],
     let i = typeof r == `number` ? r : Number(r);
     return Number.isFinite(i) ? Math.min(n, Math.max(t, i)) : e;
   },
-  V = (e) => (t) => (typeof t == `boolean` ? t : e),
-  H = (e, t) => (n) => (typeof n == `string` && e.includes(n) ? n : t),
-  Ae = (e, t, n) => {
+  U = (e) => (t) => (typeof t == `boolean` ? t : e),
+  W = (e, t) => (n) => (typeof n == `string` && e.includes(n) ? n : t),
+  Me = (e, t, n) => {
     t.forEach((t) => {
       Luminous.Settings.toggleClass(`${e}${t}`, t === n);
     });
   },
-  je = () => {
+  Ne = () => {
     let e = Luminous.Settings.get(`dynamicBackground`) !== !1,
       t = Luminous.Settings.get(`backgroundSource`);
     Luminous.Canvas.setEnabled(e && t === `auto`);
   },
-  Me = {
+  Pe = {
     backgroundBlur: {
       default: 24,
-      normalize: B(24, 0, 48),
+      normalize: H(24, 0, 48),
       apply: (e) =>
         Luminous.Settings.setVar(`--luminous-background-blur`, `${e}px`),
     },
     backgroundBrightness: {
       default: 75,
-      normalize: B(75, 30, 120),
+      normalize: H(75, 30, 120),
       apply: (e) =>
         Luminous.Settings.setVar(
           `--luminous-background-brightness`,
@@ -3487,12 +3616,12 @@ var Oe = [`still`, `drift`, `float`],
     },
     uiBlur: {
       default: 16,
-      normalize: B(16, 0, 32),
+      normalize: H(16, 0, 32),
       apply: (e) => Luminous.Settings.setVar(`--luminous-ui-blur`, `${e}px`),
     },
     paletteStrength: {
       default: 24,
-      normalize: B(24, 0, 50),
+      normalize: H(24, 0, 50),
       apply: (e) => {
         let t = Math.min(78, Math.round(e * 1.6));
         Luminous.Settings.setVar(`--luminous-palette-effect-opacity`, `${t}%`);
@@ -3501,7 +3630,7 @@ var Oe = [`still`, `drift`, `float`],
     backgroundEnergy: { default: `adaptive`, normalize: () => `adaptive` },
     uiOpacity: {
       default: 50,
-      normalize: B(50, 0, 100),
+      normalize: H(50, 0, 100),
       apply: (e) => {
         if (Luminous.Settings.get(`dynamicBackground`) === !1) {
           Luminous.Settings.removeVar(`--luminous-ui-opacity`);
@@ -3512,10 +3641,10 @@ var Oe = [`still`, `drift`, `float`],
     },
     dynamicBackground: {
       default: !0,
-      normalize: V(!0),
+      normalize: U(!0),
       apply: (e) => {
         if (
-          (Luminous.Settings.toggleClass(`hideDynamicBackground`, !e), je(), e)
+          (Luminous.Settings.toggleClass(`hideDynamicBackground`, !e), Ne(), e)
         ) {
           (Luminous.Settings.setVar(`--luminous-background`, `transparent`),
             Luminous.Settings.setVar(
@@ -3535,30 +3664,30 @@ var Oe = [`still`, `drift`, `float`],
     },
     backgroundSource: {
       default: `auto`,
-      normalize: H(ke, `auto`),
+      normalize: W(je, `auto`),
       apply: (e) => {
-        (Ae(`luminous-source-`, ke, e), je());
+        (Me(`luminous-source-`, je, e), Ne());
       },
     },
     musicVideoBackground: {
       default: `video`,
-      normalize: H([`video`, `artwork`], `video`),
+      normalize: W([`video`, `artwork`], `video`),
     },
     dynamicPalette: {
       default: !0,
-      normalize: V(!0),
+      normalize: U(!0),
       apply: (e) => {
         e || Luminous.Palette.clear();
       },
     },
     backgroundMotion: {
       default: `drift`,
-      normalize: H(Oe, `drift`),
-      apply: (e) => Ae(`luminous-motion-`, Oe, e),
+      normalize: W(Ae, `drift`),
+      apply: (e) => Me(`luminous-motion-`, Ae, e),
     },
     motionDuration: {
       default: 20,
-      normalize: B(20, 8, 60),
+      normalize: H(20, 8, 60),
       apply: (e) => {
         (Luminous.Settings.setVar(`--luminous-motion-duration`, `${e}s`),
           Luminous.Palette.setMotionDuration(e));
@@ -3566,11 +3695,11 @@ var Oe = [`still`, `drift`, `float`],
     },
     reduceMotion: {
       default: !1,
-      normalize: V(!1),
+      normalize: U(!1),
       apply: (e) => Luminous.Settings.toggleClass(`luminous-reduce-motion`, e),
     },
   },
-  U = [
+  Fe = [
     {
       key: `dynamicBackground`,
       label: `Dynamic background`,
@@ -3693,7 +3822,7 @@ var Oe = [`still`, `drift`, `float`],
       control: `toggle`,
     },
   ],
-  Ne = [
+  Ie = [
     {
       id: `balanced`,
       label: `Balanced`,
@@ -3761,35 +3890,35 @@ var Oe = [`still`, `drift`, `float`],
       },
     },
   ];
-function Pe() {
-  Object.entries(Me).forEach(([e, t]) => {
+function Le() {
+  Object.entries(Pe).forEach(([e, t]) => {
     Luminous.Settings.register(e, t);
   });
 }
-var Fe = `Luminous Settings`,
-  Ie = `brightness`,
-  W = `luminous-theme-modal`,
-  Le = `luminous-theme-modal-title`,
-  Re = `luminous-theme-modal-description`,
-  ze = [
+var Re = `Luminous Settings`,
+  ze = `brightness`,
+  G = `luminous-theme-modal`,
+  Be = `luminous-theme-modal-title`,
+  Ve = `luminous-theme-modal-description`,
+  He = [
     `button:not([disabled])`,
     `input:not([disabled])`,
     `[href]`,
     `[tabindex]:not([tabindex="-1"])`,
   ].join(`,`),
-  G = [
+  K = [
     { id: `presets`, label: `Presets` },
     { id: `appearance`, label: `Appearance` },
     { id: `motion`, label: `Motion` },
     { id: `advanced`, label: `Advanced` },
   ],
-  Be = 32,
-  Ve = U.map((e) => e.key);
-function He() {
-  let e = F(),
-    t = I(),
-    n = R(),
-    r = z(),
+  Ue = 32,
+  We = Fe.map((e) => e.key);
+function Ge() {
+  let e = R(),
+    t = z(),
+    n = B(),
+    r = V(),
     i = n(null),
     [a, o] = r(!1);
   return (
@@ -3802,7 +3931,7 @@ function He() {
             t = window.setTimeout(n, 250);
             return;
           }
-          let r = new Spicetify.Menu.Item(Fe, !1, () => o(!0), Ie);
+          let r = new Spicetify.Menu.Item(Re, !1, () => o(!0), ze);
           (r.register(), (i.current = r));
         };
       return (
@@ -3815,14 +3944,14 @@ function He() {
         }
       );
     }, []),
-    a ? e.createElement(Ue, { onClose: () => o(!1) }) : null
+    a ? e.createElement(Ke, { onClose: () => o(!1) }) : null
   );
 }
-function Ue({ onClose: e }) {
-  let t = F(),
-    n = I(),
-    r = R(),
-    i = z(),
+function Ke({ onClose: e }) {
+  let t = R(),
+    n = z(),
+    r = B(),
+    i = V(),
     a = r(null),
     o = r(null),
     s = r({ presets: null, appearance: null, motion: null, advanced: null }),
@@ -3854,7 +3983,7 @@ function Ue({ onClose: e }) {
           return;
         }
         if (t.key !== `Tab`) return;
-        let n = Array.from(a.current?.querySelectorAll(ze) ?? []).filter(
+        let n = Array.from(a.current?.querySelectorAll(He) ?? []).filter(
           (e) => e.offsetParent !== null,
         );
         if (!n.length) {
@@ -3875,13 +4004,13 @@ function Ue({ onClose: e }) {
       );
     }, [e]));
   let d = (e, t) => {
-    let n = G.findIndex((e) => e.id === t),
+    let n = K.findIndex((e) => e.id === t),
       r = null;
-    (e.key === `ArrowRight` && (r = (n + 1) % G.length),
-      e.key === `ArrowLeft` && (r = (n - 1 + G.length) % G.length),
+    (e.key === `ArrowRight` && (r = (n + 1) % K.length),
+      e.key === `ArrowLeft` && (r = (n - 1 + K.length) % K.length),
       e.key === `Home` && (r = 0),
-      e.key === `End` && (r = G.length - 1),
-      r !== null && (e.preventDefault(), u(G[r].id, !0)));
+      e.key === `End` && (r = K.length - 1),
+      r !== null && (e.preventDefault(), u(K[r].id, !0)));
   };
   return t.createElement(
     `div`,
@@ -3895,12 +4024,12 @@ function Ue({ onClose: e }) {
       `div`,
       {
         ref: a,
-        id: W,
+        id: G,
         className: `luminous-theme-menu`,
         role: `dialog`,
         'aria-modal': `true`,
-        'aria-labelledby': Le,
-        'aria-describedby': Re,
+        'aria-labelledby': Be,
+        'aria-describedby': Ve,
       },
       t.createElement(
         `div`,
@@ -3921,10 +4050,10 @@ function Ue({ onClose: e }) {
         t.createElement(
           `div`,
           { className: `luminous-theme-menu__title` },
-          t.createElement(`span`, { id: Le }, `Luminous`),
+          t.createElement(`span`, { id: Be }, `Luminous`),
           t.createElement(
             `small`,
-            { id: Re },
+            { id: Ve },
             `Theme preferences · v${Luminous.version}`,
           ),
         ),
@@ -3934,7 +4063,7 @@ function Ue({ onClose: e }) {
             className: `luminous-theme-menu__reset-button`,
             type: `button`,
             onClick: () => {
-              (Luminous.Settings.resetMany(Ve),
+              (Luminous.Settings.resetMany(We),
                 Spicetify.showNotification(`Luminous settings reset`));
             },
           },
@@ -3963,7 +4092,7 @@ function Ue({ onClose: e }) {
           role: `tablist`,
           'aria-label': `Luminous settings sections`,
         },
-        G.map((e) =>
+        K.map((e) =>
           t.createElement(
             `button`,
             {
@@ -3971,13 +4100,13 @@ function Ue({ onClose: e }) {
               ref: (t) => {
                 s.current[e.id] = t;
               },
-              id: `${W}-${e.id}-tab`,
+              id: `${G}-${e.id}-tab`,
               className: `luminous-theme-menu__tab${c === e.id ? ` luminous-theme-menu__tab--active` : ``}`,
               type: `button`,
               role: `tab`,
               tabIndex: c === e.id ? 0 : -1,
               'aria-selected': String(c === e.id),
-              'aria-controls': `${W}-${e.id}-panel`,
+              'aria-controls': `${G}-${e.id}-panel`,
               onClick: () => u(e.id),
               onKeyDown: (t) => d(t, e.id),
             },
@@ -3988,15 +4117,15 @@ function Ue({ onClose: e }) {
       t.createElement(
         `div`,
         {
-          id: `${W}-${c}-panel`,
+          id: `${G}-${c}-panel`,
           className: `luminous-theme-menu__panel`,
           role: `tabpanel`,
-          'aria-labelledby': `${W}-${c}-tab`,
+          'aria-labelledby': `${G}-${c}-tab`,
         },
         t.createElement(
           `div`,
           { key: c, className: `luminous-theme-menu__panel-content` },
-          t.createElement(Ge, { section: c }),
+          t.createElement(Je, { section: c }),
         ),
       ),
       t.createElement(
@@ -4007,8 +4136,8 @@ function Ue({ onClose: e }) {
     ),
   );
 }
-function We() {
-  let e = F();
+function qe() {
+  let e = R();
   return e.createElement(
     e.Fragment,
     null,
@@ -4025,7 +4154,7 @@ function We() {
     e.createElement(
       `div`,
       { className: `luminous-theme-menu__preset-grid` },
-      Ne.map((t) =>
+      Ie.map((t) =>
         e.createElement(
           `button`,
           {
@@ -4045,9 +4174,9 @@ function We() {
     ),
   );
 }
-function Ge({ section: e }) {
-  let t = F();
-  if (e === `presets`) return t.createElement(We);
+function Je({ section: e }) {
+  let t = R();
+  if (e === `presets`) return t.createElement(qe);
   let n = {
       appearance: {
         title: `Appearance`,
@@ -4062,7 +4191,7 @@ function Ge({ section: e }) {
         description: `Inspect the current runtime and copy diagnostics for troubleshooting.`,
       },
     }[e],
-    r = U.filter((t) => t.section === e);
+    r = Fe.filter((t) => t.section === e);
   return t.createElement(
     t.Fragment,
     null,
@@ -4072,21 +4201,21 @@ function Ge({ section: e }) {
       t.createElement(`h2`, null, n.title),
       t.createElement(`p`, null, n.description),
     ),
-    r.map((e) => t.createElement(Ke, { key: e.key, setting: e })),
-    e === `advanced` && t.createElement(Xe),
+    r.map((e) => t.createElement(Ye, { key: e.key, setting: e })),
+    e === `advanced` && t.createElement($e),
   );
 }
-function Ke({ setting: e }) {
+function Ye({ setting: e }) {
   return e.control === `toggle`
-    ? F().createElement(qe, { setting: e })
+    ? R().createElement(Xe, { setting: e })
     : e.control === `range`
-      ? F().createElement(Je, { setting: e })
-      : F().createElement(Ye, { setting: e });
+      ? R().createElement(Ze, { setting: e })
+      : R().createElement(Qe, { setting: e });
 }
-function qe({ setting: e }) {
-  let t = F(),
-    n = I(),
-    [r, i] = z()(() => Luminous.Settings.get(e.key) === !0);
+function Xe({ setting: e }) {
+  let t = R(),
+    n = z(),
+    [r, i] = V()(() => Luminous.Settings.get(e.key) === !0);
   return (
     n(
       () =>
@@ -4098,7 +4227,7 @@ function qe({ setting: e }) {
     t.createElement(
       `label`,
       { className: `luminous-theme-menu__row luminous-theme-menu__toggle` },
-      t.createElement(K, { setting: e }),
+      t.createElement(q, { setting: e }),
       t.createElement(
         `span`,
         { className: `luminous-theme-menu__switch` },
@@ -4113,11 +4242,11 @@ function qe({ setting: e }) {
     )
   );
 }
-function Je({ setting: e }) {
-  let t = F(),
-    n = I(),
-    r = R(),
-    [i, a] = z()(() => Number(Luminous.Settings.get(e.key))),
+function Ze({ setting: e }) {
+  let t = R(),
+    n = z(),
+    r = B(),
+    [i, a] = V()(() => Number(Luminous.Settings.get(e.key))),
     o = r(i),
     s = r(null),
     c = () => {
@@ -4131,7 +4260,7 @@ function Je({ setting: e }) {
         s.current === null &&
           (s.current = window.setTimeout(() => {
             ((s.current = null), Luminous.Settings.set(e.key, o.current));
-          }, Be)));
+          }, Ue)));
     };
   return (
     n(
@@ -4160,7 +4289,7 @@ function Je({ setting: e }) {
       t.createElement(
         `span`,
         { className: `luminous-theme-menu__range-header` },
-        t.createElement(K, { setting: e }),
+        t.createElement(q, { setting: e }),
         t.createElement(`strong`, null, `${i}${e.unit ?? ``}`),
       ),
       t.createElement(
@@ -4181,10 +4310,10 @@ function Je({ setting: e }) {
     )
   );
 }
-function Ye({ setting: e }) {
-  let t = F(),
-    n = I(),
-    [r, i] = z()(() => String(Luminous.Settings.get(e.key)));
+function Qe({ setting: e }) {
+  let t = R(),
+    n = z(),
+    [r, i] = V()(() => String(Luminous.Settings.get(e.key)));
   return (
     n(
       () =>
@@ -4196,7 +4325,7 @@ function Ye({ setting: e }) {
     t.createElement(
       `div`,
       { className: `luminous-theme-menu__row luminous-theme-menu__choice` },
-      t.createElement(K, { setting: e }),
+      t.createElement(q, { setting: e }),
       t.createElement(
         `div`,
         {
@@ -4221,8 +4350,8 @@ function Ye({ setting: e }) {
     )
   );
 }
-function K({ setting: e }) {
-  let t = F();
+function q({ setting: e }) {
+  let t = R();
   return t.createElement(
     `span`,
     { className: `luminous-theme-menu__copy` },
@@ -4230,13 +4359,13 @@ function K({ setting: e }) {
     t.createElement(`small`, null, e.description),
   );
 }
-function Xe() {
-  let e = F(),
-    t = I(),
-    [n, r] = z()(() => Ze());
+function $e() {
+  let e = R(),
+    t = z(),
+    [n, r] = V()(() => et());
   return (
     t(() => {
-      let e = () => r(Ze());
+      let e = () => r(et());
       return (
         Luminous.Background.addEventListener(`change`, e),
         Luminous.Canvas.addEventListener(`mount`, e),
@@ -4279,20 +4408,20 @@ function Xe() {
     )
   );
 }
-function Ze() {
+function et() {
   let e = Luminous.Diagnostics.get(),
     t = e.runtime.canvasMode ?? `none`;
   return `Background: ${e.runtime.background} · Canvas: ${t} · UI: ${e.runtime.uiHealth}`;
 }
-function Qe() {
+function tt() {
   return (
-    I()(() => {
+    z()(() => {
       let e = [
-        j.uiMountWatcher(),
-        j.observeCinema(),
-        j.mainViewState(),
-        j.leftSidebarState(),
-        j.playlistBackground(),
+        P.uiMountWatcher(),
+        P.observeCinema(),
+        P.mainViewState(),
+        P.leftSidebarState(),
+        P.playlistBackground(),
       ];
       return () => {
         e.forEach((e) => e.disconnect());
@@ -4301,10 +4430,10 @@ function Qe() {
     null
   );
 }
-var q = `luminous-visibility-hold`;
-function $e() {
+var J = `luminous-visibility-hold`;
+function nt() {
   return (
-    I()(() => {
+    z()(() => {
       let e = document.documentElement,
         t = null,
         n = () => {
@@ -4314,13 +4443,13 @@ function $e() {
           (n(),
             (t = requestAnimationFrame(() => {
               t = requestAnimationFrame(() => {
-                ((t = null), e.classList.remove(q));
+                ((t = null), e.classList.remove(J));
               });
             })));
         },
         i = () => {
           if (document.visibilityState === `hidden`) {
-            (n(), e.classList.add(q));
+            (n(), e.classList.add(J));
             return;
           }
           r();
@@ -4331,69 +4460,69 @@ function $e() {
         () => {
           (document.removeEventListener(`visibilitychange`, i),
             n(),
-            e.classList.remove(q));
+            e.classList.remove(J));
         }
       );
     }, []),
     null
   );
 }
-function et() {
-  let e = F();
+function rt() {
+  let e = R();
   return e.createElement(
     e.Fragment,
     null,
-    e.createElement(Ee),
-    e.createElement(Qe),
-    e.createElement($e),
-    e.createElement(xe),
-    e.createElement(He),
+    e.createElement(Oe),
+    e.createElement(tt),
+    e.createElement(nt),
+    e.createElement(Ce),
+    e.createElement(Ge),
   );
 }
-var J = `luminous-react-root`,
-  tt = 15e3,
-  Y = null,
-  X = 0,
-  Z = null;
-function nt() {
-  let e = ++X;
-  (Q(),
-    at(e)
+var Y = `luminous-react-root`,
+  it = 15e3,
+  X = null,
+  Z = 0,
+  Q = null;
+function at() {
+  let e = ++Z;
+  (lt(),
+    ct(e)
       .then(() => {
-        e === X && it();
+        e === Z && st();
       })
       .catch((t) => {
-        e === X &&
+        e === Z &&
           Luminous.Logger.error(`Runtime`, `Failed to mount application`, t);
       }));
 }
-function rt() {
-  if ((X++, Q(), Y?.unmount)) (Y.unmount(), (Y = null));
+function ot() {
+  if ((Z++, lt(), X?.unmount)) (X.unmount(), (X = null));
   else if (typeof Spicetify < `u` && Spicetify.ReactDOM) {
-    let e = document.getElementById(J);
+    let e = document.getElementById(Y);
     e &&
       Spicetify.ReactDOM.unmountComponentAtNode &&
       Spicetify.ReactDOM.unmountComponentAtNode(e);
   }
-  document.getElementById(J)?.remove();
+  document.getElementById(Y)?.remove();
 }
-function it() {
-  let e = F(),
+function st() {
+  let e = R(),
     { ReactDOM: t } = Spicetify,
-    n = ot(),
-    r = e.createElement(et);
+    n = ut(),
+    r = e.createElement(rt);
   if (t.createRoot) {
-    let e = Y ?? t.createRoot(n);
-    ((Y = e), e.render(r));
+    let e = X ?? t.createRoot(n);
+    ((X = e), e.render(r));
     return;
   }
   t.render(r, n);
 }
-function at(e) {
+function ct(e) {
   return new Promise((t, n) => {
     let r = performance.now(),
       i = () => {
-        if (((Z = null), e !== X)) {
+        if (((Q = null), e !== Z)) {
           n(Error(`Luminous mount superseded`));
           return;
         }
@@ -4406,34 +4535,34 @@ function at(e) {
           t();
           return;
         }
-        if (performance.now() - r > tt) {
+        if (performance.now() - r > it) {
           n(Error(`Spicetify React runtime not available`));
           return;
         }
-        Z = requestAnimationFrame(i);
+        Q = requestAnimationFrame(i);
       };
     i();
   });
 }
-function Q() {
-  Z !== null && (cancelAnimationFrame(Z), (Z = null));
+function lt() {
+  Q !== null && (cancelAnimationFrame(Q), (Q = null));
 }
-function ot() {
-  let e = document.getElementById(J);
+function ut() {
+  let e = document.getElementById(Y);
   return (
     e ||
       ((e = document.createElement(`div`)),
-      (e.id = J),
+      (e.id = Y),
       (e.style.display = `contents`),
       document.body.appendChild(e)),
     e
   );
 }
-var st =
+var dt =
     `luminous-runtime-active.luminous-bootstrap-pending.hideDynamicBackground.luminous-dynamic-palette.luminous-palette-transitioning.luminous-track-changing.luminous-glass-highlights.luminous-reduce-motion.luminous-runtime-suspended.luminous-settings-open.luminous-document-hidden.luminous-visibility-hold.luminous-parallax-enabled.luminous-source-auto.luminous-source-artwork.luminous-motion-still.luminous-motion-drift.luminous-motion-float.luminous-motion-orbit.luminous-quality-full.luminous-quality-balanced.luminous-quality-lite.luminous-effect-aurora.luminous-effect-ember.luminous-effect-bloom.luminous-effect-prism.luminous-effect-halo.luminous-effect-nebula.luminous-effect-energy-soft.luminous-effect-energy-flow.luminous-effect-energy-vivid.luminous-effect-tone-dark.luminous-effect-tone-balanced.luminous-effect-tone-light`.split(
       `.`,
     ),
-  ct = [
+  ft = [
     `--luminous-background`,
     `--luminous-background-blur`,
     `--luminous-background-brightness`,
@@ -4450,36 +4579,36 @@ var st =
     `--luminous-parallax-y`,
   ],
   $ = !1;
-function lt() {
+function pt() {
   if ($) return;
   (($ = !0),
-    rt(),
+    ot(),
     Luminous.Background.destroy(),
     Luminous.Palette.clear(),
     Luminous.Canvas.destroy(),
     Luminous.Song.destroy(),
     Luminous.Settings.destroy(),
-    C.destroy(),
-    h.destroy());
+    T.destroy(),
+    _.destroy());
   let e = document.documentElement;
-  (st.forEach((t) => e.classList.remove(t)),
-    ct.forEach((t) => e.style.removeProperty(t)),
+  (dt.forEach((t) => e.classList.remove(t)),
+    ft.forEach((t) => e.style.removeProperty(t)),
     Luminous.Logger.info(`Runtime`, `Destroyed`));
 }
-function ut() {
+function mt() {
   (($ = !1),
     document.documentElement.classList.add(
       `luminous-runtime-active`,
       `luminous-bootstrap-pending`,
     ));
 }
-(ye(),
-  be(lt),
-  ut(),
+(be(),
+  xe(pt),
+  mt(),
   Luminous.Logger.printBanner(),
-  Pe(),
+  Le(),
   Luminous.Settings.init(),
   Luminous.Song.init().catch((e) => {
     Luminous.Logger.error(`Song`, `Initialization failed`, e);
   }),
-  nt());
+  at());
