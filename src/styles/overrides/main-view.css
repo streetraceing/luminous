@@ -219,3 +219,28 @@ header[data-testid='topbar'] {
   > div:empty {
   background: transparent !important;
 }
+
+.Root__top-container div:has(div > a[href^='/playlist/']) {
+  outline: none;
+}
+
+.Root__top-container div:has(div > a[href^='/playlist/']) > div::before {
+  display: none;
+}
+
+.Root__top-container div:has(div > a[href^='/playlist/']) > div {
+  background: transparent !important;
+  outline: none;
+}
+
+.Root__top-container
+  div:has(div > a[href^='/playlist/'])
+  > div
+  > div
+  > div
+  > div
+  > div
+  > div
+  > div:empty {
+  background: transparent !important;
+}
