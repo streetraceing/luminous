@@ -8,15 +8,15 @@
 - one `.luminous-background-media-stage` wrapper;
 - two artwork `<img>` buffers inside that stage;
 - two captured-Canvas `<video>` buffers inside that stage;
-- one adaptive-effect container containing mesh, halo, two ribbons, and four blobs.
+- two adaptive-effect buffers, each containing mesh, halo, two ribbons, and four blobs; only one remains rendered after a palette dissolve.
 
 The root is fixed, clipped, pointer-inert, isolated, and style/paint contained.
 
 ## Image rendering
 
-Artwork uses two buffers. `preloadImage()` keeps a bounded 24-entry cache. `renderImage()` always prepares the currently inactive buffer, waits for that actual `<img>` element to finish loading/decoding, and only then commits it as the active buffer. A monotonic `imageRenderId` prevents a late image callback from an older request from overwriting a newer track.
+Artwork uses two buffers. `preloadImage()` keeps an LRU cache of at most four images, with an additional budget of `8 * 1024 * 1024` decoded pixels checked again when an image loads. The budget is roughly 32 MiB of RGBA pixels, not a bound on total renderer/GPU memory; visible buffers and in-flight browser decoding are separate. An oversized cover can still render without remaining in the preload cache. `renderImage()` asynchronously decodes the preload and the actual inactive `<img>` buffer before committing it. A monotonic `imageRenderId` prevents a late image callback from an older request from overwriting a newer track.
 
-A shared image-invalidation helper removes the superseded preload's load/error listeners immediately when another image or Canvas takes over, or on clear/destroy. Revision guards still protect decode/frame callbacks already in flight. This avoids accumulating stale callbacks without discarding the visible cover or changing the two-buffer hand-off.
+A shared image-invalidation helper aborts preload/buffer waits, removes their load/error/abort listeners, cancels the pending swap frame, and releases an unused pending buffer source when another image or Canvas takes over, or on clear/destroy. Browser `decode()` itself is not abortable, so signal and revision guards also protect its continuation. This avoids accumulating stale callbacks without discarding the visible cover or changing the two-buffer hand-off.
 
 The active buffer index is committed inside `transitionTo()` after the renderer has compared the incoming element with the previously visible element. This ordering is important: committing the index earlier makes `get()` report the incoming buffer as already active and incorrectly turns image-to-image (and captured Canvas-to-Canvas) transitions into no-ops. The previous buffer therefore remains visible until the incoming buffer is ready, after which the existing opacity transition performs the hand-off.
 
@@ -36,7 +36,7 @@ Canvas discovery is disabled entirely when the dynamic background is off or the 
 
 Full-length discovery first checks `[data-testid="video-player-npv"] video` and NPV-scoped `[data-video-container="true"] video`, then falls back to other non-Canvas videos in the panel. These hooks identify the NPV player, not DRM itself; no protection decision is inferred from the `blob:` URL. The renderer resolves the same panel/data-root/player host for promotion and placeholder cleanup, and prefers the nearest enclosing aspect-ratio stage as the reserved frame, falling back to the semantic video container instead of depending on hashed wrapper classes or fixed depth. The inner semantic player may be a shrink-to-fit controls wrapper, not the visual stage. When no aspect-ratio stage exists, reversible width/max-width/box-sizing overrides keep that wrapper from collapsing after its video is moved.
 
-Canvas discovery subscribes to both existing structural pulses: `DomPulse` outside `#main-view` and `MainViewPulse` inside it. This is necessary for Spotify layouts that put NPV below `#main-view`; the global pulse deliberately ignores those mutations. Both subscriptions are filtered and torn down on disable/destroy, without adding a document-wide attribute observer or polling. Cinema UI markers follow the same two structural regions and exclude the explicit NPV player.
+Canvas discovery subscribes to both existing structural pulses: `DomPulse` outside the main view and `MainViewPulse` inside it. Both services support `#main-view` and `[data-testid="main-view"]`. This is necessary for Spotify layouts that put NPV below the main view; the global pulse deliberately ignores those mutations. Filters inspect added/removed media structures rather than treating all text/card changes beneath the NPV root as media changes. Selected-video events still refresh source/playable state, and moving a subtree containing the same video still refreshes its frame markers. Both subscriptions are torn down on disable/destroy, without adding a document-wide attribute observer or polling. Cinema UI markers follow the same two structural regions, use added/removed video/root hooks, and exclude the explicit NPV player.
 
 Where available, Chromium's state-preserving `moveBefore()` is used; older clients fall back to `insertBefore()` with the same media element. Actual EME playback and Spotify's React player lifecycle must be verified in the target desktop client, especially on older Chromium versions. Reparenting third-party React-owned DOM can conflict with a player update that removes the video node directly; subtree removal and normal Luminous cleanup restore the original node via its saved slot, but do not guarantee compatibility with every Spotify renderer revision.
 
@@ -56,6 +56,8 @@ The static visual design is unchanged: mesh, halo, ribbons, and four blobs still
 
 For performance, each effect is now represented as an animated outer node with a nested `.luminous-background-surface`. The outer node owns transforms; the inner surface owns the gradient and filter. This separation is important for Chromium/Electron: a static blurred surface can be raster-cached while the wrapper is moved by the compositor, instead of coupling transform animation to expensive filtered-gradient paint.
 
+Palette changes prepare the inactive effect buffer with fixed colours/filters, commit its transparent state over two requested frames, then dissolve between the two complete scenes using only opacity for 700 ms. The old scene retains its motion during the dissolve and is then hidden and cleared. Rapid changes reuse the same two buffers; they never append more scenes. This replaces per-frame colour/filter interpolation without reducing gradient resolution, blur strength, or the existing motion paths.
+
 `will-change: transform` is active only while a visible motion mode is actually animating the adaptive scene, rather than reserving compositor layers permanently in Still mode.
 
 Artwork and captured-video motion is also separated from filtered paint. Blur/brightness remains on the media buffers, while Drift/Float moves the shared `.luminous-background-media-stage`. A track switch can therefore swap opacity between buffers without coupling the expensive media filter to the continuously animated transform.
@@ -64,7 +66,7 @@ Drift retraces open swing paths with `alternate` and adds slow rotation to blobs
 
 ## Palette scope
 
-Adaptive colours, angle/filter controls, scene/energy/tone classes, and animation durations live on `.luminous-background-effects`. They are no longer written to `<html>`. Track-to-track colour transitions therefore invalidate and repaint the background scene only, not Spotify's full UI tree.
+Adaptive colours, angle/filter controls, scene/energy/tone classes, and animation durations live on each `.luminous-background-effects` buffer. They are not written to `<html>`. The incoming scene repaints when its profile is prepared, not on every colour-interpolation frame. `luminous-dynamic-palette` keeps prepared/outgoing scene motion active; `luminous-palette-visible` controls the opacity dissolve. Still and reduced-motion behavior continue to use the existing CSS rules.
 
 ## Hidden/settings states
 
@@ -72,7 +74,7 @@ Opening the settings modal pauses decorative CSS animation through `luminous-set
 
 ## Cleanup
 
-Inactive captured-video buffers are cleaned after the fixed media transition. Buffers that already have no stream, source attribute, or current source skip redundant media reset work. Cleanup pauses the clone, stops `MediaStreamTrack`s, clears `srcObject`/`src`, and calls `load()`. `destroy()` invalidates pending image/video work, returns all promoted videos to their original slots, stops streams, removes the background root, and resets state.
+Inactive captured-video buffers are cleaned after the fixed media transition. Buffers that already have no stream, source attribute, or current source skip redundant media reset work. Cleanup pauses the clone, stops `MediaStreamTrack`s, clears `srcObject`/`src`, and calls `load()`. `destroy()` invalidates pending image/video work, releases the preload cache, returns all promoted videos to their original slots, stops streams, removes the background root, and resets state. Palette cleanup cancels its image request, dissolve frames, and retirement timer; hidden scenes retain no palette-owned state after retirement.
 
 ## Performance regression checklist
 

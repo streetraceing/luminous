@@ -21,6 +21,15 @@ const MIN_DISPATCH_INTERVAL_MS = 120;
 const SATURATED_DISPATCH_INTERVAL_MS = 220;
 const SATURATED_FULL_SYNC_INTERVAL_MS = 750;
 
+export const MAIN_VIEW_SELECTOR = '#main-view,[data-testid="main-view"]';
+
+export function findMainViewRoot(): HTMLElement | null {
+  return (
+    document.getElementById('main-view') ??
+    document.querySelector<HTMLElement>('[data-testid="main-view"]')
+  );
+}
+
 // One structural observer shared by features that only need to know the
 // Spotify tree changed. Attribute churn is excluded (ad blockers and Spotify
 // update class/style attributes very frequently). #main-view mutations are
@@ -171,11 +180,13 @@ export class DomPulse {
       // `main-view` is a stable ID, but getElementById still costs a hash
       // lookup per mutation batch. Cache the resolved element and refresh on
       // disconnect so we don't repeat it for every ad-block burst.
-      let mainView = this.cachedMainView?.isConnected
-        ? this.cachedMainView
-        : null;
+      let mainView =
+        this.cachedMainView?.isConnected &&
+        this.cachedMainView.matches(MAIN_VIEW_SELECTOR)
+          ? this.cachedMainView
+          : null;
       if (!mainView) {
-        mainView = document.getElementById('main-view');
+        mainView = findMainViewRoot();
         this.cachedMainView = mainView;
       }
 

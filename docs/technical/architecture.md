@@ -31,7 +31,7 @@ Ad blockers and Spotify both mutate the DOM frequently. Luminous therefore avoid
 
 `DomPulse` owns the single broad **structural** observer. It watches `childList` changes only; global `class`, `style`, `src`, and other attribute churn is deliberately excluded. Mutation records are bounded and coalesced. Mutations whose target is already inside `#main-view` are ignored by this global path because `MainViewPulse` owns that subtree. Sparse changes are handled quickly; saturated ad-block churn is slowed to about one dispatch every 220 ms, and an unconditional catch-up is performed only about every 750 ms. Both pulse services disconnect their MutationObservers while the document is hidden, discard queued DOM churn, then reconnect and force one refresh when it becomes visible again.
 
-`MainViewPulse` owns one observer for the `#main-view` subtree. Playlist/header/page-state consumers share it instead of each creating another subtree observer. It uses the same bounded/filterable and saturation-aware model, so unrelated ad-block insertions do not fan out into every page synchronizer.
+`MainViewPulse` owns one observer for the main-view subtree. Both pulse services resolve `#main-view` first and `[data-testid="main-view"]` second, so a missing ID does not turn page churn into global work. Playlist/header/page-state consumers share that observer instead of each creating another subtree observer. Connected roots are reused without another selector query on each dispatch. A saturated global catch-up only forwards a main-view refresh when the root actually changed; the page observer handles its own saturation and visibility catch-up.
 
 Narrow state still uses narrow observers where they are cheaper and more precise:
 
@@ -44,7 +44,7 @@ This architecture is specifically intended to prevent an ad blocker mutation sto
 
 ## CSS invalidation boundaries
 
-Adaptive palette variables and scene classes are applied to `.luminous-background-effects`, not `<html>`. A song change therefore invalidates only the Luminous background subtree instead of forcing inherited colour custom properties through Spotify's entire DOM.
+Adaptive palette variables and scene classes are applied to `.luminous-background-effects`, not `<html>`. Two effect containers alternate during a 700 ms opacity dissolve. Colours and filters are fixed within each scene; there are no registered colour-property or filter transitions that repaint the blurred gradients on every transition frame. The outgoing container is hidden and its palette state is cleared after the dissolve, leaving only one rendered scene between changes.
 
 Page-specific Spotify styling uses runtime state classes such as `luminous-page-home`, `luminous-page-artist`, and `luminous-page-playlist`. Broad relational selectors on `#main-view` are avoided where a small synchronization bridge can express the same state more cheaply.
 
@@ -56,6 +56,8 @@ The adaptive scene keeps the same mesh/halo/ribbon/blob appearance, but each ani
 - `.luminous-background-surface` owns the expensive gradient and blur/filter paint.
 
 The filter surface is static between palette changes, which lets Chromium cache the rasterized blur while compositing only the moving wrapper. The artwork/captured-video buffers use the same principle: their expensive blur remains on the media elements while Drift/Float transform animation is applied to a shared `.luminous-background-media-stage` wrapper. This preserves scene quality while reducing repeated paint work and avoids restarting the media motion animation on every buffer swap.
+
+Artwork loading has one cancellation path covering preload waits, buffer load/decode waits, and the pending swap frame. Palette loading separately aborts superseded cross-origin images before sampling; returning to an already cached palette also cancels an obsolete request. Song events only cancel palette work when the artwork URL changes, so skipping between tracks on the same album does not abort work that the unchanged React image dependency would never restart. The artwork preload cache is LRU-bounded to four images and an eight-megapixel decoded-pixel budget, and is released on background destruction.
 
 ## Hot replacement
 
@@ -72,6 +74,8 @@ New runtime work should follow these rules:
 5. keep expensive filter paint separate from transform-only animation when possible;
 6. disable Canvas discovery when the dynamic background is disabled or artwork-only mode is selected;
 7. preserve Spotify media ownership and provide artwork fallback when video is unavailable.
+8. discover media from added/removed media structures and selected-video events, not every text/card update beneath an NPV or Cinema root;
+9. never mirror a playlist background onto the source element itself.
 
 ## Explicit current-track refresh
 

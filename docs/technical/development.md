@@ -49,6 +49,11 @@ The most important CPU rule is to avoid multiplying Spotify/ad-block DOM churn.
 - palette variables/classes live on `.luminous-background-effects`, not `<html>`.
 - gradient blur is painted on static inner surfaces while transforms animate outer wrappers; artwork/captured-video blur is similarly separated from Drift/Float motion through a shared media-stage wrapper.
 - INFO logging is disabled by default to avoid console serialization cost in normal use; warnings/errors remain enabled.
+- main-view ownership supports both the ID and data-testid hook. Global saturation does not force unchanged page consumers to rerun, and connected roots are not queried again on every pulse.
+- Canvas/Cinema structural filters react to inserted/removed media structures, not arbitrary text/card changes inside an NPV/Cinema root.
+- the playlist bridge refuses to mirror a header background onto that same header, preventing recursive gradients and a perpetual attribute-observer/frame loop.
+- palette requests abort superseded image loads before sampling; actual artwork waits and pending swap frames share a cancellation path. The decoded preload cache is bounded to four entries/eight megapixels and cleared on destruction.
+- adaptive palette transitions dissolve two fixed-profile scenes using opacity only. The outgoing scene is hidden/cleared after 700 ms; no registered colour-property or filter transition rerasterizes gradients on every intermediate frame.
 
 ## Profiling with diagnostics
 
@@ -70,6 +75,19 @@ A new optimization should target the measured category rather than blindly reduc
 Keep disposable browser fixtures, profiling scripts, and logs outside the delivered project tree, as required by `AGENTS.md`. Compare the original snapshot and the changed source against the same DOM and event sequence. Useful checks are page queries/source-style reads during track-row churn, protected-placeholder rectangle reads during unrelated scrolls, and media reset calls for empty buffers. These are targeted operation counts, not an FPS benchmark or a guarantee for every desktop GPU.
 
 Also test actual Blob-video capture/playback and clone cleanup, artwork buffer swaps, cancelled image loads, page navigation, late/replaced artist images, saturation catch-up, DRM slot restoration, and dynamic NPV cards. The gradients, blur strengths, motion keyframes, palette algorithm, source selection, defaults, and settings schema are deliberately unchanged. Profile the real Spotify desktop client before making GPU/raster-quality trade-offs; the local Chromium fixture does not reproduce its full renderer, DRM stack, display resolution, or driver.
+
+Additional regression cases for the track-change fixes:
+
+- source and target resolve to the same playlist header: no self-observation, recursive gradients, or repeated frame scheduling;
+- twelve delayed palette requests are superseded before loading: only the current request reaches pixel analysis;
+- a pending different cover is followed by the already cached/applied cover: the pending request must not win later;
+- a track changes while the shared album artwork is loading: an unchanged image URL must not cancel palette work that React will not restart;
+- rapid palette changes retain exactly two effect buffers, no colour/filter transitions, and one rendered scene after the dissolve;
+- high-resolution preload entries respect the decoded-pixel budget, and background destruction drops all cached images;
+- text/card churn in NPV does not rediscover media, while inserting/removing/moving videos and selected-video events still do;
+- a main view with only the data-testid hook is owned by the page pulse; root replacement, hidden/resume catch-up, and global saturation remain consistent.
+
+Keep trace comparisons at the same viewport, motion setting, source images, warm-cache state, and event sequence. Raster/style operation counts in a software-rendered local browser are evidence for those paths, not Spotify FPS or GPU-memory measurements.
 
 ## Validation order
 

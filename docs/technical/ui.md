@@ -12,7 +12,7 @@ Range controls keep their displayed value responsive while expensive setting app
 
 `src/ui/domPulse.ts` and `src/ui/mainViewPulse.ts` are the synchronization backbone.
 
-`DomPulse` is the only broad structural observer. It ignores global attribute churn, ignores records already owned by `#main-view`, bounds retained records, and slows dispatch during saturated ad-block mutation storms. `MainViewPulse` is the only child-list observer for `#main-view`; consumers provide selector filters so unrelated ad-block or Spotify insertions do not trigger expensive page queries. Both services disconnect their MutationObservers while the document is hidden, discard queued DOM churn, then reconnect and run one catch-up refresh on return.
+`DomPulse` is the only broad structural observer. It ignores global attribute churn, ignores records already owned by the main view, bounds retained records, and slows dispatch during saturated ad-block mutation storms. Both services resolve `#main-view` or the `[data-testid="main-view"]` fallback, and reuse a connected root. `MainViewPulse` is the only child-list observer for that subtree; consumers provide selector filters so unrelated ad-block or Spotify insertions do not trigger expensive page queries. A saturated global pulse only forwards a page refresh if its root changed, rather than forcing page consumers to run for unrelated sidebar churn. Both services disconnect their MutationObservers while the document is hidden, discard queued DOM churn, then reconnect and run one catch-up refresh on return.
 
 `Synchronize` uses those pulses to maintain cheap state classes for CSS:
 
@@ -29,11 +29,11 @@ Page-state and playlist-artwork filters now key off added/removed page/header ho
 
 Repeated main-view CSS exclusions use the existing `luminous-page-marketplace` marker instead of rescanning for a nested `.marketplace-content` in five negative `:has()` selectors. The visual declarations are unchanged. The splash loader pauses once the splash is hidden rather than running indefinitely behind the UI.
 
-Playlist artwork synchronization keeps a single attribute observer only on the current source element (`.before-scroll-node > div > :first-child`, the playlist background-image element) and mirrors its background onto the current `[data-testid="entity-header"]`. The left sidebar expansion state is width-based because the sidebar's collapsed/expanded classes are hashed.
+Playlist artwork synchronization keeps a single attribute observer only on the current source element (`.before-scroll-node > div > :first-child`, the playlist background-image element) and mirrors its background onto the current `[data-testid="entity-header"]`. If Spotify reuses the header as that source, the bridge does not observe or rewrite it: mirroring the composed header background back into itself would recursively grow its gradient list on every frame. The native header background is left intact in that case. The left sidebar expansion state is width-based because the sidebar's collapsed/expanded classes are hashed.
 
 ## Canvas UI state
 
-Canvas discovery is structural-event driven and media-event driven. The global observer no longer watches `class`, `style`, `hidden`, or `src` attributes across Spotify. Revisions change only when selected video, mode, source identity, or playable state actually changes.
+Canvas discovery is structural-event driven and media-event driven. Structural filters inspect added/removed video, surface, player, and root hooks, not every child mutation beneath an NPV root. Lyrics text and unrelated card updates therefore do not repeatedly query/measure all videos. Video insertion/removal, moving a media subtree, and events on the selected video still refresh discovery. Cinema's UI bridge similarly keys off added/removed Cinema roots or videos. The global observer does not watch `class`, `style`, `hidden`, or `src` attributes across Spotify. Revisions change only when selected video, mode, source identity, or playable state actually changes.
 
 The right-sidebar Canvas class is tracked directly on `aside#Desktop_PanelContainer_Id` instead of scanning every right sidebar on each update. Long-form protected video remains handled by the direct-video background path documented in `background.md`, hosted by the same panel container because the old `#VideoPlayerNpv_ReactPortal` host no longer exists in Spotify 1.3.x.
 

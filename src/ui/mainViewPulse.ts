@@ -1,4 +1,9 @@
-import { DomPulse, mutationAddsOrRemovesSelector } from './domPulse';
+import {
+  DomPulse,
+  findMainViewRoot,
+  MAIN_VIEW_SELECTOR,
+  mutationAddsOrRemovesSelector,
+} from './domPulse';
 
 type MainViewListener = () => void;
 type MainViewFilter = (records: readonly MutationRecord[]) => boolean;
@@ -111,14 +116,18 @@ export class MainViewPulse {
       );
       this.unsubscribeDomPulse = DomPulse.subscribe(
         () => {
+          const previousRoot = this.root;
           this.attachRoot();
+          // A saturated global pulse is not a main-view replacement. Its
+          // own observer already catches up with mutations inside the page.
+          if (this.root === previousRoot) return;
           this.forceDispatch = true;
           this.schedule();
         },
         {
           immediate: false,
           filter: (records) =>
-            mutationAddsOrRemovesSelector(records, '#main-view'),
+            mutationAddsOrRemovesSelector(records, MAIN_VIEW_SELECTOR),
         },
       );
     }
@@ -127,7 +136,10 @@ export class MainViewPulse {
   }
 
   private static attachRoot(): void {
-    const nextRoot = document.querySelector('#main-view') as HTMLElement | null;
+    const nextRoot =
+      this.root?.isConnected && this.root.matches(MAIN_VIEW_SELECTOR)
+        ? this.root
+        : findMainViewRoot();
     if (nextRoot === this.root && this.root?.isConnected) return;
 
     this.observer?.disconnect();

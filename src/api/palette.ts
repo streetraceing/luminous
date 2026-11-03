@@ -1,4 +1,6 @@
 const PALETTE_CLASS = 'luminous-dynamic-palette';
+const VISIBLE_CLASS = 'luminous-palette-visible';
+const TRANSITION_MS = 700;
 const PALETTE_VARIABLES = [
   '--luminous-palette-primary',
   '--luminous-palette-secondary',
@@ -90,9 +92,16 @@ export class Palette {
   private static cache = new Map<string, PaletteProfile>();
   private static currentProfile: PaletteProfile | null = null;
   private static motionScale = 1;
+  private static imageLoadController: AbortController | null = null;
+  private static activeTarget: HTMLElement | null = null;
+  private static targetProfiles = new WeakMap<HTMLElement, PaletteProfile>();
+  private static transitionFrame: number | null = null;
+  private static transitionTimer: number | null = null;
 
   static cancel() {
     this.requestId++;
+    this.imageLoadController?.abort();
+    this.imageLoadController = null;
   }
 
   static clear() {
@@ -111,9 +120,10 @@ export class Palette {
 
     this.motionScale = normalized / DEFAULT_MOTION_DURATION;
 
-    if (this.currentProfile) {
-      this.applyDurations(this.currentProfile.baseDurations);
-    }
+    this.getTargets().forEach((target) => {
+      const profile = this.targetProfiles.get(target);
+      if (profile) this.applyDurations(profile.baseDurations, target);
+    });
   }
 
   static async applyFromImage(image: string | null | undefined) {
@@ -122,24 +132,31 @@ export class Palette {
       return;
     }
 
+    // Even a return to the already displayed cover must cancel an in-flight
+    // request for another track.
+    this.cancel();
+
     if (image === this.source && this.currentProfile) {
       if (this.hasAppliedPalette()) return;
       this.applyProfile(this.currentProfile);
       return;
     }
 
-    const requestId = ++this.requestId;
+    const requestId = this.requestId;
+    const controller = new AbortController();
+    this.imageLoadController = controller;
 
     try {
       const profile =
-        this.getCachedPalette(image) ?? (await this.extractProfile(image));
-      if (requestId !== this.requestId) return;
+        this.getCachedPalette(image) ??
+        (await this.extractProfile(image, controller.signal));
+      if (controller.signal.aborted || requestId !== this.requestId) return;
 
       this.cachePalette(image, profile);
       this.applyProfile(profile);
       this.source = image;
     } catch (error) {
-      if (requestId !== this.requestId) return;
+      if (controller.signal.aborted || requestId !== this.requestId) return;
 
       this.source = null;
       this.currentProfile = null;
@@ -149,11 +166,19 @@ export class Palette {
         'Failed to create adaptive background effects',
         error,
       );
+    } finally {
+      if (this.imageLoadController === controller) {
+        this.imageLoadController = null;
+      }
     }
   }
 
-  private static async extractProfile(source: string): Promise<PaletteProfile> {
-    const image = await this.loadImage(source);
+  private static async extractProfile(
+    source: string,
+    signal: AbortSignal,
+  ): Promise<PaletteProfile> {
+    const image = await this.loadImage(source, signal);
+    if (signal.aborted) throw new DOMException('Aborted', 'AbortError');
     const canvas = document.createElement('canvas');
     canvas.width = SAMPLE_SIZE;
     canvas.height = SAMPLE_SIZE;
@@ -169,13 +194,53 @@ export class Palette {
     return this.analyzePixels(pixels);
   }
 
-  private static loadImage(source: string): Promise<HTMLImageElement> {
+  private static loadImage(
+    source: string,
+    signal: AbortSignal,
+  ): Promise<HTMLImageElement> {
     return new Promise((resolve, reject) => {
       const image = new Image();
+      let settled = false;
+      const cleanup = () => {
+        image.onload = null;
+        image.onerror = null;
+        signal.removeEventListener('abort', handleAbort);
+      };
+      const fail = (error: Error) => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        reject(error);
+      };
+      const handleAbort = () => {
+        fail(new DOMException('Aborted', 'AbortError'));
+        image.removeAttribute('src');
+      };
       image.crossOrigin = 'anonymous';
       image.decoding = 'async';
-      image.onload = () => resolve(image);
-      image.onerror = () => reject(new Error('Failed to load cover image'));
+      image.onload = async () => {
+        try {
+          // Avoid making drawImage synchronously decode a full-resolution
+          // Spotify cover on the UI thread.
+          await image.decode();
+        } catch {
+          // A loaded image can remain usable if decode() is interrupted.
+        }
+        if (settled || signal.aborted) return;
+        if (image.naturalWidth === 0) {
+          fail(new Error('Failed to decode cover image'));
+          return;
+        }
+        settled = true;
+        cleanup();
+        resolve(image);
+      };
+      image.onerror = () => fail(new Error('Failed to load cover image'));
+      signal.addEventListener('abort', handleAbort, { once: true });
+      if (signal.aborted) {
+        handleAbort();
+        return;
+      }
       image.src = source;
     });
   }
@@ -669,8 +734,23 @@ export class Palette {
 
   private static applyProfile(profile: PaletteProfile) {
     this.currentProfile = profile;
-    const root = this.getTarget();
-    if (!root) return;
+    const targets = this.getTargets();
+    const previous =
+      (this.activeTarget?.isConnected ? this.activeTarget : null) ??
+      targets.find((target) => target.classList.contains(VISIBLE_CLASS)) ??
+      targets[0];
+    if (!previous) return;
+
+    this.cancelTransition();
+    const root = previous.classList.contains(PALETTE_CLASS)
+      ? (targets.find((target) => target !== previous) ?? previous)
+      : previous;
+
+    // Repaint only the incoming scene. Its colours and filters stay fixed
+    // throughout the dissolve; only opacity and motion are animated.
+    root.style.transition = 'none';
+    root.classList.remove(VISIBLE_CLASS);
+    root.hidden = false;
     root.style.setProperty('--luminous-palette-primary', profile.primary);
     root.style.setProperty('--luminous-palette-secondary', profile.secondary);
     root.style.setProperty('--luminous-palette-accent', profile.accent);
@@ -698,13 +778,33 @@ export class Palette {
       PALETTE_CLASS,
     );
 
-    this.applyDurations(profile.baseDurations);
+    this.targetProfiles.set(root, profile);
+    this.applyDurations(profile.baseDurations, root);
+
+    // Commit the transparent scene without a synchronous layout flush.
+    this.transitionFrame = requestAnimationFrame(() => {
+      this.transitionFrame = requestAnimationFrame(() => {
+        this.transitionFrame = null;
+        if (!root.isConnected) return;
+
+        root.style.removeProperty('transition');
+        root.classList.add(VISIBLE_CLASS);
+        if (previous !== root) previous.classList.remove(VISIBLE_CLASS);
+        this.activeTarget = root;
+        this.transitionTimer = window.setTimeout(() => {
+          this.transitionTimer = null;
+          targets.forEach((target) => {
+            if (target !== root) this.clearTarget(target);
+          });
+        }, TRANSITION_MS);
+      });
+    });
   }
 
-  private static applyDurations(durations: [number, number, number, number]) {
-    const root = this.getTarget();
-    if (!root) return;
-
+  private static applyDurations(
+    durations: [number, number, number, number],
+    root: HTMLElement,
+  ) {
     durations.forEach((duration, index) => {
       const scaled = Math.max(7, duration * this.motionScale);
       root.style.setProperty(
@@ -715,20 +815,50 @@ export class Palette {
   }
 
   private static clearAppliedPalette() {
-    const root = this.getTarget();
-    if (!root) return;
+    this.cancelTransition();
+    this.activeTarget = null;
+    const targets = this.getTargets();
+    if (targets.length === 0) return;
 
+    targets.forEach((target) => target.classList.remove(VISIBLE_CLASS));
+    this.transitionTimer = window.setTimeout(() => {
+      this.transitionTimer = null;
+      targets.forEach((target) => this.clearTarget(target));
+    }, TRANSITION_MS);
+  }
+
+  private static clearTarget(root: HTMLElement) {
+    root.hidden = true;
     PALETTE_VARIABLES.forEach((variable) => {
       root.style.removeProperty(variable);
     });
-    root.classList.remove(...EFFECT_CLASSES, PALETTE_CLASS);
+    root.style.removeProperty('transition');
+    root.classList.remove(...EFFECT_CLASSES, PALETTE_CLASS, VISIBLE_CLASS);
+    this.targetProfiles.delete(root);
   }
 
-  private static getTarget(): HTMLElement | null {
-    return document.querySelector('.luminous-background-effects');
+  private static cancelTransition() {
+    if (this.transitionFrame !== null) {
+      cancelAnimationFrame(this.transitionFrame);
+      this.transitionFrame = null;
+    }
+    if (this.transitionTimer !== null) {
+      window.clearTimeout(this.transitionTimer);
+      this.transitionTimer = null;
+    }
+  }
+
+  private static getTargets(): HTMLElement[] {
+    return Array.from(
+      document.querySelectorAll<HTMLElement>(
+        '#luminous-dynamic-background > .luminous-background-effects',
+      ),
+    );
   }
 
   private static hasAppliedPalette(): boolean {
-    return this.getTarget()?.classList.contains(PALETTE_CLASS) === true;
+    return this.getTargets().some((target) =>
+      target.classList.contains(PALETTE_CLASS),
+    );
   }
 }

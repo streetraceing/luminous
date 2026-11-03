@@ -4,7 +4,7 @@ import {
   CanvasMode,
   CanvasPayload,
 } from '../types/runtime/canvas.types';
-import { DomPulse, mutationTouchesSelector } from '../ui/domPulse';
+import { DomPulse, mutationAddsOrRemovesSelector } from '../ui/domPulse';
 import { MainViewPulse } from '../ui/mainViewPulse';
 import {
   CANVAS_SURFACE_SELECTOR,
@@ -98,7 +98,7 @@ export class Canvas {
     this.unsubscribeDomPulse = DomPulse.subscribe(() => this.scheduleCheck(), {
       immediate: false,
       filter: (records) =>
-        mutationTouchesSelector(records, this.STRUCTURAL_SELECTOR),
+        mutationAddsOrRemovesSelector(records, this.STRUCTURAL_SELECTOR),
     });
     // Some Spotify layouts mount NPV inside #main-view. DomPulse excludes
     // those records because the existing MainViewPulse owns that subtree.
@@ -107,7 +107,7 @@ export class Canvas {
       {
         immediate: false,
         filter: (records) =>
-          mutationTouchesSelector(records, this.STRUCTURAL_SELECTOR),
+          mutationAddsOrRemovesSelector(records, this.STRUCTURAL_SELECTOR),
       },
     );
     this.check();

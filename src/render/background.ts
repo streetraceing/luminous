@@ -22,7 +22,8 @@ type CapturableVideo = HTMLVideoElement & {
 
 export class Background {
   private static readonly TRANSITION_MS = 250;
-  private static readonly MAX_PRELOADED_IMAGES = 24;
+  private static readonly MAX_PRELOADED_IMAGES = 4;
+  private static readonly MAX_PRELOADED_PIXELS = 8 * 1024 * 1024;
 
   private static root: HTMLDivElement | null = null;
   private static base: HTMLDivElement | null = null;
@@ -171,6 +172,7 @@ export class Background {
   private static createEffectsLayer(): HTMLDivElement {
     const effects = document.createElement('div');
     effects.className = 'luminous-background-effects';
+    effects.hidden = true;
 
     const createNode = (className: string) => {
       const node = document.createElement('span');
@@ -246,10 +248,11 @@ export class Background {
     const imageB = this.createImageLayer();
     const videoA = this.createVideoLayer();
     const videoB = this.createVideoLayer();
-    const effects = this.createEffectsLayer();
+    const effectsA = this.createEffectsLayer();
+    const effectsB = this.createEffectsLayer();
 
     this.mediaStage.append(imageA, imageB, videoA, videoB);
-    this.root.append(this.base, this.mediaStage, effects);
+    this.root.append(this.base, this.mediaStage, effectsA, effectsB);
     this.imageLayers = [imageA, imageB];
     this.videoLayers = [videoA, videoB];
     this.activeImage = 0;
@@ -297,13 +300,7 @@ export class Background {
   }
 
   static preloadImage(src: string | null | undefined) {
-    if (!src || this.preloadedImages.has(src)) return;
-
-    const image = new Image();
-    image.decoding = 'async';
-    image.src = src;
-    this.preloadedImages.set(src, image);
-    this.trimPreloadedImages();
+    if (src) this.getPreloadedImage(src);
   }
 
   private static renderImage(src: string | null) {
@@ -334,58 +331,53 @@ export class Background {
     }
 
     const preload = this.getPreloadedImage(src);
-
-    const showImage = () => {
-      if (renderId !== this.imageRenderId) return;
-
-      next.src = src;
-
-      void this.waitForImageReady(next).then((ready) => {
-        if (!ready || renderId !== this.imageRenderId) return;
-
-        requestAnimationFrame(() => {
-          if (renderId !== this.imageRenderId) return;
-
-          this.transitionTo('image', next);
-          Luminous.Logger.info('Background', 'Rendering image layer', src);
-        });
-      });
+    const controller = new AbortController();
+    let frameId: number | null = null;
+    this.cancelImageLoad = () => {
+      controller.abort();
+      if (frameId !== null) cancelAnimationFrame(frameId);
+      if (this.get() !== next) next.removeAttribute('src');
     };
 
-    if (preload.complete && preload.naturalWidth > 0) {
-      showImage();
-      return;
-    }
+    const showImage = async () => {
+      const loaded = await this.waitForImageReady(preload, controller.signal);
+      if (controller.signal.aborted || renderId !== this.imageRenderId) return;
 
-    const cleanup = () => {
-      preload.removeEventListener('load', handleLoad);
-      preload.removeEventListener('error', handleError);
-      if (this.cancelImageLoad === cleanup) this.cancelImageLoad = null;
-    };
-    const handleLoad = () => {
-      cleanup();
-      showImage();
-    };
-    const handleError = () => {
-      cleanup();
-      if (renderId !== this.imageRenderId) return;
+      if (!loaded) {
+        this.cancelImageLoad = null;
+        Luminous.Logger.warn('Background', 'Failed to load image', src);
 
-      Luminous.Logger.warn('Background', 'Failed to load image', src);
-
-      if (
-        this.currentType === 'image' &&
-        current.complete &&
-        current.naturalWidth > 0
-      ) {
-        this.transitionTo('image', current);
+        if (
+          this.currentType === 'image' &&
+          current.complete &&
+          current.naturalWidth > 0
+        ) {
+          this.transitionTo('image', current);
+        } else {
+          this.clear();
+        }
         return;
       }
 
-      this.clear();
+      next.src = src;
+      const ready = await this.waitForImageReady(next, controller.signal);
+      if (controller.signal.aborted || renderId !== this.imageRenderId) return;
+      if (!ready) {
+        this.cancelImageLoad = null;
+        return;
+      }
+
+      frameId = requestAnimationFrame(() => {
+        frameId = null;
+        if (controller.signal.aborted || renderId !== this.imageRenderId)
+          return;
+
+        this.cancelImageLoad = null;
+        this.transitionTo('image', next);
+        Luminous.Logger.info('Background', 'Rendering image layer', src);
+      });
     };
-    this.cancelImageLoad = cleanup;
-    preload.addEventListener('load', handleLoad, { once: true });
-    preload.addEventListener('error', handleError, { once: true });
+    void showImage();
   }
 
   private static invalidateImageRender(): number {
@@ -397,29 +389,38 @@ export class Background {
 
   private static async waitForImageReady(
     image: HTMLImageElement,
+    signal: AbortSignal,
   ): Promise<boolean> {
+    if (signal.aborted) return false;
     if (!image.complete) {
       const loaded = await new Promise<boolean>((resolve) => {
+        let settled = false;
         const finish = (value: boolean) => {
+          if (settled) return;
+          settled = true;
           image.removeEventListener('load', handleLoad);
           image.removeEventListener('error', handleError);
+          signal.removeEventListener('abort', handleAbort);
           resolve(value);
         };
         const handleLoad = () => finish(true);
         const handleError = () => finish(false);
+        const handleAbort = () => finish(false);
 
         image.addEventListener('load', handleLoad, { once: true });
         image.addEventListener('error', handleError, { once: true });
+        signal.addEventListener('abort', handleAbort, { once: true });
 
         // Cover the cache race where the image becomes complete between the
         // outer check and listener registration.
-        if (image.complete) finish(image.naturalWidth > 0);
+        if (signal.aborted) finish(false);
+        else if (image.complete) finish(image.naturalWidth > 0);
       });
 
       if (!loaded) return false;
     }
 
-    if (image.naturalWidth <= 0) return false;
+    if (signal.aborted || image.naturalWidth <= 0) return false;
 
     try {
       await image.decode();
@@ -428,7 +429,7 @@ export class Background {
       // the authoritative fallback.
     }
 
-    return image.complete && image.naturalWidth > 0;
+    return !signal.aborted && image.complete && image.naturalWidth > 0;
   }
 
   private static getPreloadedImage(src: string): HTMLImageElement {
@@ -442,20 +443,38 @@ export class Background {
     if (!image) {
       image = new Image();
       image.decoding = 'async';
+      image.addEventListener('load', () => this.trimPreloadedImages(), {
+        once: true,
+      });
       image.src = src;
-      this.preloadedImages.set(src, image);
-      this.trimPreloadedImages();
     }
 
+    this.preloadedImages.delete(src);
+    this.preloadedImages.set(src, image);
+    this.trimPreloadedImages();
     return image;
   }
 
   private static trimPreloadedImages() {
-    while (this.preloadedImages.size > this.MAX_PRELOADED_IMAGES) {
+    let pixels = 0;
+    this.preloadedImages.forEach((image, source) => {
+      const imagePixels = image.naturalWidth * image.naturalHeight;
+      if (imagePixels > this.MAX_PRELOADED_PIXELS) {
+        this.preloadedImages.delete(source);
+      } else {
+        pixels += imagePixels;
+      }
+    });
+    while (
+      this.preloadedImages.size > this.MAX_PRELOADED_IMAGES ||
+      pixels > this.MAX_PRELOADED_PIXELS
+    ) {
       const oldestKey = this.preloadedImages.keys().next().value as
         string | undefined;
 
       if (!oldestKey) return;
+      const image = this.preloadedImages.get(oldestKey)!;
+      pixels -= image.naturalWidth * image.naturalHeight;
       this.preloadedImages.delete(oldestKey);
     }
   }
@@ -1150,6 +1169,8 @@ export class Background {
 
   static destroy() {
     this.invalidateImageRender();
+    this.preloadedImages.forEach((image) => image.removeAttribute('src'));
+    this.preloadedImages.clear();
     this.videoRenderId++;
     this.currentCanvasSource = null;
     this.currentCanvasKey = null;

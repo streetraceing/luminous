@@ -41,6 +41,7 @@ export function DynamicBackgroundFeature() {
 
   effect(() => {
     let songKey = song ? `${song.uri}\u0000${song.image ?? ''}` : null;
+    let songImage = song?.image ?? null;
     let canvasKey = `${canvas.mode ?? ''}\u0000${canvas.source ?? ''}\u0000${canvas.revision}`;
     let canvasVideo = canvas.video;
 
@@ -49,7 +50,10 @@ export function DynamicBackgroundFeature() {
       if (songKey === nextKey) return;
 
       songKey = nextKey;
-      Luminous.Palette.cancel();
+      // Tracks on the same album can share an in-flight cover request.
+      // Their unchanged image dependency will not rerun the palette effect.
+      if (songImage !== nextSong.image) Luminous.Palette.cancel();
+      songImage = nextSong.image;
       if (Luminous.Settings.get('dynamicBackground') !== false) {
         Luminous.Background.preloadImage(nextSong.image);
       }

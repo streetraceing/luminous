@@ -139,9 +139,12 @@ export class Synchronize {
         '[data-testid="entity-header"]',
       ) as HTMLElement | null;
 
-      observeSource(source);
+      // Spotify can reuse the header as the first background-source node.
+      // Reading our own composed background and writing it back recursively
+      // grows the gradient list and schedules a new frame forever.
+      observeSource(source === target ? null : source);
 
-      if (!source || !target) {
+      if (!source || !target || source === target) {
         cleanupTarget();
         return;
       }
@@ -601,7 +604,7 @@ export class Synchronize {
     const unsubscribeDomPulse = DomPulse.subscribe(syncCinemaMarkers, {
       immediate: false,
       filter: (records) =>
-        mutationTouchesSelector(records, '#lyrics-cinema,video'),
+        mutationAddsOrRemovesSelector(records, '#lyrics-cinema,video'),
     });
 
     const unsubscribeMainViewPulse = MainViewPulse.subscribe(
@@ -609,7 +612,7 @@ export class Synchronize {
       {
         immediate: false,
         filter: (records) =>
-          mutationTouchesSelector(records, '#lyrics-cinema,video'),
+          mutationAddsOrRemovesSelector(records, '#lyrics-cinema,video'),
       },
     );
 

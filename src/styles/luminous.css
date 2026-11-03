@@ -1,33 +1,3 @@
-@property --luminous-palette-primary {
-  syntax: '<color>';
-  inherits: true;
-  initial-value: #648cff;
-}
-
-@property --luminous-palette-secondary {
-  syntax: '<color>';
-  inherits: true;
-  initial-value: #8c5cff;
-}
-
-@property --luminous-palette-accent {
-  syntax: '<color>';
-  inherits: true;
-  initial-value: #53e7d8;
-}
-
-@property --luminous-palette-light {
-  syntax: '<color>';
-  inherits: true;
-  initial-value: #dce8ff;
-}
-
-@property --luminous-palette-dark {
-  syntax: '<color>';
-  inherits: true;
-  initial-value: #10152a;
-}
-
 html:root {
   --luminous-background: var(--spice-sidebar);
   --luminous-background-blur: 24px;
@@ -124,17 +94,14 @@ video.luminous-direct-video-background--active {
   filter: saturate(var(--luminous-effect-saturation))
     brightness(var(--luminous-effect-brightness))
     contrast(var(--luminous-effect-contrast));
-  transition:
-    opacity 700ms ease,
-    filter 900ms ease,
-    --luminous-palette-primary 900ms ease,
-    --luminous-palette-secondary 900ms ease,
-    --luminous-palette-accent 900ms ease,
-    --luminous-palette-light 900ms ease,
-    --luminous-palette-dark 900ms ease;
+  transition: opacity 700ms ease;
 }
 
-.luminous-background-effects.luminous-dynamic-palette {
+.luminous-background-effects[hidden] {
+  display: none;
+}
+
+.luminous-background-effects.luminous-palette-visible {
   opacity: var(--luminous-palette-effect-opacity);
 }
 
