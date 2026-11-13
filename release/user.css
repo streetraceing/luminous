@@ -1526,8 +1526,8 @@ html.hideDynamicBackground aside[data-testid='now-playing-bar'] {
   background: 0 0 !important;
 }
 #main-view .main-view-container .before-scroll-node,
-.main-topBar-container > div:empty,
-.main-topBar-container {
+div:not(.luminous-page-marketplace) > .main-topBar-container > div:empty,
+div:not(.luminous-page-marketplace) > .main-topBar-container {
   display: none;
 }
 #main-view .marketplace-header {
@@ -1643,7 +1643,7 @@ div[data-scroll-size-invariant-class][role='presentation']:has(
   ) {
   display: none;
 }
-header[data-testid='topbar'] {
+div:not(.luminous-page-marketplace) > header[data-testid='topbar'] {
   display: none;
 }
 .global-nav > div > div:has(div[data-testid='NPV_Panel_OpenDiv']) > div {
@@ -1659,13 +1659,19 @@ header[data-testid='topbar'] {
   > div:empty {
   background: 0 0 !important;
 }
-.Root__top-container div:has(div > a[href^='/playlist/']) {
+.Root__top-container > .Root__main-view div:has(div > a[href^='/playlist/']) {
   outline: none;
 }
-.Root__top-container div:has(div > a[href^='/playlist/']) > div:before {
+.Root__top-container
+  > .Root__main-view
+  div:has(div > a[href^='/playlist/'])
+  > div:before {
   display: none;
 }
-.Root__top-container div:has(div > a[href^='/playlist/']) > div {
+.Root__top-container
+  > .Root__main-view
+  div:has(div > a[href^='/playlist/'])
+  > div {
   outline: none;
   background: 0 0 !important;
 }
@@ -1679,6 +1685,13 @@ header[data-testid='topbar'] {
   > div
   > div:empty {
   background: 0 0 !important;
+}
+.Root__top-container
+  .Root__main-view
+  .main-view-container__scroll-node-child
+  > main
+  .main-actionBarBackground-background {
+  display: none;
 }
 #Desktop_PanelContainer_Id,
 #Desktop_PanelContainer_Id:before {
@@ -1811,8 +1824,17 @@ div[data-testid='NPV_Panel_OpenDiv']
   > div:has(> a:is([href^='/artist/'], [href^='spotify:artist:'])) {
   background: 0 0 !important;
 }
+.Root__right-sidebar-fauxMainViewEnd > div {
+  background: 0 0;
+}
 .Root__top-container {
   background: var(--luminous-background);
+}
+.Root__top-container:has(
+    .main-yourLibraryX-library .main-gridContainer-gridContainer
+  )
+  .Root__main-view {
+  display: none;
 }
 .ReactModalPortal > div {
   z-index: 10000;
@@ -1892,14 +1914,5 @@ div[data-testid='NPV_Panel_OpenDiv']
 }
 #global-nav-bar {
   background: 0 0;
-}
-input {
-  background: var(--luminous-ui-background) !important;
-}
-#global-nav-bar
-  > div
-  > div:has(input[data-encore-id='formInput'])
-  button:not(.e-10860-form-input-icon__icon > button) {
-  background: var(--luminous-ui-background) !important;
 }
 /*$vite$:1*/
