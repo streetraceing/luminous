@@ -3,3 +3,10 @@
 .Root__top-container {
   background: var(--luminous-background);
 }
+
+.Root__top-container:has(
+    .main-yourLibraryX-library .main-gridContainer-gridContainer
+  )
+  .Root__main-view {
+  display: none;
+}

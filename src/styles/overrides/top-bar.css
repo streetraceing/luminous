@@ -101,10 +101,10 @@
   background: transparent;
 }
 
-#global-nav-bar
+/* #global-nav-bar
   > div
   > div:has(input[data-encore-id='formInput'])
   button:not(.e-10860-form-input-icon__icon > button),
 input {
   background: var(--luminous-ui-background) !important;
-}
+} */

@@ -28,7 +28,7 @@
   display: none;
 }
 
-.main-topBar-container > div:empty {
+div:not(.luminous-page-marketplace) > .main-topBar-container > div:empty {
   display: none;
 }
 
@@ -45,7 +45,7 @@ html.luminous-left-sidebar-expanded #main-view {
 
 /* Playlist page */
 
-.main-topBar-container {
+div:not(.luminous-page-marketplace) > .main-topBar-container {
   display: none;
 }
 
@@ -199,7 +199,7 @@ div[data-scroll-size-invariant-class][role='presentation']:has(
   display: none;
 }
 
-header[data-testid='topbar'] {
+div:not(.luminous-page-marketplace) > header[data-testid='topbar'] {
   display: none;
 }
 
@@ -220,15 +220,21 @@ header[data-testid='topbar'] {
   background: transparent !important;
 }
 
-.Root__top-container div:has(div > a[href^='/playlist/']) {
+.Root__top-container > .Root__main-view div:has(div > a[href^='/playlist/']) {
   outline: none;
 }
 
-.Root__top-container div:has(div > a[href^='/playlist/']) > div::before {
+.Root__top-container
+  > .Root__main-view
+  div:has(div > a[href^='/playlist/'])
+  > div::before {
   display: none;
 }
 
-.Root__top-container div:has(div > a[href^='/playlist/']) > div {
+.Root__top-container
+  > .Root__main-view
+  div:has(div > a[href^='/playlist/'])
+  > div {
   background: transparent !important;
   outline: none;
 }
@@ -243,4 +249,12 @@ header[data-testid='topbar'] {
   > div
   > div:empty {
   background: transparent !important;
+}
+
+.Root__top-container
+  .Root__main-view
+  .main-view-container__scroll-node-child
+  > main
+  .main-actionBarBackground-background {
+  display: none;
 }
